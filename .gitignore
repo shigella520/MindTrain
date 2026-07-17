@@ -20,6 +20,10 @@ out/
 .DS_Store
 
 # Environment and secrets
+.venv/
+.skill-venv/
+__pycache__/
+*.pyc
 .env
 .env.*
 !.env.example
@@ -27,4 +31,3 @@ out/
 # Logs
 *.log
 logs/
-

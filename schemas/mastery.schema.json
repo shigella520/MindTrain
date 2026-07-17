@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mastery.schema.json",
+  "title": "Topic Mastery Store",
+  "type": "object",
+  "required": ["schemaVersion", "topics"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "topics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["topicId", "masteryScore", "correctCount", "wrongCount", "consecutiveCorrect", "reviewIntervalDays", "lastAnsweredAt", "nextReviewAt"],
+        "properties": {
+          "topicId": {"type": "string"},
+          "masteryScore": {"type": "integer", "minimum": 0, "maximum": 100},
+          "correctCount": {"type": "integer", "minimum": 0},
+          "wrongCount": {"type": "integer", "minimum": 0},
+          "consecutiveCorrect": {"type": "integer", "minimum": 0},
+          "reviewIntervalDays": {"type": "integer", "minimum": 1},
+          "lastQuestionId": {"type": "string"},
+          "lastAnsweredAt": {"type": "string", "format": "date-time"},
+          "nextReviewAt": {"type": "string", "format": "date-time"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

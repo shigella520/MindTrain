@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "question.schema.json",
+  "title": "Java Interview Choice Question",
+  "type": "object",
+  "required": [
+    "schemaVersion", "id", "version", "status", "type", "title", "stem",
+    "options", "correctOptionIds", "topicIds", "difficulty", "importance",
+    "javaVersions", "explanation", "sources", "createdBy", "promptVersion", "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.-]+$"},
+    "version": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["discovered", "candidate", "fact_checked", "reviewed", "published", "rejected", "deprecated"]},
+    "type": {"enum": ["single_choice", "multiple_choice"]},
+    "title": {"type": "string", "minLength": 1},
+    "stem": {"type": "string", "minLength": 1},
+    "options": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["id", "text"],
+        "properties": {
+          "id": {"enum": ["A", "B", "C", "D"]},
+          "text": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "correctOptionIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["A", "B", "C", "D"]}
+    },
+    "topicIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "difficulty": {"type": "integer", "minimum": 1, "maximum": 5},
+    "importance": {"type": "integer", "minimum": 1, "maximum": 5},
+    "javaVersions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "explanation": {
+      "type": "object",
+      "required": ["conclusion", "optionAnalysis", "mechanism", "pitfalls", "versionNotes", "relatedTopicIds"],
+      "properties": {
+        "conclusion": {"type": "string", "minLength": 1},
+        "optionAnalysis": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["optionId", "correct", "analysis"],
+            "properties": {
+              "optionId": {"enum": ["A", "B", "C", "D"]},
+              "correct": {"type": "boolean"},
+              "analysis": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          }
+        },
+        "mechanism": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "pitfalls": {"type": "array", "items": {"type": "string"}},
+        "versionNotes": {"type": "array", "items": {"type": "string"}},
+        "relatedTopicIds": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["sourceId", "url", "title", "accessedAt"],
+        "properties": {
+          "sourceId": {"type": "string"},
+          "url": {"type": "string", "format": "uri"},
+          "title": {"type": "string", "minLength": 1},
+          "accessedAt": {"type": "string", "format": "date"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "parentQuestionId": {"type": ["string", "null"]},
+    "createdBy": {"enum": ["human", "ai", "human_ai"]},
+    "model": {"type": ["string", "null"]},
+    "promptVersion": {"type": "string", "minLength": 1},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "reviewedAt": {"type": ["string", "null"], "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"type": {"const": "single_choice"}}},
+      "then": {"properties": {"correctOptionIds": {"minItems": 1, "maxItems": 1}}}
+    },
+    {
+      "if": {"properties": {"type": {"const": "multiple_choice"}}},
+      "then": {"properties": {"correctOptionIds": {"minItems": 2, "maxItems": 3}}}
+    }
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Java 面试教练"
+  short_description: "Java 后端单选多选训练、详解与学习资产沉淀"
+  default_prompt: "Use $java-interview-coach to start a 10-question Java backend choice-question practice session."

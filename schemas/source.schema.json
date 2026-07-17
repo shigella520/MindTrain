@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source.schema.json",
+  "title": "Official Source Catalog",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["id", "title", "url", "publisher", "type"],
+    "properties": {
+      "id": {"type": "string"},
+      "title": {"type": "string"},
+      "url": {"type": "string", "format": "uri"},
+      "publisher": {"type": "string"},
+      "type": {"enum": ["specification", "official_documentation", "official_guide"]}
+    },
+    "additionalProperties": false
+  }
+}

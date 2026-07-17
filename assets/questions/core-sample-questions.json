@@ -1,0 +1,162 @@
+[
+  {
+    "schemaVersion": 1,
+    "id": "java.collections.hashmap.001",
+    "version": 1,
+    "status": "published",
+    "type": "single_choice",
+    "title": "HashMap 树化条件",
+    "stem": "在 Java 8 的 HashMap 中，同一桶中的节点数达到树化阈值时，下面哪项还必须满足，才会把链表转换为红黑树？",
+    "options": [
+      {"id":"A","text":"Map 的 size 必须大于等于 8"},
+      {"id":"B","text":"底层数组容量必须大于等于 64"},
+      {"id":"C","text":"负载因子必须等于 0.75"},
+      {"id":"D","text":"键必须实现 Comparable"}
+    ],
+    "correctOptionIds": ["B"],
+    "topicIds": ["java.collections.hashmap"],
+    "difficulty": 3,
+    "importance": 5,
+    "javaVersions": ["8-21"],
+    "explanation": {
+      "conclusion": "桶中节点达到 TREEIFY_THRESHOLD 只是条件之一；数组容量还必须达到 MIN_TREEIFY_CAPACITY（64），否则优先扩容。",
+      "optionAnalysis": [
+        {"optionId":"A","correct":false,"analysis":"树化判断关注桶内节点数量和数组容量，不要求整个 Map 的 size 达到 8。"},
+        {"optionId":"B","correct":true,"analysis":"容量小于 64 时，HashMap 倾向通过扩容分散冲突；容量达到 64 后才允许树化。"},
+        {"optionId":"C","correct":false,"analysis":"负载因子影响扩容阈值，不是链表树化的必要条件。"},
+        {"optionId":"D","correct":false,"analysis":"键不实现 Comparable 也可以进入树节点结构，比较时还有类名和 tie-break 逻辑。"}
+      ],
+      "mechanism": ["putVal 在桶内节点达到阈值后调用 treeifyBin。", "treeifyBin 先检查 table.length；容量不足时执行 resize，否则转换为 TreeNode 链路。"],
+      "pitfalls": ["把 TREEIFY_THRESHOLD=8 误认为唯一条件。", "混淆 Map 的元素数量与底层数组容量。"],
+      "versionNotes": ["Java 8 引入链表转红黑树机制；具体实现细节应以目标 JDK 源码为准。"],
+      "relatedTopicIds": ["java.collections.hashset", "java.collections.concurrent"]
+    },
+    "sources": [{"sourceId":"src-openjdk-source","url":"https://github.com/openjdk/jdk/blob/jdk-21-ga/src/java.base/share/classes/java/util/HashMap.java","title":"OpenJDK 21 HashMap Source","accessedAt":"2026-07-17"}],
+    "parentQuestionId": null,
+    "createdBy": "human_ai",
+    "model": null,
+    "promptVersion": "generate-choice-question-v1",
+    "createdAt": "2026-07-17T00:00:00+08:00",
+    "reviewedAt": "2026-07-17T00:00:00+08:00"
+  },
+  {
+    "schemaVersion": 1,
+    "id": "java.concurrency.volatile.001",
+    "version": 1,
+    "status": "published",
+    "type": "multiple_choice",
+    "title": "volatile 语义",
+    "stem": "关于 Java volatile 变量，下列哪些说法正确？",
+    "options": [
+      {"id":"A","text":"对 volatile 变量的写 happens-before 后续对该变量的读"},
+      {"id":"B","text":"volatile 可以保证 i++ 操作的原子性"},
+      {"id":"C","text":"volatile 可以用于建立线程间的可见性"},
+      {"id":"D","text":"volatile 等价于对所有访问自动加 synchronized"}
+    ],
+    "correctOptionIds": ["A", "C"],
+    "topicIds": ["java.concurrency.volatile", "java.concurrency.jmm"],
+    "difficulty": 2,
+    "importance": 5,
+    "javaVersions": ["8-21"],
+    "explanation": {
+      "conclusion": "volatile 提供可见性和特定的有序性/happens-before 保证，但不会把复合读改写操作变成原子操作。",
+      "optionAnalysis": [
+        {"optionId":"A","correct":true,"analysis":"JMM 明确规定：对 volatile 字段的写 happens-before 每一个后续对该字段的读。"},
+        {"optionId":"B","correct":false,"analysis":"i++ 包含读取、计算和写回，多线程下仍可能丢失更新。"},
+        {"optionId":"C","correct":true,"analysis":"写入对随后读取该 volatile 变量的线程可见，并建立相应内存语义。"},
+        {"optionId":"D","correct":false,"analysis":"volatile 不提供互斥，也不等价于监视器锁。"}
+      ],
+      "mechanism": ["volatile 读写是同步动作并参与 happens-before 关系。", "编译器和运行时必须遵守相应重排序限制。"],
+      "pitfalls": ["把可见性误解为复合操作原子性。", "认为 volatile 能完全替代锁。"],
+      "versionNotes": ["Java 5 之后的 JMM 明确了当前 volatile 语义，Java 8–21 继续遵守。"],
+      "relatedTopicIds": ["java.concurrency.jmm", "java.concurrency.atomics", "java.concurrency.synchronized"]
+    },
+    "sources": [{"sourceId":"src-java-language","url":"https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html","title":"JLS Chapter 17: Threads and Locks","accessedAt":"2026-07-17"}],
+    "parentQuestionId": null,
+    "createdBy": "human_ai",
+    "model": null,
+    "promptVersion": "generate-choice-question-v1",
+    "createdAt": "2026-07-17T00:00:00+08:00",
+    "reviewedAt": "2026-07-17T00:00:00+08:00"
+  },
+  {
+    "schemaVersion": 1,
+    "id": "spring.transactions.001",
+    "version": 1,
+    "status": "published",
+    "type": "single_choice",
+    "title": "Spring 声明式事务代理边界",
+    "stem": "在默认代理模式下，同一个 Spring Bean 内部由一个普通方法直接调用另一个标注 @Transactional 的方法，事务通常为什么不会按该注解生效？",
+    "options": [
+      {"id":"A","text":"Spring 事务只支持 private 方法"},
+      {"id":"B","text":"内部调用没有经过 Spring 事务代理"},
+      {"id":"C","text":"@Transactional 只能用于接口"},
+      {"id":"D","text":"数据库不支持嵌套事务"}
+    ],
+    "correctOptionIds": ["B"],
+    "topicIds": ["spring.transactions", "spring.aop"],
+    "difficulty": 3,
+    "importance": 5,
+    "javaVersions": ["8-21"],
+    "explanation": {
+      "conclusion": "默认声明式事务依赖 AOP 代理拦截；self-invocation 直接作用于 this，没有经过代理入口。",
+      "optionAnalysis": [
+        {"optionId":"A","correct":false,"analysis":"代理模式通常要求可被代理调用的方法；并不是只支持 private 方法。"},
+        {"optionId":"B","correct":true,"analysis":"同类内部直接调用绕过代理，TransactionInterceptor 没有机会开启事务。"},
+        {"optionId":"C","correct":false,"analysis":"Spring 可以使用 JDK 动态代理或 CGLIB，并不要求注解只能位于接口。"},
+        {"optionId":"D","correct":false,"analysis":"问题发生在代理拦截边界，而不是数据库是否支持嵌套事务。"}
+      ],
+      "mechanism": ["外部调用先进入代理对象。", "事务拦截器根据属性开启、提交或回滚事务。", "self-invocation 直接调用目标对象方法，绕过该拦截链。"],
+      "pitfalls": ["把 @Transactional 当作 JVM 原生语义。", "忽略代理模式与 AspectJ 模式的差异。"],
+      "versionNotes": ["Spring Framework 各主流版本在默认代理模式下都存在 self-invocation 边界。"],
+      "relatedTopicIds": ["spring.aop", "spring.ioc"]
+    },
+    "sources": [{"sourceId":"src-spring-framework","url":"https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html","title":"Using @Transactional","accessedAt":"2026-07-17"}],
+    "parentQuestionId": null,
+    "createdBy": "human_ai",
+    "model": null,
+    "promptVersion": "generate-choice-question-v1",
+    "createdAt": "2026-07-17T00:00:00+08:00",
+    "reviewedAt": "2026-07-17T00:00:00+08:00"
+  },
+  {
+    "schemaVersion": 1,
+    "id": "mysql.mvcc.001",
+    "version": 1,
+    "status": "published",
+    "type": "multiple_choice",
+    "title": "InnoDB MVCC 组成",
+    "stem": "在 InnoDB 的一致性读中，与 MVCC 可见性判断直接相关的机制包括哪些？",
+    "options": [
+      {"id":"A","text":"Read View"},
+      {"id":"B","text":"undo log 版本链"},
+      {"id":"C","text":"redo log 的物理恢复记录"},
+      {"id":"D","text":"隐藏事务 ID 等版本信息"}
+    ],
+    "correctOptionIds": ["A", "B", "D"],
+    "topicIds": ["mysql.mvcc", "mysql.logs"],
+    "difficulty": 3,
+    "importance": 5,
+    "javaVersions": ["8-21"],
+    "explanation": {
+      "conclusion": "一致性读通过 Read View、记录中的事务版本信息以及 undo 版本链判断并构造可见版本；redo log 主要服务崩溃恢复。",
+      "optionAnalysis": [
+        {"optionId":"A","correct":true,"analysis":"Read View 保存活跃事务等信息，用于判断某个版本是否可见。"},
+        {"optionId":"B","correct":true,"analysis":"当前版本不可见时，可沿 undo 记录形成的版本链查找历史版本。"},
+        {"optionId":"C","correct":false,"analysis":"redo log 保障已提交修改的持久性和崩溃恢复，不承担一致性读的版本可见性选择。"},
+        {"optionId":"D","correct":true,"analysis":"记录上的事务 ID、回滚指针等隐藏信息支撑版本判断和追溯。"}
+      ],
+      "mechanism": ["读取记录版本上的事务信息。", "根据 Read View 判断可见性。", "不可见时沿 undo 版本链寻找满足条件的历史版本。"],
+      "pitfalls": ["混淆 redo log 与 undo log 的职责。", "认为 MVCC 可以消除所有加锁读取。"],
+      "versionNotes": ["具体 Read View 创建时机取决于事务隔离级别和 MySQL/InnoDB 行为。"],
+      "relatedTopicIds": ["mysql.transactions", "mysql.locks", "mysql.logs"]
+    },
+    "sources": [{"sourceId":"src-mysql","url":"https://dev.mysql.com/doc/refman/8.4/en/innodb-multi-versioning.html","title":"InnoDB Multi-Versioning","accessedAt":"2026-07-17"}],
+    "parentQuestionId": null,
+    "createdBy": "human_ai",
+    "model": null,
+    "promptVersion": "generate-choice-question-v1",
+    "createdAt": "2026-07-17T00:00:00+08:00",
+    "reviewedAt": "2026-07-17T00:00:00+08:00"
+  }
+]
