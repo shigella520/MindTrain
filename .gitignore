@@ -1,0 +1,30 @@
+# Java
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+
+# Gradle
+.gradle/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Visual Studio Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
