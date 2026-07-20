@@ -4,12 +4,16 @@ import { ArrowRight, BrainCircuit, CalendarClock, RefreshCw, Sparkles } from '@l
 import MetricCard from '../components/MetricCard.vue'
 import ProgressRing from '../components/ProgressRing.vue'
 import TopicHeatmap from '../components/TopicHeatmap.vue'
+import { dailyProgressPercent, quotaSummary } from '../domain/dashboard'
 import { useConfigStore } from '../stores/config'
 import { useDashboardStore } from '../stores/dashboard'
 
 const config = useConfigStore()
 const dashboard = useDashboardStore()
-const todayCompleted = computed(() => 0)
+const todayCompleted = computed(() => dashboard.overview.todayCompletedMainQuestions)
+const dailyTarget = computed(() => dashboard.overview.dailyTarget)
+const todayProgress = computed(() => dailyProgressPercent(todayCompleted.value, dailyTarget.value))
+const schedulerQuota = computed(() => quotaSummary(dashboard.overview.reviewBudget, dashboard.overview.newBudget))
 const oldestDue = computed(() => {
   if (!dashboard.overview.oldestDueAt) return '没有逾期'
   return new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric' }).format(new Date(dashboard.overview.oldestDueAt))
@@ -51,7 +55,7 @@ onMounted(() => {
       <div class="hero-stage">
         <div class="orbit orbit-one"></div>
         <div class="orbit orbit-two"></div>
-        <ProgressRing :value="todayCompleted * 10" :label="`${todayCompleted} / 10`" caption="今日训练" />
+        <ProgressRing :value="todayProgress" :label="`${todayCompleted} / ${dailyTarget}`" caption="今日训练" />
         <div class="floating-stat stat-due"><span>到期复习</span><strong>{{ dashboard.overview.dueCount }}</strong><em>等待完成</em></div>
         <div class="floating-stat stat-accuracy"><span>累计正确率</span><strong>{{ dashboard.accuracyPercent }}%</strong><em>{{ dashboard.overview.attempts }} 次作答</em></div>
         <div class="floating-stat stat-new"><span>新题额度</span><strong>{{ dashboard.overview.newItemAllowance }}</strong><em>{{ dashboard.overview.newItemsPaused ? '已暂停' : '可引入' }}</em></div>
@@ -69,7 +73,7 @@ onMounted(() => {
       <div class="story-content">
         <div class="metric-grid four">
           <MetricCard label="到期复习" :value="dashboard.overview.dueCount" :note="dashboard.overview.newItemsPaused ? '积压中，暂停新题' : '按优先级安排'" tone="blue" />
-          <MetricCard label="新题额度" :value="dashboard.overview.newItemAllowance" note="默认每轮最多 2 题" tone="peach" />
+          <MetricCard label="新题额度" :value="dashboard.overview.newItemAllowance" :note="`配置上限 ${dashboard.overview.newBudget} 题`" tone="peach" />
           <MetricCard label="累计作答" :value="dashboard.overview.attempts" :note="`${dashboard.overview.correct} 次正确`" tone="mint" />
           <MetricCard label="完成会话" :value="dashboard.overview.completedSessions" note="长期训练轨迹" tone="lilac" />
         </div>
@@ -77,9 +81,9 @@ onMounted(() => {
           <div>
             <p class="card-kicker">SCHEDULER</p>
             <h3>{{ dashboard.overview.newItemsPaused ? '先消化积压，再学习新内容' : '复习负担处于可控范围' }}</h3>
-            <p>{{ dashboard.overview.newItemsPaused ? '到期题过多或最老逾期超过阈值，系统已暂停新题。' : '当前仍可引入少量新题，默认按 8 道复习题与 2 道新题规划。' }}</p>
+            <p>{{ dashboard.overview.newItemsPaused ? '到期题过多或最老逾期超过阈值，系统已暂停新题。' : `当前仍可引入少量新题，本轮按 ${schedulerQuota} 规划。` }}</p>
           </div>
-          <span class="state-badge" :class="{ warning: dashboard.overview.newItemsPaused }">{{ dashboard.overview.newItemsPaused ? 'Backlog' : 'Healthy' }}</span>
+          <span class="state-badge" :class="{ warning: dashboard.overview.newItemsPaused }">{{ dashboard.overview.newItemsPaused ? '存在积压' : '状态健康' }}</span>
         </div>
       </div>
     </section>
