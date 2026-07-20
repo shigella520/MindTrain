@@ -3,10 +3,10 @@
 ## Tools
 
 - `create_training_session`: accepts optional `questionCount`, `domainId`, and `schedulerProvider`.
-- `get_next_assignment`: accepts `sessionId`; returns `assignment`, `generation_required`, `no_available_items`, or `session_complete`.
+- `get_next_assignment`: accepts `sessionId`; returns `assignment`, `generation_required`, `no_available_items`, or `session_complete`. A generation request includes a mandatory `generationProfile` with the target question type, difficulty, and knowledge point.
 - `submit_choice_answer`: accepts `assignmentId` and the user's unmodified `answer` text.
 - `record_interaction`: accepts `sessionId`, optional `assignmentId`, an interaction type, and content.
-- `create_candidate_question`: accepts `sessionId`, required `topicId`, and a complete question object. For a deeper training question, also send `attemptType: follow_up` and `parentAttemptId`; the response includes its pending `assignmentId`.
+- `create_candidate_question`: accepts `sessionId`, required `topicId`, and a complete question object. A main candidate must match the issued `generationProfile`; Core rejects type or difficulty mismatches. For a deeper training question, also send `attemptType: follow_up` and `parentAttemptId`; the response includes its pending `assignmentId`.
 - `revise_published_question`: accepts `questionId`, `expectedVersion`, a non-empty `changes` object, and `reason`. Include `sourceAssignmentId` when the issue was found during training. It creates and publishes a new immutable version; it never rewrites the version used by an existing Attempt.
 - `finish_training_session`: accepts `sessionId`.
 - `get_learning_report`: returns learning and content overview metrics.

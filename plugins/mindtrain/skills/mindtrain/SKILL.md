@@ -40,7 +40,7 @@ On `question_version_conflict`, do not retry with a guessed version. Explain tha
 
 ## Generate a missing question
 
-When `get_next_assignment` returns `generation_required`, read [candidate-policy.md](references/candidate-policy.md), generate one compliant question using the returned topic context, then call `create_candidate_question`. Call `get_next_assignment` again only after the candidate is accepted.
+When `get_next_assignment` returns `generation_required`, read [candidate-policy.md](references/candidate-policy.md), follow the returned `generationProfile` exactly, and generate one compliant question. Do not choose a different type, difficulty, or primary topic. Call `create_candidate_question`, then call `get_next_assignment` again only after the candidate is accepted.
 
 The candidate is usable only by its owning session. Never claim that it is published or reusable.
 

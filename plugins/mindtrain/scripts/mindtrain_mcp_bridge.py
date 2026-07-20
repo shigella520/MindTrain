@@ -89,7 +89,7 @@ def tool_definitions():
         ),
         tool(
             "get_next_assignment",
-            "Get the next safe-to-display question or a candidate generation request.",
+            "Get the next safe-to-display question or a structured generationProfile.",
             schema({"sessionId": string_property("Active session ID")}, ("sessionId",)),
         ),
         tool(
@@ -120,7 +120,7 @@ def tool_definitions():
         ),
         tool(
             "create_candidate_question",
-            "Validate and save a Codex-generated candidate for its owning session only.",
+            "Validate and save a candidate matching the issued generationProfile for its owning session only.",
             schema(
                 {
                     "sessionId": string_property("Owning active session ID"),

@@ -88,7 +88,7 @@ public class TrainingService {
             .param("sessionId", sessionId).query(this::mapAssignment).optional();
         if (pending.isPresent()) return assignmentResponse(pending.get());
         if (session.completedMain() >= session.targetCount()) {
-            return new NextAssignmentResponse("session_complete", null, null, null, null);
+            return new NextAssignmentResponse("session_complete", null, null, null, null, null);
         }
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
@@ -106,13 +106,16 @@ public class TrainingService {
             if (unseen.isPresent()) return createAssignment(session, unseen.get());
 
             String topicId = selectGenerationTopic(userId);
+            QuestionService.TopicContext generationContext = questions.topicContext(topicId);
+            QuestionService.GenerationProfile generationProfile =
+                questions.generationProfile(userId, sessionId, generationContext);
             return new NextAssignmentResponse("generation_required", null, null,
-                questions.topicContext(topicId), Map.of(
+                generationContext, generationProfile, Map.of(
                     "requiredStatus", "candidate",
                     "sessionId", sessionId,
                     "neutralAnswerPrompt", "请回复选项字母，可用逗号分隔。"));
         }
-        return new NextAssignmentResponse("no_available_items", null, null, null, Map.of(
+        return new NextAssignmentResponse("no_available_items", null, null, null, null, Map.of(
             "reason", backlog.newItemsPaused() ? "new_items_paused_by_backlog" : "new_item_budget_exhausted",
             "dueCount", backlog.dueCount(), "newItemAllowance", backlog.newItemAllowance()));
     }
@@ -266,7 +269,7 @@ public class TrainingService {
         AssignmentPresentation presentation = new AssignmentPresentation(assignment.id(), assignment.attemptType(),
             assignment.parentAttemptId(), assignment.sourceKind(), questions.sanitized(question),
             "请回复选项字母，可用逗号分隔。");
-        return new NextAssignmentResponse("assignment", presentation, null, null, null);
+        return new NextAssignmentResponse("assignment", presentation, null, null, null, null);
     }
 
     private String selectGenerationTopic(String userId) {
@@ -503,7 +506,9 @@ public class TrainingService {
     public record AssignmentPresentation(String assignmentId, String attemptType, String parentAttemptId,
                                          String sourceKind, JsonNode question, String answerPrompt) {}
     public record NextAssignmentResponse(String status, AssignmentPresentation assignment, String message,
-                                         QuestionService.TopicContext generationContext, Map<String, Object> details) {}
+                                         QuestionService.TopicContext generationContext,
+                                         QuestionService.GenerationProfile generationProfile,
+                                         Map<String, Object> details) {}
     public record AttemptResponse(String attemptId, String assignmentId, List<String> selectedOptionIds,
                                   List<String> correctOptionIds, boolean correct, int score, JsonNode explanation,
                                   JsonNode sources, OffsetDateTime answeredAt) {}

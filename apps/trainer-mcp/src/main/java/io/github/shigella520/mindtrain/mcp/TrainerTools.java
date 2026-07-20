@@ -25,7 +25,7 @@ public class TrainerTools {
             "domainId", string("Knowledge domain; defaults to java-backend"),
             "schedulerProvider", string("Scheduler provider ID; use weighted for 加权调度 in the MVP")
         ), List.of())));
-        tools.add(tool("get_next_assignment", "Get the next safe-to-display question or a candidate generation request.",
+        tools.add(tool("get_next_assignment", "Get the next safe-to-display question or a structured generationProfile.",
             schema(Map.of("sessionId", string("Active session ID")), List.of("sessionId"))));
         tools.add(tool("submit_choice_answer", "Submit a formal choice answer and receive deterministic grading.",
             schema(Map.of("assignmentId", string("Pending assignment ID"), "answer", string("User answer text")),
@@ -39,7 +39,7 @@ public class TrainerTools {
                 "model", string("Model identifier when known"),
                 "promptVersion", string("Prompt version when known")
             ), List.of("sessionId", "content"))));
-        tools.add(tool("create_candidate_question", "Validate and save a Codex-generated candidate for its owning session only.",
+        tools.add(tool("create_candidate_question", "Validate and save a candidate matching the issued generationProfile for its owning session only.",
             schema(Map.of(
                 "sessionId", string("Owning active session ID"),
                 "topicId", string("Requested topic ID"),

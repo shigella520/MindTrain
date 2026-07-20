@@ -71,6 +71,18 @@ export interface NextAssignment {
   assignment: Assignment | null
   message: string | null
   generationContext: { id: string; name: string } | null
+  generationProfile: {
+    questionType: 'single_choice' | 'multiple_choice'
+    difficulty: number
+    knowledgePoint: {
+      topicId: string
+      name: string
+      importance: number
+      javaVersions: string[]
+      keywords: string[]
+      sourceRefs: string[]
+    }
+  } | null
   details: Record<string, unknown> | null
 }
 

@@ -96,10 +96,25 @@ class TrainingFlowIntegrationTest {
                 .header("Idempotency-Key", "next-2"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("generation_required"))
+            .andExpect(jsonPath("$.generationProfile.questionType").value("single_choice"))
+            .andExpect(jsonPath("$.generationProfile.difficulty").value(4))
+            .andExpect(jsonPath("$.generationProfile.knowledgePoint.topicId").value("java.concurrency.atomics"))
+            .andExpect(jsonPath("$.generationProfile.knowledgePoint.name").value("Atomic 原子类"))
             .andReturn().getResponse().getContentAsString());
         String topicId = generation.path("generationContext").path("id").asText();
+        String questionType = generation.path("generationProfile").path("questionType").asText();
+        int difficulty = generation.path("generationProfile").path("difficulty").asInt();
 
-        JsonNode candidate = candidate(topicId, "candidate." + UUID.randomUUID());
+        JsonNode mismatchedCandidate = candidate(topicId, "candidate.mismatch." + UUID.randomUUID());
+        mvc.perform(post("/api/v1/candidates")
+                .header("Idempotency-Key", "candidate-profile-mismatch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(objectMapper.createObjectNode()
+                    .put("sessionId", sessionId).put("topicId", topicId).set("question", mismatchedCandidate))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("candidate_profile_mismatch"));
+
+        JsonNode candidate = candidate(topicId, "candidate." + UUID.randomUUID(), questionType, difficulty);
         mvc.perform(post("/api/v1/candidates")
                 .header("Idempotency-Key", "candidate-1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -166,8 +181,12 @@ class TrainingFlowIntegrationTest {
     }
 
     private JsonNode candidate(String topicId, String id) throws Exception {
+        return candidate(topicId, id, "multiple_choice", 3);
+    }
+
+    private JsonNode candidate(String topicId, String id, String type, int difficulty) throws Exception {
         String now = OffsetDateTime.now(ZoneOffset.UTC).toString();
-        return objectMapper.readTree("""
+        JsonNode question = objectMapper.readTree("""
             {
               "schemaVersion":1,"id":"%s","version":1,"status":"candidate","type":"multiple_choice",
               "title":"CAS 语义","stem":"关于 CAS，下列哪些说法正确？",
@@ -193,6 +212,17 @@ class TrainingFlowIntegrationTest {
               "createdAt":"%s","reviewedAt":null
             }
             """.formatted(id, topicId, now));
+        var object = (com.fasterxml.jackson.databind.node.ObjectNode) question;
+        object.put("type", type);
+        object.put("difficulty", difficulty);
+        if ("single_choice".equals(type)) {
+            var correct = (com.fasterxml.jackson.databind.node.ArrayNode) object.path("correctOptionIds");
+            correct.removeAll();
+            correct.add("A");
+            ((com.fasterxml.jackson.databind.node.ObjectNode) object.path("explanation").path("optionAnalysis").get(2))
+                .put("correct", false).put("analysis", "该表述不是本题要求的唯一正确结论");
+        }
+        return question;
     }
 
     private JsonNode json(String value) throws Exception {

@@ -240,7 +240,7 @@ Core 精确判分                     追加 Interaction
 下一题 / 深入追问 / 结束总结
 ```
 
-当没有可用正式题时，Core 返回 `generation_required` 和目标知识点上下文。Codex 生成候选题并交给 Core 校验；通过后的候选题只能在生成它的 Session 中训练，不能被其他会话抽取，也不会自动成为正式题。
+当没有可用正式题时，Core 返回 `generation_required`、目标知识点上下文和结构化 `generationProfile`，明确指定题型、难度、知识点、适用版本和来源线索。Codex 按 Profile 生成候选题并交给 Core 校验；题型、难度或知识点不匹配时 Core 会拒绝。通过后的候选题只能在生成它的 Session 中训练，不能被其他会话抽取，也不会自动成为正式题。
 
 ## 默认调度策略
 
