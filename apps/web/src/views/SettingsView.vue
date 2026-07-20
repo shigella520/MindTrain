@@ -17,7 +17,7 @@ async function saveAndTest() {
   try {
     const overview = await coreApi.overview()
     state.value = 'success'
-    message.value = `连接成功，当前已有 ${overview.publishedQuestions} 道正式题。`
+    message.value = `连接成功，当前已有 ${overview.activeQuestions} 道可复习题。`
   } catch (cause) {
     state.value = 'error'
     message.value = cause instanceof Error ? cause.message : '连接失败'

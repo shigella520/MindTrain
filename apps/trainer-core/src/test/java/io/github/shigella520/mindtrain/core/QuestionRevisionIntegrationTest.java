@@ -30,7 +30,7 @@ class QuestionRevisionIntegrationTest {
     @Test
     void createsAuditedImmutableQuestionRevisionAndRejectsStaleUpdates() throws Exception {
         String questionId = "java.concurrency.volatile." + UUID.randomUUID();
-        importPublishedQuestion(questionId);
+        importActiveQuestion(questionId);
         String sessionId = createSession();
         JsonNode assignment = json(mvc.perform(post("/api/v1/sessions/{id}/assignments/next", sessionId)
                 .header("Idempotency-Key", "revision-next"))
@@ -65,7 +65,7 @@ class QuestionRevisionIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.previousVersion").value(1))
             .andExpect(jsonPath("$.version").value(2))
-            .andExpect(jsonPath("$.status").value("published"))
+            .andExpect(jsonPath("$.status").value("active"))
             .andReturn().getResponse().getContentAsString();
 
         String repeated = mvc.perform(post("/api/v1/questions/{id}/revisions", questionId)
@@ -117,9 +117,9 @@ class QuestionRevisionIntegrationTest {
             .andExpect(jsonPath("$.code").value("revision_changes_invalid"));
     }
 
-    private void importPublishedQuestion(String questionId) throws Exception {
+    private void importActiveQuestion(String questionId) throws Exception {
         JsonNode question = question(questionId);
-        ((com.fasterxml.jackson.databind.node.ObjectNode) question).put("status", "published");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) question).put("status", "active");
         JsonNode payload = objectMapper.readTree("""
             {
               "dryRun": false,

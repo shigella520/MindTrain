@@ -52,7 +52,7 @@ class SchedulerBacklogIntegrationTest {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         for (int index = 0; index < 21; index++) {
             String id = "backlog-question-" + index;
-            jdbc.sql("INSERT INTO question(id, status, current_version, created_at) VALUES (:id, 'published', 1, :createdAt)")
+            jdbc.sql("INSERT INTO question(id, status, current_version, created_at) VALUES (:id, 'active', 1, :createdAt)")
                 .param("id", id).param("createdAt", now.minusDays(10)).update();
             jdbc.sql("""
                     INSERT INTO review_state(user_id, question_id, correct_count, wrong_count, consecutive_correct,

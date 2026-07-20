@@ -35,8 +35,8 @@ Codex + MindTrain Plugin         MindTrain Web
 - 精确判分：单选和多选都按选项集合完全相等判分，结果只为 `0` 或 `100`。
 - 持久学习记录：保存 Session、Assignment、Attempt、Interaction、Mistake 和题目级复习状态。
 - 默认抗遗忘调度：每次默认训练 10 道主问题，通常安排 8 道复习题和 2 道新题；积压过高时暂停引入新题。
-- AI 候选题治理：题库不足时由 Codex 生成候选题，Core 校验后仅允许当前 Session 使用，不会自动发布到共享题库。
-- 正式题可审计修订：用户确认题目存在问题后，教练可提交局部修订；Core 创建不可变的新版本，历史作答继续引用旧版本。
+- AI 临时题：题库不足时由 Codex 生成并在展示前入库；未作答时可拒绝并物理删除，作答后自动进入普通调度。
+- 可复习题版本修订：用户确认题目存在问题后，教练可提交局部修订；Core 创建不可变的新版本，历史作答继续引用旧版本。
 - 幂等与审计：写接口支持 `Idempotency-Key`，答题、交互和审核历史采用追加式保存。
 - 数据与 Skill 分离：Training Core 是权威数据源；Skill 无状态，只通过 MCP 调用应用能力。
 - Plugin 分发：仓库可直接作为 Codex Plugin Marketplace 来源，Plugin 同时提供 Skill、本地桥接 MCP 和首次配置流程。
@@ -53,7 +53,7 @@ Codex + MindTrain Plugin         MindTrain Web
 | Codex Plugin Marketplace | 可用 | 安装后首次配置私有实例 URL 和单用户 Token |
 | MindTrain Skill | 可用 | 领域无关、无状态、面向 Codex 的训练工作流 |
 | 加权调度 | 可用 | 默认调度方式；复习/新题配额、积压控制、薄弱项优先 |
-| Java 原型迁移 | 可用 | 正式题默认导入，私人数据必须显式选择 |
+| Java 原型迁移 | 可用 | 可复习题默认导入，私人数据必须显式选择 |
 | MindTrain Web | 可用 | Vue 3 Dashboard、Web 答题、管理概览与实例设置 |
 | Anki / FSRS Provider | 规划中 | Anki 作为可选调度插件和可重建投影 |
 
@@ -240,15 +240,15 @@ Core 精确判分                     追加 Interaction
 下一题 / 深入追问 / 结束总结
 ```
 
-当没有可用正式题时，Core 返回 `generation_required`、目标知识点上下文和结构化 `generationProfile`，明确指定题型、难度、知识点、适用版本和来源线索。Codex 按 Profile 生成候选题并交给 Core 校验；题型、难度或知识点不匹配时 Core 会拒绝。通过后的候选题只能在生成它的 Session 中训练，不能被其他会话抽取，也不会自动成为正式题。
+当没有可用普通题时，Core 返回 `generation_required`、目标知识点上下文和结构化 `generationProfile`。Codex 按 Profile 生成 AI 临时题并交给 Core 校验、入库后展示。用户在作答前拒绝时，Core 物理删除该题及待答 Assignment，恢复新题额度并生成替代题；作答后题目自动转为可跨 Session 复习的普通题。
 
 ## 默认调度策略
 
 默认的加权调度（稳定 provider ID 为 `weighted`）以可控的每日训练容量为优先：
 
 - 每个 Session 默认包含 10 道主问题。
-- 正常状态最多安排 8 道复习题和 2 道新题。
-- 到期复习题不足时，才使用新题补足剩余额度。
+- 正常状态计划安排 8 道复习题和 2 道新题。
+- 到期复习题不足时，继续使用未学习题或 AI 生成题补足 Session 目标。
 - Due Backlog 超过 20，或最老题目逾期超过 3 天时，暂停引入新题。
 - Learning、Relearning、严重逾期、薄弱和高错误率题目优先。
 - 正确后的初始复习间隔采用 3、7、14、30 天阶梯；错误后次日复习。
@@ -257,7 +257,7 @@ Core 精确判分                     追加 Interaction
 
 ## 导入 Java 原型数据
 
-迁移工具默认执行 dry-run，并只处理共享知识分类、来源和正式题：
+迁移工具默认执行 dry-run，并只处理共享知识分类、来源和可复习题：
 
 ```bash
 python3 tools/prototype-migration/import_prototype.py \
@@ -272,7 +272,7 @@ python3 tools/prototype-migration/import_prototype.py \
   --apply
 ```
 
-私人候选题和学习历史不会默认导入，必须显式选择：
+原型私人 AI 临时题和学习历史不会默认导入，必须显式选择：
 
 ```bash
 python3 tools/prototype-migration/import_prototype.py \
@@ -293,10 +293,11 @@ Training Core 首期 REST API：
 | `POST /api/v1/sessions` | 创建训练会话 |
 | `POST /api/v1/sessions/{id}/assignments/next` | 获取下一题或生成需求 |
 | `POST /api/v1/assignments/{id}/attempts` | 提交选项并精确判分 |
+| `POST /api/v1/assignments/{id}/reject` | 物理删除未作答 AI 临时题并恢复额度 |
 | `POST /api/v1/sessions/{id}/interactions` | 记录追问、提示和质疑 |
 | `POST /api/v1/sessions/{id}/finish` | 结束会话并生成总结 |
-| `POST /api/v1/candidates` | 校验并保存当前会话候选题 |
-| `POST /api/v1/questions/{id}/revisions` | 创建并发布正式题的不可变新版本 |
+| `POST /api/v1/candidates` | 校验并保存当前会话 AI 临时题 |
+| `POST /api/v1/questions/{id}/revisions` | 为已作答普通题创建不可变新版本 |
 | `GET /api/v1/reports/overview` | 获取学习概览 |
 | `GET /api/v1/schedulers/backlog` | 获取到期积压 |
 | `POST /api/v1/imports/prototype` | 创建原型导入任务 |
@@ -310,9 +311,10 @@ Trainer MCP 当前提供：
 create_training_session
 get_next_assignment
 submit_choice_answer
+reject_generated_question
 record_interaction
 create_candidate_question
-revise_published_question
+revise_saved_question
 finish_training_session
 get_learning_report
 get_scheduler_backlog
@@ -345,7 +347,7 @@ Web 看板查询两个只读接口：
 | `GET /api/v1/reports/overview` | 作答数、正确率、会话数、题库数量、薄弱知识点和调度器展示名 |
 | `GET /api/v1/schedulers/backlog` | 到期数量、最老到期时间、新题额度和暂停状态 |
 
-默认情况下它们与其他 Core API 一样要求 Bearer Token。示例站点可以设置 `MINDTRAIN_PUBLIC_DASHBOARD_ENABLED=true` 允许匿名读取；创建 Session、获取题目、提交答案、候选题、导入和其他接口仍要求 Token。
+默认情况下它们与其他 Core API 一样要求 Bearer Token。示例站点可以设置 `MINDTRAIN_PUBLIC_DASHBOARD_ENABLED=true` 允许匿名读取；创建 Session、获取题目、提交答案、AI 临时题、导入和其他接口仍要求 Token。
 
 公开概览会暴露聚合学习数据及薄弱知识点名称。私人实例应保持默认值 `false`，不要为了省去 Web 配置而开启。
 
@@ -453,7 +455,7 @@ GitHub Actions 构建三个 GHCR 镜像：
 
 1. 完成 Codex MVP 的真实 PostgreSQL 部署验证和训练反馈闭环。
 2. 扩充领域无关 Knowledge Pack，并完成 Java 原型数据迁移演练。
-3. 补充题库查询、候选审核和近期会话 API，完成 Web 内容管理闭环。
+3. 补充题库查询、AI 临时题观测和近期会话 API，完成 Web 内容管理闭环。
 4. 实现 MindTrain Anki Bridge，并接入 FSRS Scheduler Provider。
 5. 完成多用户、备份恢复、导入导出和插件治理能力。
 

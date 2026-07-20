@@ -19,8 +19,8 @@ const EMPTY_OVERVIEW: Overview = {
   newItemsPaused: false,
   schedulerProvider: DEFAULT_SCHEDULER_PROVIDER_ID,
   schedulerProviderName: schedulerProviderName(DEFAULT_SCHEDULER_PROVIDER_ID),
-  publishedQuestions: 0,
-  candidateQuestions: 0,
+  activeQuestions: 0,
+  pendingGeneratedQuestions: 0,
   weakTopics: [],
 }
 

@@ -28,6 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -101,11 +102,12 @@ public class TrainingService {
                 SELECT COUNT(*) FROM assignment WHERE session_id = :sessionId AND source_kind = 'review'
                 """).param("sessionId", sessionId).query(Integer.class).single();
         Optional<QuestionChoice> due = scheduledReviews < properties.scheduler().reviewBudget() || backlog.newItemsPaused()
-            ? selectDueQuestion(userId, sessionId, now) : Optional.empty();
+            ? selectDueQuestion(userId, now) : Optional.empty();
         if (due.isPresent()) return createAssignment(session, due.get());
 
         int newAllowance = Math.min(properties.scheduler().newBudget(), backlog.newItemAllowance());
-        if (session.introducedNewCount() < newAllowance) {
+        boolean shortageFill = !backlog.newItemsPaused() && session.completedMain() < session.targetCount();
+        if (session.introducedNewCount() < newAllowance || shortageFill) {
             Optional<QuestionChoice> unseen = selectUnseenQuestion(userId, sessionId);
             if (unseen.isPresent()) return createAssignment(session, unseen.get());
 
@@ -117,6 +119,7 @@ public class TrainingService {
                 generationContext, generationProfile, Map.of(
                     "requiredStatus", "candidate",
                     "sessionId", sessionId,
+                    "quotaMode", session.introducedNewCount() < newAllowance ? "planned_new" : "shortage_fill",
                     "neutralAnswerPrompt", "请回复选项字母，可用逗号分隔。"));
         }
         return new NextAssignmentResponse("no_available_items", null, null, null, null, Map.of(
@@ -161,6 +164,7 @@ public class TrainingService {
             .param("correct", isCorrect).param("score", score).param("answeredAt", now).update();
         jdbc.sql("UPDATE assignment SET status = 'answered', answered_at = :answeredAt WHERE id = :id")
             .param("answeredAt", now).param("id", assignmentId).update();
+        questions.activateCandidate(assignment.questionId(), assignment.sessionId());
         String countColumn = "follow_up".equals(assignment.attemptType()) ? "follow_up_count" : "completed_main";
         jdbc.sql("UPDATE training_session SET " + countColumn + " = " + countColumn + " + 1 WHERE id = :id")
             .param("id", assignment.sessionId()).update();
@@ -176,6 +180,20 @@ public class TrainingService {
         updateTopicMastery(userId, question, score, isCorrect, now);
         return new AttemptResponse(attemptId, assignmentId, selected, correct, isCorrect, score,
             question.content().path("explanation"), question.content().path("sources"), now);
+    }
+
+    @Transactional
+    public RejectedCandidateResponse rejectCandidate(String assignmentId) {
+        String userId = UserContext.requireUserId();
+        CandidateAssignment candidate = candidateAssignment(assignmentId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "assignment_not_found", "Assignment was not found"));
+        if (!userId.equals(candidate.userId())) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "assignment_not_found", "Assignment was not found");
+        }
+        validateRejectable(candidate);
+        boolean allowanceRestored = deletePendingCandidate(candidate);
+        return new RejectedCandidateResponse(candidate.assignmentId(), candidate.questionId(), candidate.sessionId(),
+            true, true, allowanceRestored);
     }
 
     @Transactional
@@ -202,6 +220,7 @@ public class TrainingService {
         String userId = UserContext.requireUserId();
         SessionRow session = session(sessionId, userId);
         if (!"active".equals(session.status())) return toResponse(session);
+        cleanupPendingCandidates(sessionId, userId);
         JsonNode summary = sessionSummary(sessionId, userId);
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         jdbc.sql("UPDATE training_session SET status = 'completed', ended_at = :endedAt, summary_json = :summary WHERE id = :id")
@@ -238,7 +257,7 @@ public class TrainingService {
         int newBudget = properties.scheduler().newBudget();
         int sessions = jdbc.sql("SELECT COUNT(*) FROM training_session WHERE user_id = :userId AND status = 'completed'")
             .param("userId", userId).query(Integer.class).single();
-        int published = jdbc.sql("SELECT COUNT(*) FROM question WHERE status = 'published'").query(Integer.class).single();
+        int activeQuestions = jdbc.sql("SELECT COUNT(*) FROM question WHERE status = 'active'").query(Integer.class).single();
         int candidates = jdbc.sql("SELECT COUNT(*) FROM question WHERE status = 'candidate'").query(Integer.class).single();
         List<Map<String, Object>> weakTopics = jdbc.sql("""
                 SELECT tm.topic_id, t.name, tm.mastery_score, tm.correct_count, tm.wrong_count
@@ -261,14 +280,33 @@ public class TrainingService {
         response.put("newItemsPaused", backlog.newItemsPaused());
         response.put("schedulerProvider", scheduler.id());
         response.put("schedulerProviderName", scheduler.displayName());
-        response.put("publishedQuestions", published);
-        response.put("candidateQuestions", candidates);
+        response.put("activeQuestions", activeQuestions);
+        response.put("pendingGeneratedQuestions", candidates);
         response.set("weakTopics", objectMapper.valueToTree(weakTopics));
         return response;
     }
 
     public SchedulerProvider.Backlog backlog() {
         return scheduler.backlog(UserContext.requireUserId(), OffsetDateTime.now(ZoneOffset.UTC));
+    }
+
+    @Scheduled(fixedDelayString = "${mindtrain.training.cleanup-interval-ms:3600000}")
+    @Transactional
+    public void cleanupExpiredPendingCandidates() {
+        OffsetDateTime cutoff = OffsetDateTime.now(ZoneOffset.UTC)
+            .minusHours(properties.training().pendingCandidateTtlHours());
+        List<CandidateAssignment> expired = jdbc.sql("""
+                SELECT a.id AS assignment_id, a.session_id, a.question_id, a.attempt_type, a.source_kind,
+                       a.status AS assignment_status, s.user_id, q.status AS question_status,
+                       q.session_eligible_id, a.created_at
+                FROM assignment a
+                JOIN training_session s ON s.id = a.session_id
+                JOIN question q ON q.id = a.question_id
+                WHERE a.status = 'pending' AND q.status = 'candidate' AND a.created_at < :cutoff
+                """)
+            .param("cutoff", cutoff).query(this::mapCandidateAssignment).list();
+        expired.forEach(this::deletePendingCandidate);
+        cleanupExpiredOrphanCandidates(cutoff);
     }
 
     private NextAssignmentResponse createAssignment(SessionRow session, QuestionChoice choice) {
@@ -309,13 +347,12 @@ public class TrainingService {
             .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "no_topics", "Import a knowledge taxonomy before training"));
     }
 
-    private Optional<QuestionChoice> selectDueQuestion(String userId, String sessionId, OffsetDateTime now) {
+    private Optional<QuestionChoice> selectDueQuestion(String userId, OffsetDateTime now) {
         List<ScheduledQuestion> choices = jdbc.sql("""
                 SELECT q.id, q.current_version, q.status, rs.correct_count, rs.wrong_count, rs.next_review_at
                 FROM review_state rs JOIN question q ON q.id = rs.question_id
-                WHERE rs.user_id = :userId AND rs.next_review_at <= :now
-                  AND (q.status = 'published' OR q.session_eligible_id = :sessionId)
-                """).param("userId", userId).param("now", now).param("sessionId", sessionId)
+                WHERE rs.user_id = :userId AND rs.next_review_at <= :now AND q.status = 'active'
+                """).param("userId", userId).param("now", now)
             .query((rs, rowNum) -> new ScheduledQuestion(rs.getString("id"), rs.getInt("current_version"),
                 rs.getString("status"), rs.getInt("correct_count"), rs.getInt("wrong_count"),
                 rs.getObject("next_review_at", OffsetDateTime.class))).list();
@@ -328,7 +365,7 @@ public class TrainingService {
                 SELECT q.id, q.current_version, q.status
                 FROM question q LEFT JOIN review_state rs ON rs.question_id = q.id AND rs.user_id = :userId
                 WHERE rs.question_id IS NULL
-                  AND (q.status = 'published' OR q.session_eligible_id = :sessionId)
+                  AND (q.status = 'active' OR q.session_eligible_id = :sessionId)
                 """).param("userId", userId).param("sessionId", sessionId)
             .query((rs, rowNum) -> new ScheduledQuestion(rs.getString("id"), rs.getInt("current_version"),
                 rs.getString("status"), 0, 0, null)).list();
@@ -453,6 +490,140 @@ public class TrainingService {
         }
     }
 
+    private Optional<CandidateAssignment> candidateAssignment(String assignmentId) {
+        return jdbc.sql("""
+                SELECT a.id AS assignment_id, a.session_id, a.question_id, a.attempt_type, a.source_kind,
+                       a.status AS assignment_status, s.user_id, q.status AS question_status,
+                       q.session_eligible_id, a.created_at
+                FROM assignment a
+                JOIN training_session s ON s.id = a.session_id
+                JOIN question q ON q.id = a.question_id
+                WHERE a.id = :assignmentId
+                """)
+            .param("assignmentId", assignmentId).query(this::mapCandidateAssignment).optional();
+    }
+
+    private CandidateAssignment mapCandidateAssignment(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new CandidateAssignment(rs.getString("assignment_id"), rs.getString("session_id"),
+            rs.getString("question_id"), rs.getString("attempt_type"), rs.getString("source_kind"),
+            rs.getString("assignment_status"), rs.getString("user_id"), rs.getString("question_status"),
+            rs.getString("session_eligible_id"), rs.getObject("created_at", OffsetDateTime.class));
+    }
+
+    private void validateRejectable(CandidateAssignment candidate) {
+        if (!"pending".equals(candidate.assignmentStatus())) {
+            throw new ApiException(HttpStatus.CONFLICT, "candidate_already_answered",
+                "Only an unanswered generated question can be rejected");
+        }
+        if (!"candidate".equals(candidate.questionStatus())
+            || !candidate.sessionId().equals(candidate.sessionEligibleId())
+            || !Set.of("candidate", "follow_up_candidate").contains(candidate.sourceKind())) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_not_rejectable",
+                "Only a generated question owned by the current session can be rejected");
+        }
+        int attempts = jdbc.sql("SELECT COUNT(*) FROM attempt WHERE assignment_id = :assignmentId")
+            .param("assignmentId", candidate.assignmentId()).query(Integer.class).single();
+        if (attempts > 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "candidate_already_answered",
+                "Answered questions must be retained with their learning history");
+        }
+    }
+
+    private boolean deletePendingCandidate(CandidateAssignment candidate) {
+        jdbc.sql("DELETE FROM interaction_event WHERE assignment_id = :assignmentId")
+            .param("assignmentId", candidate.assignmentId()).update();
+        int deletedAssignments = jdbc.sql("""
+                DELETE FROM assignment
+                WHERE id = :assignmentId AND status = 'pending'
+                """).param("assignmentId", candidate.assignmentId()).update();
+        if (deletedAssignments == 0) return false;
+        int remainingAssignments = jdbc.sql("SELECT COUNT(*) FROM assignment WHERE question_id = :questionId")
+            .param("questionId", candidate.questionId()).query(Integer.class).single();
+        if (remainingAssignments > 0) {
+            throw new IllegalStateException("Generated candidate is referenced by another assignment");
+        }
+        jdbc.sql("DELETE FROM question_version WHERE question_id = :questionId")
+            .param("questionId", candidate.questionId()).update();
+        jdbc.sql("DELETE FROM question WHERE id = :questionId AND status = 'candidate'")
+            .param("questionId", candidate.questionId()).update();
+        boolean restoreAllowance = "main".equals(candidate.attemptType()) && "candidate".equals(candidate.sourceKind());
+        if (restoreAllowance) {
+            jdbc.sql("""
+                    UPDATE training_session
+                    SET introduced_new_count = GREATEST(introduced_new_count - 1, 0)
+                    WHERE id = :sessionId
+                    """).param("sessionId", candidate.sessionId()).update();
+        }
+        purgeDeletedAssignmentPresentations(candidate.userId(), candidate.assignmentId(), candidate.questionId());
+        return restoreAllowance;
+    }
+
+    private void cleanupPendingCandidates(String sessionId, String userId) {
+        List<CandidateAssignment> pending = jdbc.sql("""
+                SELECT a.id AS assignment_id, a.session_id, a.question_id, a.attempt_type, a.source_kind,
+                       a.status AS assignment_status, s.user_id, q.status AS question_status,
+                       q.session_eligible_id, a.created_at
+                FROM assignment a
+                JOIN training_session s ON s.id = a.session_id
+                JOIN question q ON q.id = a.question_id
+                WHERE a.session_id = :sessionId AND s.user_id = :userId
+                  AND a.status = 'pending' AND q.status = 'candidate'
+                """)
+            .param("sessionId", sessionId).param("userId", userId)
+            .query(this::mapCandidateAssignment).list();
+        pending.forEach(this::deletePendingCandidate);
+        deleteOrphanCandidates(sessionId, userId, null);
+    }
+
+    private void cleanupExpiredOrphanCandidates(OffsetDateTime cutoff) {
+        List<Map<String, Object>> sessions = jdbc.sql("""
+                SELECT DISTINCT q.session_eligible_id AS session_id, s.user_id
+                FROM question q JOIN training_session s ON s.id = q.session_eligible_id
+                WHERE q.status = 'candidate' AND q.created_at < :cutoff
+                  AND NOT EXISTS (SELECT 1 FROM assignment a WHERE a.question_id = q.id)
+                """).param("cutoff", cutoff).query().listOfRows();
+        sessions.forEach(row -> deleteOrphanCandidates((String) row.get("session_id"),
+            (String) row.get("user_id"), cutoff));
+    }
+
+    private void deleteOrphanCandidates(String sessionId, String userId, OffsetDateTime cutoff) {
+        String sql = """
+                SELECT q.id FROM question q
+                WHERE q.status = 'candidate' AND q.session_eligible_id = :sessionId
+                  AND NOT EXISTS (SELECT 1 FROM assignment a WHERE a.question_id = q.id)
+                """ + (cutoff == null ? "" : " AND q.created_at < :cutoff");
+        var query = jdbc.sql(sql).param("sessionId", sessionId);
+        if (cutoff != null) query = query.param("cutoff", cutoff);
+        List<String> questionIds = query.query(String.class).list();
+        for (String questionId : questionIds) {
+            jdbc.sql("DELETE FROM question_version WHERE question_id = :questionId")
+                .param("questionId", questionId).update();
+            jdbc.sql("DELETE FROM question WHERE id = :questionId AND status = 'candidate'")
+                .param("questionId", questionId).update();
+            purgeDeletedAssignmentPresentations(userId, questionId);
+        }
+    }
+
+    private void purgeDeletedAssignmentPresentations(String userId, String... identifiers) {
+        List<Map<String, Object>> records = jdbc.sql("""
+                SELECT idempotency_key, operation, response_json
+                FROM idempotency_record
+                WHERE user_id = :userId AND operation LIKE 'next-assignment:%'
+                """).param("userId", userId).query().listOfRows();
+        for (Map<String, Object> record : records) {
+            String response = String.valueOf(record.get("response_json"));
+            boolean matches = false;
+            for (String identifier : identifiers) matches |= response.contains("\"" + identifier + "\"");
+            if (matches) {
+                jdbc.sql("""
+                        DELETE FROM idempotency_record
+                        WHERE user_id = :userId AND idempotency_key = :key AND operation = :operation
+                        """).param("userId", userId).param("key", record.get("idempotency_key"))
+                    .param("operation", record.get("operation")).update();
+            }
+        }
+    }
+
     private JsonNode sessionSummary(String sessionId, String userId) {
         Map<String, Object> row = jdbc.sql("""
                 SELECT COUNT(*) AS attempts, COALESCE(SUM(CASE WHEN correct THEN 1 ELSE 0 END), 0) AS correct
@@ -538,12 +709,19 @@ public class TrainingService {
                                   JsonNode sources, OffsetDateTime answeredAt) {}
     public record InteractionResponse(String id, String sessionId, String assignmentId, OffsetDateTime createdAt,
                                       boolean consumedQuestion) {}
+    public record RejectedCandidateResponse(String assignmentId, String questionId, String sessionId,
+                                            boolean rejected, boolean physicallyDeleted,
+                                            boolean newItemAllowanceRestored) {}
     private record SessionRow(String id, String status, int targetCount, int completedMain, int followUpCount,
                               int introducedNewCount, String schedulerProvider, OffsetDateTime startedAt, OffsetDateTime endedAt) {}
     private record AssignmentRow(String id, String questionId, int version, String attemptType,
                                  String parentAttemptId, String sourceKind, OffsetDateTime createdAt) {}
     private record AssignmentWithOwner(String id, String sessionId, String questionId, int questionVersion,
                                        String attemptType, String parentAttemptId, String sourceKind, String status, String userId) {}
+    private record CandidateAssignment(String assignmentId, String sessionId, String questionId,
+                                       String attemptType, String sourceKind, String assignmentStatus,
+                                       String userId, String questionStatus, String sessionEligibleId,
+                                       OffsetDateTime createdAt) {}
     private record QuestionChoice(String questionId, int version, String sourceKind) {}
     private record ScheduledQuestion(String id, int version, String status, int correctCount,
                                      int wrongCount, OffsetDateTime nextReviewAt) {}

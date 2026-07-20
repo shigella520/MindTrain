@@ -114,12 +114,12 @@ onMounted(() => {
       <aside class="story-aside">
         <span class="story-index">03</span>
         <h2>内容资产</h2>
-        <p>正式题与候选题始终分离。AI 生成内容只有经过治理流程后，才能成为长期共享资产。</p>
+        <p>AI 临时题在作答前可直接拒绝并物理删除；完成作答后自动进入普通复习调度。</p>
       </aside>
       <div class="story-content">
         <div class="metric-grid three">
-          <MetricCard label="正式题" :value="dashboard.overview.publishedQuestions" note="可跨会话调度" tone="blue" />
-          <MetricCard label="候选题" :value="dashboard.overview.candidateQuestions" note="等待审核或会话隔离" tone="peach" />
+          <MetricCard label="可复习题" :value="dashboard.overview.activeQuestions" note="可跨会话调度" tone="blue" />
+          <MetricCard label="待答 AI 题" :value="dashboard.overview.pendingGeneratedQuestions" note="回答后进入普通调度" tone="peach" />
           <MetricCard label="调度方式" :value="dashboard.schedulerName" note="Anki / FSRS 调度规划中" tone="mint" />
         </div>
         <RouterLink class="content-card management-link" to="/admin">

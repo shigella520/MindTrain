@@ -60,6 +60,29 @@ public class QuestionService {
         return result;
     }
 
+    public boolean activateCandidate(String questionId, String sessionId) {
+        QuestionRecord current = current(questionId);
+        if (!"candidate".equals(current.status())) return false;
+        if (!sessionId.equals(current.sessionEligibleId())) {
+            throw new ApiException(HttpStatus.CONFLICT, "candidate_session_mismatch",
+                "Candidate does not belong to the assignment session");
+        }
+        ObjectNode activated = current.content().deepCopy();
+        activated.put("status", "active");
+        int updated = jdbc.sql("""
+                UPDATE question SET status = 'active', session_eligible_id = NULL
+                WHERE id = :id AND status = 'candidate' AND session_eligible_id = :sessionId
+                """)
+            .param("id", questionId).param("sessionId", sessionId).update();
+        if (updated == 0) return false;
+        jdbc.sql("""
+                UPDATE question_version SET content_json = :content
+                WHERE question_id = :id AND version = :version
+                """)
+            .param("content", json(activated)).param("id", questionId).param("version", current.version()).update();
+        return true;
+    }
+
     @Transactional
     public CandidateResponse createCandidate(String sessionId, String topicId, JsonNode question,
                                              String attemptType, String parentAttemptId) {
@@ -121,9 +144,9 @@ public class QuestionService {
     }
 
     @Transactional
-    public RevisionResponse revisePublished(String questionId, int expectedVersion, JsonNode changes,
-                                            String reason, String sourceAssignmentId,
-                                            String model, String promptVersion) {
+    public RevisionResponse reviseActive(String questionId, int expectedVersion, JsonNode changes,
+                                         String reason, String sourceAssignmentId,
+                                         String model, String promptVersion) {
         if (reason == null || reason.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "revision_reason_required", "A revision reason is required");
         }
@@ -140,8 +163,8 @@ public class QuestionService {
         }
 
         QuestionRecord current = current(questionId);
-        if (!"published".equals(current.status())) {
-            throw new ApiException(HttpStatus.CONFLICT, "question_not_published", "Only published questions can be revised");
+        if (!"active".equals(current.status())) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_not_active", "Only active questions can be revised");
         }
         if (current.version() != expectedVersion) {
             throw new ApiException(HttpStatus.CONFLICT, "question_version_conflict",
@@ -173,7 +196,7 @@ public class QuestionService {
         changes.fields().forEachRemaining(entry -> revised.set(entry.getKey(), entry.getValue().deepCopy()));
         revised.put("id", questionId);
         revised.put("version", nextVersion);
-        revised.put("status", "published");
+        revised.put("status", "active");
         revised.put("createdBy", model == null || model.isBlank() ? "user" : "ai");
         if (model == null || model.isBlank()) revised.putNull("model");
         else revised.put("model", model);
@@ -184,7 +207,7 @@ public class QuestionService {
 
         int updated = jdbc.sql("""
                 UPDATE question SET current_version = :nextVersion
-                WHERE id = :id AND status = 'published' AND current_version = :expectedVersion
+                WHERE id = :id AND status = 'active' AND current_version = :expectedVersion
                 """)
             .param("nextVersion", nextVersion).param("id", questionId).param("expectedVersion", expectedVersion).update();
         if (updated == 0) {
@@ -207,7 +230,7 @@ public class QuestionService {
             .param("toVersion", nextVersion).param("userId", userId).param("sourceAssignmentId", blankNull(sourceAssignmentId))
             .param("reason", reason.trim()).param("model", blankNull(model)).param("promptVersion", revisionPromptVersion)
             .param("createdAt", now).update();
-        return new RevisionResponse(revisionId, questionId, expectedVersion, nextVersion, "published",
+        return new RevisionResponse(revisionId, questionId, expectedVersion, nextVersion, "active",
             reason.trim(), blankNull(sourceAssignmentId), now);
     }
 

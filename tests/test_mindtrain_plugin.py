@@ -57,7 +57,8 @@ class MindTrainPluginTest(unittest.TestCase):
         self.assertEqual(BRIDGE.REMOTE_TOOL_NAMES, names - {
             "configure_mindtrain_instance", "get_mindtrain_configuration"
         })
-        self.assertIn("revise_published_question", names)
+        self.assertIn("revise_saved_question", names)
+        self.assertIn("reject_generated_question", names)
 
     def test_url_requires_https_for_non_local_instances(self):
         self.assertEqual(

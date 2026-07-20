@@ -48,3 +48,5 @@ The explanation must contain:
 - related topic IDs
 
 Use the knowledge point's source references first. If they are insufficient or version-sensitive, use authoritative documentation and record its URL and access date. Never invent a source. Set `promptVersion` to `mindtrain-candidate-v2` and include the actual model identifier.
+
+`candidate` is a temporary pre-answer persistence state. Core activates an answered candidate for ordinary scheduling, or physically deletes it when the user rejects it before answering.

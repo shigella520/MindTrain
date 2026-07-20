@@ -144,7 +144,7 @@ public class PrototypeImportService {
         }
         counters.questionsImported++;
         if (dryRun) return;
-        String status = candidate ? "candidate" : value.path("status").asText("published");
+        String status = candidate ? "candidate" : "active";
         OffsetDateTime createdAt = parseDate(value.path("createdAt").asText(null));
         int existingQuestion = jdbc.sql("SELECT COUNT(*) FROM question WHERE id = :id").param("id", id).query(Integer.class).single();
         if (existingQuestion == 0) {

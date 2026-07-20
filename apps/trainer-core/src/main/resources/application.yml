@@ -31,3 +31,6 @@ mindtrain:
     overdue-pause-days: ${MINDTRAIN_OVERDUE_PAUSE_DAYS:3}
   reporting:
     time-zone: ${MINDTRAIN_REPORTING_TIME_ZONE:Asia/Shanghai}
+  training:
+    pending-candidate-ttl-hours: ${MINDTRAIN_PENDING_CANDIDATE_TTL_HOURS:24}
+    cleanup-interval-ms: ${MINDTRAIN_CANDIDATE_CLEANUP_INTERVAL_MS:3600000}

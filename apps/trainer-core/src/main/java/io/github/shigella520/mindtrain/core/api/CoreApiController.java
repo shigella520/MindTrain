@@ -55,6 +55,13 @@ public class CoreApiController {
             () -> training.submitAttempt(id, request));
     }
 
+    @PostMapping("/assignments/{id}/reject")
+    public TrainingService.RejectedCandidateResponse reject(@PathVariable String id,
+                                                              @RequestHeader("Idempotency-Key") String key) {
+        return idempotency.execute("reject-candidate:" + id, key,
+            TrainingService.RejectedCandidateResponse.class, () -> training.rejectCandidate(id));
+    }
+
     @PostMapping("/sessions/{id}/interactions")
     public TrainingService.InteractionResponse interaction(@PathVariable String id, @RequestHeader("Idempotency-Key") String key,
                                                             @RequestBody InteractionRequest request) {
@@ -81,7 +88,7 @@ public class CoreApiController {
                                                             @RequestHeader("Idempotency-Key") String key,
                                                             @RequestBody RevisionRequest request) {
         return idempotency.execute("revise-question", key, QuestionService.RevisionResponse.class,
-            () -> questions.revisePublished(id, request.expectedVersion(), request.changes(), request.reason(),
+            () -> questions.reviseActive(id, request.expectedVersion(), request.changes(), request.reason(),
                 request.sourceAssignmentId(), request.model(), request.promptVersion()));
     }
 
