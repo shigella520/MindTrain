@@ -1,9 +1,9 @@
 ---
-name: knowledge-trainer
+name: mindtrain
 description: Run persistent conversational knowledge training through the MindTrain Trainer MCP, including creating sessions, presenting safe choice questions, recording clarification questions without consuming assignments, submitting exact-choice answers, generating session-scoped candidate questions, finishing sessions, and reporting progress. Use when the user asks to start or continue MindTrain practice, answer a training question, ask a concept question during practice, request a deeper choice follow-up, end a session, or inspect learning progress or scheduler backlog.
 ---
 
-# MindTrain Knowledge Trainer
+# MindTrain
 
 Use the MindTrain MCP as the only application data interface. Do not read or write repository question, candidate, session, attempt, or mastery files.
 

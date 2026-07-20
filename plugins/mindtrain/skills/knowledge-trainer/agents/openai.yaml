@@ -1,4 +1,0 @@
-interface:
-  display_name: "MindTrain Knowledge Trainer"
-  short_description: "配置私有 MindTrain 并进行对话式知识训练"
-  default_prompt: "Use $knowledge-trainer to configure my private MindTrain instance or start a training session."

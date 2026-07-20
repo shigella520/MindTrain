@@ -1,9 +1,9 @@
 ---
-name: knowledge-trainer
+name: mindtrain
 description: Configure a private MindTrain instance and run persistent conversational knowledge training through its Trainer MCP, including sessions, safe choice questions, clarification questions, exact grading, session-scoped candidates, summaries, reports, and scheduler backlog. Use when the user installs MindTrain, configures its private server, starts or continues training, answers a question, asks for a deeper follow-up, ends a session, or inspects learning progress.
 ---
 
-# MindTrain Knowledge Trainer
+# MindTrain
 
 Use the bundled MindTrain bridge as the only application data interface. Do not read or write repository question, candidate, session, attempt, or mastery files.
 

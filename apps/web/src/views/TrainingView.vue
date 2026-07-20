@@ -172,7 +172,7 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
     <section v-else-if="status === 'generation_required'" class="training-card centered-card reveal">
       <Sparkles :size="34" />
       <h1>需要生成新的候选题</h1>
-      <p>Web MVP 不直接调用 AI。请在 Codex 中使用 Knowledge Trainer，为当前会话生成带来源的候选题。</p>
+      <p>Web MVP 不直接调用 AI。请在 Codex 中使用 MindTrain Skill，为当前会话生成带来源的候选题。</p>
       <button class="button primary" type="button" @click="finish">结束并保存会话</button>
     </section>
 
