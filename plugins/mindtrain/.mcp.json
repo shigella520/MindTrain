@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mindtrain": {
+      "command": "python3",
+      "args": ["./scripts/mindtrain_mcp_bridge.py"],
+      "cwd": "."
+    }
+  }
+}

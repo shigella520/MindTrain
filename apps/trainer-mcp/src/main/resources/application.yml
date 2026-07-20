@@ -16,3 +16,7 @@ mindtrain:
   core:
     base-url: ${MINDTRAIN_CORE_URL:http://127.0.0.1:8080}
     token: ${MINDTRAIN_CORE_TOKEN:change-me}
+  mcp:
+    security:
+      enabled: ${MINDTRAIN_MCP_SECURITY_ENABLED:true}
+      access-token: ${MINDTRAIN_MCP_ACCESS_TOKEN:}
