@@ -31,7 +31,8 @@ public class WeightedSchedulerProvider implements SchedulerProvider {
     public Backlog backlog(String userId, OffsetDateTime now) {
         Map<String, Object> row = jdbc.sql("""
                 SELECT COUNT(*) AS due_count, MIN(next_review_at) AS oldest_due
-                FROM review_state WHERE user_id = :userId AND next_review_at <= :now
+                FROM review_state rs JOIN question q ON q.id = rs.question_id
+                WHERE rs.user_id = :userId AND rs.next_review_at <= :now AND q.status = 'active'
                 """)
             .param("userId", userId).param("now", now).query().singleRow();
         int dueCount = ((Number) row.get("due_count")).intValue();

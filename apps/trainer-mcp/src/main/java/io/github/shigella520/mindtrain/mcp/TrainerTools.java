@@ -30,6 +30,9 @@ public class TrainerTools {
         tools.add(tool("submit_choice_answer", "Submit a formal choice answer and receive deterministic grading.",
             schema(Map.of("assignmentId", string("Pending assignment ID"), "answer", string("User answer text")),
                 List.of("assignmentId", "answer"))));
+        tools.add(tool("reject_generated_question",
+            "Reject an unanswered AI-generated question, physically delete it, restore its new-item allowance, and request a replacement next.",
+            schema(Map.of("assignmentId", string("Pending generated assignment ID")), List.of("assignmentId"))));
         tools.add(tool("record_interaction", "Record a clarification, hint request, challenge or follow-up without consuming the question.",
             schema(Map.of(
                 "sessionId", string("Active session ID"),
@@ -47,10 +50,10 @@ public class TrainerTools {
                 "attemptType", string("Use follow_up only for a deeper training question"),
                 "parentAttemptId", string("Required when attemptType is follow_up")
             ), List.of("sessionId", "topicId", "question"))));
-        tools.add(tool("revise_published_question",
-            "Create and publish an immutable next version of an existing question after explicit user approval.",
+        tools.add(tool("revise_saved_question",
+            "Create an immutable next version of an active saved question after explicit user approval.",
             schema(Map.of(
-                "questionId", string("Published question ID"),
+                "questionId", string("Active saved question ID"),
                 "expectedVersion", integer("Version shown in the assignment; prevents stale overwrites"),
                 "changes", object("Only changed fields, such as title, stem, options, explanation or sources"),
                 "reason", string("Concise reason for the revision audit log"),
@@ -73,10 +76,13 @@ public class TrainerTools {
                 objectMapper.createObjectNode(), key);
             case "submit_choice_answer" -> core.post("/api/v1/assignments/" + required(arguments, "assignmentId") + "/attempts",
                 objectMapper.createObjectNode().put("answer", required(arguments, "answer")), key);
+            case "reject_generated_question" -> core.post(
+                "/api/v1/assignments/" + required(arguments, "assignmentId") + "/reject",
+                objectMapper.createObjectNode(), key);
             case "record_interaction" -> core.post("/api/v1/sessions/" + required(arguments, "sessionId") + "/interactions",
                 without(arguments, "sessionId", "idempotencyKey"), key);
             case "create_candidate_question" -> core.post("/api/v1/candidates", arguments, key);
-            case "revise_published_question" -> core.post(
+            case "revise_saved_question" -> core.post(
                 "/api/v1/questions/" + required(arguments, "questionId") + "/revisions",
                 without(arguments, "questionId", "idempotencyKey"), key);
             case "finish_training_session" -> core.post("/api/v1/sessions/" + required(arguments, "sessionId") + "/finish",

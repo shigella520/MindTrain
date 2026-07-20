@@ -26,8 +26,8 @@ onMounted(() => { dashboard.refresh() })
       <section id="overview" class="admin-panel">
         <div class="panel-head"><div><p class="card-kicker">OVERVIEW</p><h1>内容与训练概览</h1></div><span class="state-badge">Single user</span></div>
         <div class="admin-stat-grid">
-          <article><FileQuestion :size="22" /><span>正式题</span><strong>{{ dashboard.overview.publishedQuestions }}</strong></article>
-          <article><BookCopy :size="22" /><span>候选题</span><strong>{{ dashboard.overview.candidateQuestions }}</strong></article>
+          <article><FileQuestion :size="22" /><span>可复习题</span><strong>{{ dashboard.overview.activeQuestions }}</strong></article>
+          <article><BookCopy :size="22" /><span>待答 AI 题</span><strong>{{ dashboard.overview.pendingGeneratedQuestions }}</strong></article>
           <article><CircleGauge :size="22" /><span>累计作答</span><strong>{{ dashboard.overview.attempts }}</strong></article>
           <article><Database :size="22" /><span>完成会话</span><strong>{{ dashboard.overview.completedSessions }}</strong></article>
         </div>
@@ -39,8 +39,8 @@ onMounted(() => { dashboard.refresh() })
           <table>
             <thead><tr><th>资产类型</th><th>数量</th><th>当前边界</th><th>状态</th></tr></thead>
             <tbody>
-              <tr><td>正式题</td><td>{{ dashboard.overview.publishedQuestions }}</td><td>可跨会话调度</td><td><span class="table-status success">Published</span></td></tr>
-              <tr><td>候选题</td><td>{{ dashboard.overview.candidateQuestions }}</td><td>会话隔离，不自动发布</td><td><span class="table-status warning">Candidate</span></td></tr>
+              <tr><td>可复习题</td><td>{{ dashboard.overview.activeQuestions }}</td><td>可跨会话调度</td><td><span class="table-status success">普通题</span></td></tr>
+              <tr><td>待答 AI 题</td><td>{{ dashboard.overview.pendingGeneratedQuestions }}</td><td>拒绝时物理删除，回答后转普通题</td><td><span class="table-status warning">临时</span></td></tr>
               <tr><td>来源缺失</td><td>—</td><td>等待内容查询 API</td><td><span class="table-status">Planned</span></td></tr>
             </tbody>
           </table>

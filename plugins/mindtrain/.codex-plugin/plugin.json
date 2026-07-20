@@ -1,6 +1,6 @@
 {
   "name": "mindtrain",
-  "version": "0.1.0+codex.20260720135037",
+  "version": "0.1.0+codex.20260720151637",
   "description": "Conversational knowledge training backed by a private MindTrain instance.",
   "author": {
     "name": "shigella520",

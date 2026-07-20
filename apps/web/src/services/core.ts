@@ -1,6 +1,6 @@
 import { useConfigStore } from '../stores/config'
 import { DEFAULT_SCHEDULER_PROVIDER_ID } from '../domain/schedulers'
-import type { Attempt, Backlog, NextAssignment, Overview, Session } from '../types/api'
+import type { Attempt, Backlog, NextAssignment, Overview, RejectedGeneratedQuestion, Session } from '../types/api'
 
 export class CoreApiError extends Error {
   constructor(
@@ -52,6 +52,8 @@ export const coreApi = {
     post<NextAssignment>(`/sessions/${encodeURIComponent(sessionId)}/assignments/next`, undefined, 'next'),
   submitAnswer: (assignmentId: string, answer: string) =>
     post<Attempt>(`/assignments/${encodeURIComponent(assignmentId)}/attempts`, { answer }, 'answer'),
+  rejectGeneratedQuestion: (assignmentId: string) =>
+    post<RejectedGeneratedQuestion>(`/assignments/${encodeURIComponent(assignmentId)}/reject`, undefined, 'reject'),
   finishSession: (sessionId: string) =>
     post<Session>(`/sessions/${encodeURIComponent(sessionId)}/finish`, undefined, 'finish'),
 }

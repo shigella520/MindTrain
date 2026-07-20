@@ -69,6 +69,17 @@ paths:
                 answer: {type: string}
       responses:
         '200': {description: Deterministic grading and explanation}
+  /api/v1/assignments/{assignmentId}/reject:
+    post:
+      operationId: rejectGeneratedQuestion
+      description: 仅允许拒绝尚未作答且属于当前用户 Session 的 AI 临时题；物理删除 Assignment、QuestionVersion 和 Question，并恢复主问题新题额度。
+      parameters:
+        - {name: assignmentId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': {description: 临时题已物理删除，可以请求替代题}
+        '404': {description: Assignment 不存在或不属于当前用户}
+        '409': {description: 题目已经作答，或不是可拒绝的 AI 临时题}
   /api/v1/sessions/{sessionId}/interactions:
     post:
       operationId: recordInteraction
@@ -91,11 +102,11 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
-        '200': {description: Session-scoped candidate accepted}
+        '200': {description: Session-scoped temporary candidate accepted; answering activates it for ordinary scheduling}
   /api/v1/questions/{questionId}/revisions:
     post:
-      operationId: revisePublishedQuestion
-      description: 基于当前正式题创建不可变的新版本；旧 Assignment 和 Attempt 继续引用原版本。
+      operationId: reviseActiveQuestion
+      description: 基于当前可复习题创建不可变的新版本；旧 Assignment 和 Attempt 继续引用原版本。
       parameters:
         - {name: questionId, in: path, required: true, schema: {type: string}}
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -116,9 +127,9 @@ paths:
                 model: {type: string}
                 promptVersion: {type: string}
       responses:
-        '200': {description: 新版本已发布并写入修订审计记录}
+        '200': {description: 新版本已保存并写入修订审计记录}
         '400': {description: 修订字段、来源 Assignment 或题目结构无效}
-        '409': {description: 题目不是正式题，或 expectedVersion 已过期}
+        '409': {description: 题目不是 active 可复习题，或 expectedVersion 已过期}
   /api/v1/reports/overview:
     get:
       operationId: getLearningReport

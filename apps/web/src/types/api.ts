@@ -22,8 +22,8 @@ export interface Overview {
   newItemsPaused: boolean
   schedulerProvider?: string
   schedulerProviderName?: string
-  publishedQuestions: number
-  candidateQuestions: number
+  activeQuestions: number
+  pendingGeneratedQuestions: number
   weakTopics: WeakTopic[]
 }
 
@@ -107,4 +107,13 @@ export interface Attempt {
   }
   sources: Array<{ title?: string; url?: string }>
   answeredAt: string
+}
+
+export interface RejectedGeneratedQuestion {
+  assignmentId: string
+  questionId: string
+  sessionId: string
+  rejected: boolean
+  physicallyDeleted: boolean
+  newItemAllowanceRestored: boolean
 }

@@ -20,9 +20,10 @@ REMOTE_TOOL_NAMES = {
     "create_training_session",
     "get_next_assignment",
     "submit_choice_answer",
+    "reject_generated_question",
     "record_interaction",
     "create_candidate_question",
-    "revise_published_question",
+    "revise_saved_question",
     "finish_training_session",
     "get_learning_report",
     "get_scheduler_backlog",
@@ -104,6 +105,14 @@ def tool_definitions():
             ),
         ),
         tool(
+            "reject_generated_question",
+            "Reject an unanswered AI-generated question, physically delete it, restore its new-item allowance, and request a replacement next.",
+            schema(
+                {"assignmentId": string_property("Pending generated assignment ID")},
+                ("assignmentId",),
+            ),
+        ),
+        tool(
             "record_interaction",
             "Record a clarification, hint request, challenge or follow-up without consuming the question.",
             schema(
@@ -133,11 +142,11 @@ def tool_definitions():
             ),
         ),
         tool(
-            "revise_published_question",
-            "Create and publish an immutable next version of an existing question after explicit user approval.",
+            "revise_saved_question",
+            "Create an immutable next version of an active saved question after explicit user approval.",
             schema(
                 {
-                    "questionId": string_property("Published question ID"),
+                    "questionId": string_property("Active saved question ID"),
                     "expectedVersion": integer_property("Version shown in the assignment; prevents stale overwrites"),
                     "changes": object_property("Only changed question fields"),
                     "reason": string_property("Concise reason for the revision audit log"),

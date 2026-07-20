@@ -1,6 +1,6 @@
 ---
 name: mindtrain
-description: Run persistent conversational knowledge training through the MindTrain Trainer MCP, including sessions, safe choice questions, clarification questions, exact grading, session-scoped candidates, user-approved published-question revisions, summaries, reports, and scheduler backlog. Use when the user asks to start or continue MindTrain practice, answer a question, challenge or correct question content, revise a flawed published question, request a deeper follow-up, end a session, or inspect progress.
+description: Run persistent conversational knowledge training through the MindTrain Trainer MCP, including sessions, safe choice questions, generated-question rejection, clarification questions, exact grading, question revisions, summaries, reports, and scheduler backlog. Use when the user asks to start or continue MindTrain practice, answer or reject a generated question, challenge or correct question content, revise a flawed saved question, request a deeper follow-up, end a session, or inspect progress.
 ---
 
 # MindTrain
@@ -20,11 +20,11 @@ Use the MindTrain MCP as the only application data interface. Do not read or wri
 
 Never infer the correct answer before `submit_choice_answer` returns it. Invalid answer input does not consume the question.
 
-## Revise a flawed published question
+## Revise a flawed saved question
 
 When the user reports that a displayed question is unclear, incorrect, outdated, or poorly sourced, record the feedback with `record_interaction` and discuss the issue first. Never change the question merely because the user challenged it.
 
-Call `revise_published_question` only after the user explicitly asks to update the question bank and the intended correction is clear. Use the question ID and version from the assignment, include its assignment ID as `sourceAssignmentId`, and submit only changed fields. Preserve option IDs and the correct option set unless authoritative sources support a scoring correction. Explain the revision and report the new version returned by Core.
+Call `revise_saved_question` only after the user explicitly asks to update the question bank and the intended correction is clear. Use the question ID and version from the assignment, include its assignment ID as `sourceAssignmentId`, and submit only changed fields. Preserve option IDs and the correct option set unless authoritative sources support a scoring correction. Explain the revision and report the new version returned by Core.
 
 On `question_version_conflict`, do not retry with a guessed version. Explain that the question changed concurrently and obtain the latest content through a future management flow.
 
@@ -32,7 +32,11 @@ On `question_version_conflict`, do not retry with a guessed version. Explain tha
 
 When `get_next_assignment` returns `generation_required`, read [candidate-policy.md](references/candidate-policy.md), follow the returned `generationProfile` exactly, and generate one compliant question. Do not choose a different type, difficulty, or primary topic. Call `create_candidate_question`, then call `get_next_assignment` again only after the candidate is accepted.
 
-The candidate is usable only by its owning session. Never claim that it is published or reusable.
+Before it is answered, the generated candidate is temporary and usable only by its owning session. A successful answer activates it for ordinary cross-session scheduling.
+
+## Reject a generated question
+
+When the user clearly rejects the currently displayed AI-generated question before answering, call `reject_generated_question` with its `assignmentId`. Do not submit an answer and do not record the rejected question as an interaction. After Core confirms physical deletion, call `get_next_assignment` and present a materially different replacement. Never call this tool for an imported, previously answered, review, or ordinary new question.
 
 ## Follow up deeply
 

@@ -15,6 +15,8 @@ const status = ref<'idle' | 'loading' | 'question' | 'result' | 'complete' | 'ge
 const error = ref('')
 const progress = computed(() => session.value ? Math.round((session.value.completedMainQuestions / session.value.targetCount) * 100) : 0)
 const isMultiple = computed(() => assignment.value?.question.type === 'multiple_choice')
+const canReject = computed(() => assignment.value?.sourceKind === 'candidate'
+  || assignment.value?.sourceKind === 'follow_up_candidate')
 const suggestedMcpUrl = `${window.location.origin}/mcp`
 
 async function continueWithWeb() {
@@ -80,6 +82,20 @@ async function submit() {
   }
 }
 
+async function rejectGeneratedQuestion() {
+  if (!assignment.value || !canReject.value) return
+  status.value = 'loading'
+  error.value = ''
+  try {
+    await coreApi.rejectGeneratedQuestion(assignment.value.assignmentId)
+    assignment.value = null
+    selected.value = []
+    await next()
+  } catch (cause) {
+    fail(cause, 'question')
+  }
+}
+
 async function finish() {
   if (session.value) {
     try { session.value = await coreApi.finishSession(session.value.id) } catch { /* keep local completion */ }
@@ -108,7 +124,7 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
       <div class="intro-icon"><Code2 :size="30" /></div>
       <p class="eyebrow">CODEX FIRST</p>
       <h1>推荐使用 Codex 完成完整训练</h1>
-      <p class="codex-first-summary">Codex 可以在答题过程中随时回答追问，并在题库不足时为当前会话生成带来源的候选题。Web 目前只负责复习 Core 中已有的题目。</p>
+      <p class="codex-first-summary">Codex 可以在答题过程中随时回答追问，并在题库不足时为当前会话生成带来源的 AI 临时题。Web 目前只负责复习 Core 中已有的题目。</p>
       <div class="codex-setup-guide">
         <article>
           <span>1</span>
@@ -155,7 +171,7 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
 
     <section v-else-if="status === 'question' && assignment" class="training-card question-card reveal">
       <div class="question-meta">
-        <span>{{ assignment.sourceKind === 'review' ? '到期复习' : assignment.sourceKind === 'candidate' ? '会话候选题' : '新知识' }}</span>
+        <span>{{ assignment.sourceKind === 'review' ? '到期复习' : assignment.sourceKind === 'candidate' ? 'AI 临时题' : '新知识' }}</span>
         <span>{{ assignment.question.type === 'multiple_choice' ? '多选题' : '单选题' }}</span>
         <span>难度 {{ assignment.question.difficulty }}/5</span>
       </div>
@@ -175,6 +191,7 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
       <p class="answer-prompt">请回复选项字母，可用逗号分隔。</p>
       <div class="training-actions">
         <button class="button ghost" type="button" @click="finish">结束训练</button>
+        <button v-if="canReject" class="button ghost" type="button" @click="rejectGeneratedQuestion">不适合，换一题</button>
         <button class="button primary" type="button" :disabled="!selected.length" @click="submit">提交答案 <ArrowRight :size="17" /></button>
       </div>
     </section>
@@ -203,8 +220,8 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
 
     <section v-else-if="status === 'generation_required'" class="training-card centered-card reveal">
       <Sparkles :size="34" />
-      <h1>需要生成新的候选题</h1>
-      <p>Web MVP 不直接调用 AI。请在 Codex 中使用 MindTrain Skill，为当前会话生成带来源的候选题。</p>
+      <h1>需要生成新的 AI 临时题</h1>
+      <p>Web MVP 不直接调用 AI。请在 Codex 中使用 MindTrain Skill，为当前会话生成带来源的临时题。</p>
       <button class="button primary" type="button" @click="finish">结束并保存会话</button>
     </section>
 
