@@ -30,6 +30,9 @@ class MindTrainPluginTest(unittest.TestCase):
         self.assertEqual("mindtrain", plugin["name"])
         self.assertEqual("./.mcp.json", plugin["mcpServers"])
         self.assertIn("mindtrain", mcp["mcpServers"])
+        for field in ("composerIcon", "logo", "logoDark"):
+            asset = ROOT / "plugins/mindtrain" / plugin["interface"][field]
+            self.assertTrue(asset.is_file(), f"missing plugin asset: {asset}")
 
     def test_skill_and_starter_prompts_use_the_mindtrain_name(self):
         plugin = json.loads((ROOT / "plugins/mindtrain/.codex-plugin/plugin.json").read_text())

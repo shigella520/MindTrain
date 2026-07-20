@@ -16,7 +16,7 @@ const oldestDue = computed(() => {
 })
 
 onMounted(() => {
-  if (config.configured) dashboard.refresh()
+  dashboard.refresh()
 })
 </script>
 
@@ -34,11 +34,11 @@ onMounted(() => {
     <section class="hero reveal">
       <div class="hero-copy">
         <p class="eyebrow">PERSONAL LEARNING SYSTEM</p>
-        <h1 class="hero-wordmark">MindTrain</h1>
+        <h1 class="hero-wordmark"><span>MindTrain</span><span>Dashboard</span></h1>
         <p class="hero-description">MindTrain 根据复习积压、薄弱知识点和错误频率安排训练，让新知识的加入始终服从你的每日容量。</p>
         <div class="hero-actions">
           <RouterLink class="button primary large" to="/train">开始今日训练 <ArrowRight :size="18" /></RouterLink>
-          <button class="button ghost" type="button" :disabled="dashboard.loading || !config.configured" @click="dashboard.refresh">
+          <button class="button ghost" type="button" :disabled="dashboard.loading" @click="dashboard.refresh">
             <RefreshCw :size="17" :class="{ spinning: dashboard.loading }" />刷新数据
           </button>
         </div>

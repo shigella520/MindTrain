@@ -6,7 +6,7 @@ import { useDashboardStore } from '../stores/dashboard'
 
 const config = useConfigStore()
 const dashboard = useDashboardStore()
-onMounted(() => { if (config.configured) dashboard.refresh() })
+onMounted(() => { dashboard.refresh() })
 </script>
 
 <template>

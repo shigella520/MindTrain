@@ -1,4 +1,8 @@
-# MindTrain
+<p align="center">
+  <img src="assets/brand/mindtrain-icon.png" width="128" alt="MindTrain 图标" />
+</p>
+
+<h1 align="center">MindTrain</h1>
 
 [![CI](https://github.com/shigella520/MindTrain/actions/workflows/ci.yml/badge.svg)](https://github.com/shigella520/MindTrain/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -321,8 +325,22 @@ Core-only Compose 常用配置：
 | `MINDTRAIN_BOOTSTRAP_USER_ID` | `local-admin` | 启动时创建的本地管理员 ID |
 | `MINDTRAIN_BOOTSTRAP_DISPLAY_NAME` | `Local Admin` | 本地管理员显示名 |
 | `MINDTRAIN_BOOTSTRAP_TOKEN` | 无安全默认值 | Core Bearer Token，MCP 使用同一令牌访问 Core |
+| `MINDTRAIN_PUBLIC_DASHBOARD_ENABLED` | `false` | 匿名开放看板概览与积压接口；只建议示例站点显式启用 |
 | `MINDTRAIN_CORE_PORT` | `8080` | Core 映射到宿主机的端口 |
 | `MINDTRAIN_MCP_PORT` | `8787` | MCP 映射到宿主机的端口 |
+
+### 公开看板接口
+
+Web 看板查询两个只读接口：
+
+| 接口 | 返回内容 |
+| --- | --- |
+| `GET /api/v1/reports/overview` | 作答数、正确率、会话数、题库数量、薄弱知识点和调度器展示名 |
+| `GET /api/v1/schedulers/backlog` | 到期数量、最老到期时间、新题额度和暂停状态 |
+
+默认情况下它们与其他 Core API 一样要求 Bearer Token。示例站点可以设置 `MINDTRAIN_PUBLIC_DASHBOARD_ENABLED=true` 允许匿名读取；创建 Session、获取题目、提交答案、候选题、导入和其他接口仍要求 Token。
+
+公开概览会暴露聚合学习数据及薄弱知识点名称。私人实例应保持默认值 `false`，不要为了省去 Web 配置而开启。
 
 Core 还支持下列调度配置：
 
