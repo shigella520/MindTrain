@@ -45,6 +45,7 @@ services:
       MINDTRAIN_MCP_BIND_ADDRESS: 0.0.0.0
       MINDTRAIN_CORE_URL: http://trainer-core:8080
       MINDTRAIN_CORE_TOKEN: ${MINDTRAIN_BOOTSTRAP_TOKEN:?set MINDTRAIN_BOOTSTRAP_TOKEN in .env}
+      MINDTRAIN_MCP_ACCESS_TOKEN: ${MINDTRAIN_BOOTSTRAP_TOKEN:?set MINDTRAIN_BOOTSTRAP_TOKEN in .env}
     ports:
       - "127.0.0.1:${MINDTRAIN_MCP_PORT:-8787}:8787"
     depends_on:
@@ -52,6 +53,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "127.0.0.1:${MINDTRAIN_WEB_PORT:-4173}:80"
+    depends_on:
+      trainer-core:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
       interval: 10s
       timeout: 3s
       retries: 20

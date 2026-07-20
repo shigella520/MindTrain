@@ -1,0 +1,20 @@
+{
+  "name": "mindtrain",
+  "interface": {
+    "displayName": "Mindtrain"
+  },
+  "plugins": [
+    {
+      "name": "mindtrain",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mindtrain"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

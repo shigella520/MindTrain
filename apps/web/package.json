@@ -1,0 +1,27 @@
+{
+  "name": "@mindtrain/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.0.0",
+    "pinia": "^3.0.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@types/node": "^24.0.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.8.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.0",
+    "vue-tsc": "^3.0.0"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "mindtrain",
+  "version": "0.1.0",
+  "description": "Conversational knowledge training backed by a private MindTrain instance.",
+  "author": {
+    "name": "shigella520",
+    "url": "https://github.com/shigella520"
+  },
+  "homepage": "https://github.com/shigella520/MindTrain",
+  "repository": "https://github.com/shigella520/MindTrain",
+  "license": "MIT",
+  "keywords": ["learning", "training", "spaced-repetition", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "MindTrain",
+    "shortDescription": "连接私有 MindTrain 实例进行对话式知识训练",
+    "longDescription": "安装后首次配置私有 MindTrain 地址和访问令牌，即可在 Codex 中完成出题、追问、判分、复习调度和学习报告。",
+    "developerName": "shigella520",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://github.com/shigella520/MindTrain",
+    "defaultPrompt": [
+      "使用 $knowledge-trainer 配置我的 MindTrain 私有实例。",
+      "使用 $knowledge-trainer 开始十道题的知识训练。",
+      "使用 $knowledge-trainer 查看我的复习积压。"
+    ],
+    "brandColor": "#0A84FF"
+  }
+}

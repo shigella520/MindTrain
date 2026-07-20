@@ -18,6 +18,7 @@ check: $(VENV_STAMP)
 	$(PYTHON) skill/java-interview-coach/scripts/detect-duplicates.py assets
 	$(PYTHON) scripts/validate-skill.py skill/java-interview-coach
 	$(PYTHON) scripts/validate-skill.py skills/knowledge-trainer
+	$(PYTHON) scripts/validate-skill.py plugins/mindtrain/skills/knowledge-trainer
 
 check-platform:
 	mvn test
