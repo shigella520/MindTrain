@@ -16,7 +16,7 @@ Codex + MindTrain Plugin         MindTrain Web
               v                      v
      Private Trainer MCP ------ Training Core -------- PostgreSQL
               |
-              +-- Weighted Scheduler（当前可用）
+              +-- 加权调度（当前可用，provider ID: weighted）
               +-- Anki / FSRS Provider（规划中）
 ```
 
@@ -43,7 +43,7 @@ Codex + MindTrain Plugin         MindTrain Web
 | Trainer MCP | 可用 | Streamable HTTP MCP，默认监听 `127.0.0.1:8787/mcp` |
 | Codex Plugin Marketplace | 可用 | 安装后首次配置私有实例 URL 和单用户 Token |
 | MindTrain Skill | 可用 | 领域无关、无状态、面向 Codex 的训练工作流 |
-| Weighted Scheduler | 可用 | 复习/新题配额、积压控制、薄弱项优先 |
+| 加权调度 | 可用 | 默认调度方式；复习/新题配额、积压控制、薄弱项优先 |
 | Java 原型迁移 | 可用 | 正式题默认导入，私人数据必须显式选择 |
 | MindTrain Web | 可用 | Vue 3 Dashboard、Web 答题、管理概览与实例设置 |
 | Anki / FSRS Provider | 规划中 | Anki 作为可选调度插件和可重建投影 |
@@ -235,7 +235,7 @@ Core 精确判分                     追加 Interaction
 
 ## 默认调度策略
 
-默认 `weighted` 调度器以可控的每日训练容量为优先：
+默认的加权调度（稳定 provider ID 为 `weighted`）以可控的每日训练容量为优先：
 
 - 每个 Session 默认包含 10 道主问题。
 - 正常状态最多安排 8 道复习题和 2 道新题。

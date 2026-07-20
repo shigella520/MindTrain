@@ -58,6 +58,7 @@ button { border: 0; }
 .hero-copy { position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center; }
 .hero h1 { margin: 0; max-width: 720px; font-size: clamp(44px,5.5vw,76px); line-height: .98; letter-spacing: -.065em; }
 .hero h1 span { color: var(--mindtrain-accent); }
+.hero h1.hero-wordmark { font-size: clamp(64px,7vw,96px); line-height: .92; letter-spacing: -.08em; }
 .hero-description { max-width: 620px; margin: 26px 0 0; color: var(--mindtrain-muted); font-size: 17px; line-height: 1.8; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .hero-status-line { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 28px; color: var(--mindtrain-muted); font-size: 13px; }
@@ -219,6 +220,7 @@ th { color: var(--mindtrain-muted); font-size: 11px; letter-spacing: .05em; text
   .setup-banner { align-items: flex-start; flex-direction: column; }
   .hero { min-height: auto; padding: 28px 22px; border-radius: 28px; }
   .hero h1 { font-size: clamp(39px,12vw,58px); }
+  .hero h1.hero-wordmark { font-size: clamp(52px,16vw,76px); }
   .hero-description { font-size: 15px; }
   .hero-stage { min-height: 340px; }
   .orbit-two { width: 340px; height: 340px; }

@@ -64,7 +64,7 @@ onMounted(() => { if (config.configured) dashboard.refresh() })
         <div class="service-list">
           <article><span class="service-icon"><ServerCog :size="20" /></span><div><strong>Training Core</strong><em>{{ config.apiBaseUrl }}</em></div><span class="table-status" :class="dashboard.error ? 'danger' : 'success'">{{ dashboard.error ? 'Unavailable' : 'Connected' }}</span></article>
           <article><span class="service-icon"><Database :size="20" /></span><div><strong>PostgreSQL</strong><em>由 Core 健康状态间接确认</em></div><span class="table-status">Managed</span></article>
-          <article><span class="service-icon"><CircleGauge :size="20" /></span><div><strong>Weighted Scheduler</strong><em>Due {{ dashboard.overview.dueCount }} · New {{ dashboard.overview.newItemAllowance }}</em></div><span class="table-status success">Active</span></article>
+          <article><span class="service-icon"><CircleGauge :size="20" /></span><div><strong>{{ dashboard.schedulerName }}</strong><em>到期 {{ dashboard.overview.dueCount }} · 新题额度 {{ dashboard.overview.newItemAllowance }}</em></div><span class="table-status success">运行中</span></article>
         </div>
       </section>
     </div>

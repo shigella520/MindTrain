@@ -19,7 +19,12 @@ public class WeightedSchedulerProvider implements SchedulerProvider {
 
     @Override
     public String id() {
-        return "weighted";
+        return WEIGHTED_ID;
+    }
+
+    @Override
+    public String displayName() {
+        return WEIGHTED_DISPLAY_NAME;
     }
 
     @Override

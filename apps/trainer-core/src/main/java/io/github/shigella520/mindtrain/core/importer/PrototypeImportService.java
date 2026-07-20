@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.shigella520.mindtrain.core.identity.IdentityService;
 import io.github.shigella520.mindtrain.core.identity.UserContext;
 import io.github.shigella520.mindtrain.core.question.QuestionService;
+import io.github.shigella520.mindtrain.core.scheduling.SchedulerProvider;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -181,9 +182,10 @@ public class PrototypeImportService {
                 jdbc.sql("""
                         INSERT INTO training_session(id, user_id, domain_id, scheduler_provider, status, target_count,
                           completed_main, follow_up_count, introduced_new_count, started_at, ended_at, summary_json)
-                        VALUES (:id, :userId, 'java-backend', 'weighted', :status, :target, :completed,
+                        VALUES (:id, :userId, 'java-backend', :schedulerProvider, :status, :target, :completed,
                           :followUps, :introduced, :startedAt, :endedAt, :summary)
                         """).param("id", id).param("userId", userId).param("status", session.path("status").asText("completed"))
+                    .param("schedulerProvider", SchedulerProvider.WEIGHTED_ID)
                     .param("target", session.path("target").path("questionCount").asInt(10))
                     .param("completed", session.path("completedMainQuestions").asInt())
                     .param("followUps", session.path("followUpCount").asInt()).param("introduced", session.path("completedMainQuestions").asInt())

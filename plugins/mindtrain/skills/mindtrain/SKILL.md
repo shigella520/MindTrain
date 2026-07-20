@@ -19,7 +19,7 @@ The bridge saves configuration outside the repository with user-only file permis
 
 ## Run training
 
-1. Call `create_training_session`; default to 10 main questions and the `weighted` scheduler.
+1. Call `create_training_session`; default to 10 main questions and provider ID `weighted`, displayed to users as `加权调度`.
 2. Call `get_next_assignment`.
 3. When it returns `assignment`, show only the stem and A-D options. Use exactly: `请回复选项字母，可用逗号分隔。`
 4. Treat a clear option selection as a formal answer and call `submit_choice_answer` once.

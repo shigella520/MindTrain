@@ -9,7 +9,7 @@ const config = useConfigStore()
   <header class="topbar reveal">
     <RouterLink class="brand-mark" to="/" aria-label="MindTrain Dashboard">
       <span class="brand-dot"></span>
-      <span class="brand-text">MindTrain</span>
+      <span class="brand-text">MindTrain Dashboard</span>
     </RouterLink>
     <nav class="primary-nav" aria-label="主导航">
       <RouterLink to="/"><LayoutDashboard :size="17" />看板</RouterLink>

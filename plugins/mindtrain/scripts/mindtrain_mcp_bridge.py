@@ -82,7 +82,7 @@ def tool_definitions():
                 {
                     "questionCount": integer_property("Number of main questions; defaults to 10"),
                     "domainId": string_property("Knowledge domain; defaults to java-backend"),
-                    "schedulerProvider": string_property("Scheduler provider; use weighted in the MVP"),
+                    "schedulerProvider": string_property("Scheduler provider ID; use weighted for 加权调度 in the MVP"),
                 }
             ),
         ),

@@ -15,6 +15,8 @@ export interface Overview {
   oldestDueAt?: string
   newItemAllowance: number
   newItemsPaused: boolean
+  schedulerProvider?: string
+  schedulerProviderName?: string
   publishedQuestions: number
   candidateQuestions: number
   weakTopics: WeakTopic[]
