@@ -22,6 +22,7 @@ REMOTE_TOOL_NAMES = {
     "submit_choice_answer",
     "record_interaction",
     "create_candidate_question",
+    "revise_published_question",
     "finish_training_session",
     "get_learning_report",
     "get_scheduler_backlog",
@@ -129,6 +130,22 @@ def tool_definitions():
                     "parentAttemptId": string_property("Required when attemptType is follow_up"),
                 },
                 ("sessionId", "topicId", "question"),
+            ),
+        ),
+        tool(
+            "revise_published_question",
+            "Create and publish an immutable next version of an existing question after explicit user approval.",
+            schema(
+                {
+                    "questionId": string_property("Published question ID"),
+                    "expectedVersion": integer_property("Version shown in the assignment; prevents stale overwrites"),
+                    "changes": object_property("Only changed question fields"),
+                    "reason": string_property("Concise reason for the revision audit log"),
+                    "sourceAssignmentId": string_property("Assignment that exposed the issue when available"),
+                    "model": string_property("Model identifier when known"),
+                    "promptVersion": string_property("Prompt version when known"),
+                },
+                ("questionId", "expectedVersion", "changes", "reason"),
             ),
         ),
         tool(

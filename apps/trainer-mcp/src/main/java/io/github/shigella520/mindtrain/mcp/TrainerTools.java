@@ -47,6 +47,17 @@ public class TrainerTools {
                 "attemptType", string("Use follow_up only for a deeper training question"),
                 "parentAttemptId", string("Required when attemptType is follow_up")
             ), List.of("sessionId", "topicId", "question"))));
+        tools.add(tool("revise_published_question",
+            "Create and publish an immutable next version of an existing question after explicit user approval.",
+            schema(Map.of(
+                "questionId", string("Published question ID"),
+                "expectedVersion", integer("Version shown in the assignment; prevents stale overwrites"),
+                "changes", object("Only changed fields, such as title, stem, options, explanation or sources"),
+                "reason", string("Concise reason for the revision audit log"),
+                "sourceAssignmentId", string("Assignment that exposed the issue when available"),
+                "model", string("Model identifier when known"),
+                "promptVersion", string("Prompt version when known")
+            ), List.of("questionId", "expectedVersion", "changes", "reason"))));
         tools.add(tool("finish_training_session", "Finish a session and persist its summary.",
             schema(Map.of("sessionId", string("Session ID")), List.of("sessionId"))));
         tools.add(tool("get_learning_report", "Get learning, backlog and content overview metrics.", schema(Map.of(), List.of())));
@@ -65,6 +76,9 @@ public class TrainerTools {
             case "record_interaction" -> core.post("/api/v1/sessions/" + required(arguments, "sessionId") + "/interactions",
                 without(arguments, "sessionId", "idempotencyKey"), key);
             case "create_candidate_question" -> core.post("/api/v1/candidates", arguments, key);
+            case "revise_published_question" -> core.post(
+                "/api/v1/questions/" + required(arguments, "questionId") + "/revisions",
+                without(arguments, "questionId", "idempotencyKey"), key);
             case "finish_training_session" -> core.post("/api/v1/sessions/" + required(arguments, "sessionId") + "/finish",
                 objectMapper.createObjectNode(), key);
             case "get_learning_report" -> core.get("/api/v1/reports/overview");

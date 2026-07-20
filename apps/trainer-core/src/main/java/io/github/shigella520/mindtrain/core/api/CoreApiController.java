@@ -76,6 +76,15 @@ public class CoreApiController {
                 request.attemptType(), request.parentAttemptId()));
     }
 
+    @PostMapping("/questions/{id}/revisions")
+    public QuestionService.RevisionResponse reviseQuestion(@PathVariable String id,
+                                                            @RequestHeader("Idempotency-Key") String key,
+                                                            @RequestBody RevisionRequest request) {
+        return idempotency.execute("revise-question", key, QuestionService.RevisionResponse.class,
+            () -> questions.revisePublished(id, request.expectedVersion(), request.changes(), request.reason(),
+                request.sourceAssignmentId(), request.model(), request.promptVersion()));
+    }
+
     @GetMapping("/reports/overview")
     public JsonNode overview() {
         return training.overview();
@@ -100,4 +109,6 @@ public class CoreApiController {
 
     public record CandidateRequest(String sessionId, String topicId, JsonNode question,
                                    String attemptType, String parentAttemptId) {}
+    public record RevisionRequest(int expectedVersion, JsonNode changes, String reason,
+                                  String sourceAssignmentId, String model, String promptVersion) {}
 }

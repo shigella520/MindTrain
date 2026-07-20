@@ -7,6 +7,7 @@
 - `submit_choice_answer`: accepts `assignmentId` and the user's unmodified `answer` text.
 - `record_interaction`: accepts `sessionId`, optional `assignmentId`, an interaction type, and content.
 - `create_candidate_question`: accepts `sessionId`, required `topicId`, and a complete question object. For a deeper training question, also send `attemptType: follow_up` and `parentAttemptId`; the response includes its pending `assignmentId`.
+- `revise_published_question`: accepts `questionId`, `expectedVersion`, a non-empty `changes` object, and `reason`. Include `sourceAssignmentId` when the issue was found during training. It creates and publishes a new immutable version; it never rewrites the version used by an existing Attempt.
 - `finish_training_session`: accepts `sessionId`.
 - `get_learning_report`: returns learning and content overview metrics.
 - `get_scheduler_backlog`: returns due count, oldest due time, new-item allowance, and pause state.

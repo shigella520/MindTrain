@@ -3,6 +3,8 @@ package io.github.shigella520.mindtrain.mcp;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -41,7 +43,7 @@ class McpProtocolTest {
                 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
                 """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.result.tools.length()").value(8))
+            .andExpect(jsonPath("$.result.tools.length()").value(9))
             .andExpect(jsonPath("$.result.tools[0].name").value("create_training_session"));
 
         when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("""
@@ -53,6 +55,30 @@ class McpProtocolTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.result.isError").value(false))
             .andExpect(jsonPath("$.result.structuredContent.id").value("session-test"));
+    }
+
+    @Test
+    void proxiesPublishedQuestionRevision() throws Exception {
+        when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("""
+            {"questionId":"java.concurrency.volatile.001","previousVersion":1,"version":2,"status":"published"}
+            """));
+
+        mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+                {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{
+                  "name":"revise_published_question",
+                  "arguments":{
+                    "questionId":"java.concurrency.volatile.001",
+                    "expectedVersion":1,
+                    "changes":{"stem":"Revised stem"},
+                    "reason":"Improve clarity"
+                  }
+                }}
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.result.isError").value(false))
+            .andExpect(jsonPath("$.result.structuredContent.version").value(2));
+
+        verify(coreClient).post(eq("/api/v1/questions/java.concurrency.volatile.001/revisions"), any(), any());
     }
 
     @Test

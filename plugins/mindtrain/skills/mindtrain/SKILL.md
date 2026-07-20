@@ -1,6 +1,6 @@
 ---
 name: mindtrain
-description: Configure a private MindTrain instance and run persistent conversational knowledge training through its Trainer MCP, including sessions, safe choice questions, clarification questions, exact grading, session-scoped candidates, summaries, reports, and scheduler backlog. Use when the user installs MindTrain, configures its private server, starts or continues training, answers a question, asks for a deeper follow-up, ends a session, or inspects learning progress.
+description: Configure a private MindTrain instance and run persistent conversational knowledge training through its Trainer MCP, including sessions, safe choice questions, clarification questions, exact grading, session-scoped candidates, user-approved published-question revisions, summaries, reports, and scheduler backlog. Use when the user installs MindTrain, configures its private server, starts or continues training, answers or challenges a question, asks to revise flawed question content, requests a deeper follow-up, ends a session, or inspects learning progress.
 ---
 
 # MindTrain
@@ -29,6 +29,14 @@ The bridge saves configuration outside the repository with user-only file permis
 8. Call `finish_training_session` when the target is complete or the user ends early.
 
 Never infer the correct answer before `submit_choice_answer` returns it. Invalid answer input does not consume the question.
+
+## Revise a flawed published question
+
+When the user reports that a displayed question is unclear, incorrect, outdated, or poorly sourced, record the feedback with `record_interaction` and discuss the issue first. Never change the question merely because the user challenged it.
+
+Call `revise_published_question` only after the user explicitly asks to update the question bank and the intended correction is clear. Use the question ID and version from the assignment, include its assignment ID as `sourceAssignmentId`, and submit only changed fields. Preserve option IDs and the correct option set unless authoritative sources support a scoring correction. Explain the revision and report the new version returned by Core.
+
+On `question_version_conflict`, do not retry with a guessed version. Explain that the question changed concurrently and obtain the latest content through a future management flow.
 
 ## Generate a missing question
 
