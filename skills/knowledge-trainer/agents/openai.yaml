@@ -1,0 +1,11 @@
+interface:
+  display_name: "MindTrain Knowledge Trainer"
+  short_description: "通过 MindTrain MCP 进行对话式知识训练"
+  default_prompt: "Use $knowledge-trainer to start a 10-question knowledge training session."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "mindtrain"
+      description: "MindTrain Trainer MCP"
+      transport: "streamable_http"
+      url: "http://127.0.0.1:8787/mcp"

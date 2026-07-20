@@ -1,0 +1,27 @@
+/*
+ * MindTrain design tokens are adapted from shigella520/LinkPeek under the MIT License.
+ * LinkPeek copyright (c) 2026 shigella520.
+ */
+:root {
+  color-scheme: light;
+  --mindtrain-bg: #f4f2ec;
+  --mindtrain-bg-soft: #fbfaf8;
+  --mindtrain-surface: #ffffff;
+  --mindtrain-text: #171717;
+  --mindtrain-muted: #6f6b66;
+  --mindtrain-line: rgba(24, 24, 24, 0.08);
+  --mindtrain-accent: #0a84ff;
+  --mindtrain-accent-warm: #f97316;
+  --mindtrain-success: #13b981;
+  --mindtrain-danger: #ef4444;
+  --mindtrain-glass: rgba(255, 255, 255, 0.68);
+  --mindtrain-glass-strong: rgba(255, 255, 255, 0.84);
+  --mindtrain-shadow: 0 30px 90px rgba(16, 19, 23, 0.08);
+  --mindtrain-shadow-soft: 0 18px 36px rgba(16, 19, 23, 0.06);
+  --mindtrain-radius-sm: 16px;
+  --mindtrain-radius-md: 22px;
+  --mindtrain-radius-lg: 28px;
+  --mindtrain-radius-xl: 38px;
+  --mindtrain-sidebar-width: 296px;
+  --mindtrain-font-sans: "Avenir Next", "SF Pro Display", "Helvetica Neue", "PingFang SC", sans-serif;
+}

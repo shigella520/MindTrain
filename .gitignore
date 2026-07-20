@@ -31,3 +31,6 @@ __pycache__/
 # Logs
 *.log
 logs/
+
+# MindTrain runtime data
+var/

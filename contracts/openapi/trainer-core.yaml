@@ -1,0 +1,109 @@
+openapi: 3.1.0
+info:
+  title: MindTrain Training Core API
+  version: 0.1.0
+servers:
+  - url: http://127.0.0.1:8080
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/sessions:
+    post:
+      operationId: createTrainingSession
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                questionCount: {type: integer, minimum: 1, maximum: 100, default: 10}
+                domainId: {type: string, default: java-backend}
+                schedulerProvider: {type: string, enum: [weighted]}
+      responses:
+        '200': {description: Session created}
+  /api/v1/sessions/{sessionId}/assignments/next:
+    post:
+      operationId: getNextAssignment
+      parameters:
+        - {name: sessionId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Safe assignment or generation request
+  /api/v1/assignments/{assignmentId}/attempts:
+    post:
+      operationId: submitChoiceAnswer
+      parameters:
+        - {name: assignmentId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answer]
+              properties:
+                answer: {type: string}
+      responses:
+        '200': {description: Deterministic grading and explanation}
+  /api/v1/sessions/{sessionId}/interactions:
+    post:
+      operationId: recordInteraction
+      parameters:
+        - {name: sessionId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': {description: Interaction appended without consuming the assignment}
+  /api/v1/sessions/{sessionId}/finish:
+    post:
+      operationId: finishTrainingSession
+      parameters:
+        - {name: sessionId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': {description: Session completed}
+  /api/v1/candidates:
+    post:
+      operationId: createCandidateQuestion
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': {description: Session-scoped candidate accepted}
+  /api/v1/reports/overview:
+    get:
+      operationId: getLearningReport
+      responses:
+        '200': {description: Learning and content overview}
+  /api/v1/schedulers/backlog:
+    get:
+      operationId: getSchedulerBacklog
+      responses:
+        '200': {description: Due backlog and new-item allowance}
+  /api/v1/imports/prototype:
+    post:
+      operationId: importPrototype
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': {description: Dry-run or applied import report}
+  /api/v1/imports/{importId}:
+    get:
+      operationId: getPrototypeImport
+      parameters:
+        - {name: importId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Import report}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, minLength: 1}

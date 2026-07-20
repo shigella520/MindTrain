@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindtrain.dev/contracts/scheduler-provider.schema.json",
+  "title": "MindTrain Scheduler Provider Result",
+  "type": "object",
+  "required": ["providerId", "capabilities"],
+  "properties": {
+    "providerId": {"type": "string"},
+    "capabilities": {
+      "type": "array",
+      "items": {"enum": ["health", "get_backlog", "plan_session", "introduce_items", "next_item", "record_review", "get_item_state"]},
+      "uniqueItems": true
+    },
+    "backlog": {
+      "type": "object",
+      "properties": {
+        "dueCount": {"type": "integer", "minimum": 0},
+        "oldestDueAt": {"type": ["string", "null"], "format": "date-time"},
+        "newItemAllowance": {"type": "integer", "minimum": 0},
+        "newItemsPaused": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
