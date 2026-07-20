@@ -7,7 +7,7 @@ MindTrain 面向单用户私有部署。服务器运行 Training Core、Trainer 
 ```text
 Codex
   └─ MindTrain Plugin
-       ├─ Knowledge Trainer Skill
+       ├─ MindTrain Skill
        └─ Local MCP Bridge
               │ HTTPS + Bearer Token
               ▼
@@ -81,7 +81,7 @@ codex plugin add mindtrain@mindtrain
 在新任务中输入：
 
 ```text
-$knowledge-trainer 配置我的 MindTrain
+$mindtrain Configure my private MindTrain instance.
 ```
 
 Skill 调用 `get_mindtrain_configuration` 检查本地状态。未配置时，用户提供：

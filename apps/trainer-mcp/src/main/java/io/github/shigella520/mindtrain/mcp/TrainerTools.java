@@ -23,7 +23,7 @@ public class TrainerTools {
         tools.add(tool("create_training_session", "Create a MindTrain training session.", schema(Map.of(
             "questionCount", integer("Number of main questions; defaults to 10"),
             "domainId", string("Knowledge domain; defaults to java-backend"),
-            "schedulerProvider", string("Scheduler provider; use weighted in the MVP")
+            "schedulerProvider", string("Scheduler provider ID; use weighted for 加权调度 in the MVP")
         ), List.of())));
         tools.add(tool("get_next_assignment", "Get the next safe-to-display question or a candidate generation request.",
             schema(Map.of("sessionId", string("Active session ID")), List.of("sessionId"))));

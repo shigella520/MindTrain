@@ -1,15 +1,25 @@
 ---
-name: knowledge-trainer
-description: Run persistent conversational knowledge training through the MindTrain Trainer MCP, including creating sessions, presenting safe choice questions, recording clarification questions without consuming assignments, submitting exact-choice answers, generating session-scoped candidate questions, finishing sessions, and reporting progress. Use when the user asks to start or continue MindTrain practice, answer a training question, ask a concept question during practice, request a deeper choice follow-up, end a session, or inspect learning progress or scheduler backlog.
+name: mindtrain
+description: Configure a private MindTrain instance and run persistent conversational knowledge training through its Trainer MCP, including sessions, safe choice questions, clarification questions, exact grading, session-scoped candidates, summaries, reports, and scheduler backlog. Use when the user installs MindTrain, configures its private server, starts or continues training, answers a question, asks for a deeper follow-up, ends a session, or inspects learning progress.
 ---
 
-# MindTrain Knowledge Trainer
+# MindTrain
 
-Use the MindTrain MCP as the only application data interface. Do not read or write repository question, candidate, session, attempt, or mastery files.
+Use the bundled MindTrain bridge as the only application data interface. Do not read or write repository question, candidate, session, attempt, or mastery files.
+
+## Configure first use
+
+1. Call `get_mindtrain_configuration` before the first training action in a task.
+2. When `configured` is false, explain that MindTrain needs the private Trainer MCP URL and the deployment's single-user Bootstrap Token.
+3. Ask for the full HTTPS MCP URL. Ask for the Token only when the user is willing to provide it in the current private conversation; otherwise direct them to run `python3 scripts/mindtrain_mcp_bridge.py --configure` from the installed plugin directory.
+4. Call `configure_mindtrain_instance` with the URL and Token. Never repeat, display, summarize, or persist the Token anywhere except through that configuration tool.
+5. Continue only after configuration validation succeeds. If validation fails, report the sanitized error and let the user retry.
+
+The bridge saves configuration outside the repository with user-only file permissions. Never put the private URL or Token into Skill files, Git configuration, examples, or commits.
 
 ## Run training
 
-1. Call `create_training_session`; default to 10 main questions and the `weighted` scheduler.
+1. Call `create_training_session`; default to 10 main questions and provider ID `weighted`, displayed to users as `加权调度`.
 2. Call `get_next_assignment`.
 3. When it returns `assignment`, show only the stem and A-D options. Use exactly: `请回复选项字母，可用逗号分隔。`
 4. Treat a clear option selection as a formal answer and call `submit_choice_answer` once.
@@ -34,6 +44,7 @@ For a deeper training question, generate another four-option question on the sam
 
 ## Recover safely
 
+- On `configuration_required`, return to the first-use configuration flow.
 - On `answer_unparseable`, ask for option letters again without revealing answer count.
 - On `no_available_items`, explain the scheduler reason and offer to finish or inspect backlog.
 - On Core or MCP unavailability, retain the current visible question in conversation and retry the tool; do not fabricate persistence success.

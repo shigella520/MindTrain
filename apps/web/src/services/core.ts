@@ -1,4 +1,5 @@
 import { useConfigStore } from '../stores/config'
+import { DEFAULT_SCHEDULER_PROVIDER_ID } from '../domain/schedulers'
 import type { Attempt, Backlog, NextAssignment, Overview, Session } from '../types/api'
 
 export class CoreApiError extends Error {
@@ -42,7 +43,7 @@ export const coreApi = {
   overview: () => request<Overview>('/reports/overview'),
   backlog: () => request<Backlog>('/schedulers/backlog'),
   createSession: (questionCount = 10, domainId = 'java-backend') =>
-    post<Session>('/sessions', { questionCount, domainId, schedulerProvider: 'weighted' }, 'session'),
+    post<Session>('/sessions', { questionCount, domainId, schedulerProvider: DEFAULT_SCHEDULER_PROVIDER_ID }, 'session'),
   nextAssignment: (sessionId: string) =>
     post<NextAssignment>(`/sessions/${encodeURIComponent(sessionId)}/assignments/next`, undefined, 'next'),
   submitAnswer: (assignmentId: string, answer: string) =>

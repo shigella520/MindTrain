@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[1]
 BRIDGE_PATH = ROOT / "plugins/mindtrain/scripts/mindtrain_mcp_bridge.py"
@@ -28,6 +30,25 @@ class MindTrainPluginTest(unittest.TestCase):
         self.assertEqual("mindtrain", plugin["name"])
         self.assertEqual("./.mcp.json", plugin["mcpServers"])
         self.assertIn("mindtrain", mcp["mcpServers"])
+        for field in ("composerIcon", "logo", "logoDark"):
+            asset = ROOT / "plugins/mindtrain" / plugin["interface"][field]
+            self.assertTrue(asset.is_file(), f"missing plugin asset: {asset}")
+
+    def test_skill_and_starter_prompts_use_the_mindtrain_name(self):
+        plugin = json.loads((ROOT / "plugins/mindtrain/.codex-plugin/plugin.json").read_text())
+        prompts = plugin["interface"]["defaultPrompt"]
+
+        self.assertTrue(all("$mindtrain" in prompt for prompt in prompts))
+        self.assertTrue(all(prompt.isascii() for prompt in prompts))
+        self.assertFalse((ROOT / "skills/knowledge-trainer").exists())
+        self.assertFalse((ROOT / "plugins/mindtrain/skills/knowledge-trainer").exists())
+
+        for skill_path in (
+            ROOT / "skills/mindtrain/SKILL.md",
+            ROOT / "plugins/mindtrain/skills/mindtrain/SKILL.md",
+        ):
+            frontmatter = skill_path.read_text().split("---", 2)[1]
+            self.assertEqual("mindtrain", yaml.safe_load(frontmatter)["name"])
 
     def test_bridge_exposes_configuration_and_training_tools(self):
         names = {definition["name"] for definition in BRIDGE.tool_definitions()}

@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { DEFAULT_SCHEDULER_PROVIDER_ID, schedulerProviderName } from '../domain/schedulers'
 import { coreApi } from '../services/core'
 import type { Backlog, Overview } from '../types/api'
 
@@ -11,6 +12,8 @@ const EMPTY_OVERVIEW: Overview = {
   dueCount: 0,
   newItemAllowance: 2,
   newItemsPaused: false,
+  schedulerProvider: DEFAULT_SCHEDULER_PROVIDER_ID,
+  schedulerProviderName: schedulerProviderName(DEFAULT_SCHEDULER_PROVIDER_ID),
   publishedQuestions: 0,
   candidateQuestions: 0,
   weakTopics: [],
@@ -22,6 +25,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const loading = ref(false)
   const error = ref('')
   const accuracyPercent = computed(() => Math.round(overview.value.accuracy * 100))
+  const schedulerName = computed(() => overview.value.schedulerProviderName
+    || schedulerProviderName(overview.value.schedulerProvider || DEFAULT_SCHEDULER_PROVIDER_ID))
 
   async function refresh() {
     loading.value = true
@@ -37,5 +42,5 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  return { overview, backlog, loading, error, accuracyPercent, refresh }
+  return { overview, backlog, loading, error, accuracyPercent, schedulerName, refresh }
 })

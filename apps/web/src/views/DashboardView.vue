@@ -16,7 +16,7 @@ const oldestDue = computed(() => {
 })
 
 onMounted(() => {
-  if (config.configured) dashboard.refresh()
+  dashboard.refresh()
 })
 </script>
 
@@ -34,11 +34,11 @@ onMounted(() => {
     <section class="hero reveal">
       <div class="hero-copy">
         <p class="eyebrow">PERSONAL LEARNING SYSTEM</p>
-        <h1>把今天的十道题，<br><span>变成长期记忆。</span></h1>
+        <h1 class="hero-wordmark"><span>MindTrain</span><span>Dashboard</span></h1>
         <p class="hero-description">MindTrain 根据复习积压、薄弱知识点和错误频率安排训练，让新知识的加入始终服从你的每日容量。</p>
         <div class="hero-actions">
           <RouterLink class="button primary large" to="/train">开始今日训练 <ArrowRight :size="18" /></RouterLink>
-          <button class="button ghost" type="button" :disabled="dashboard.loading || !config.configured" @click="dashboard.refresh">
+          <button class="button ghost" type="button" :disabled="dashboard.loading" @click="dashboard.refresh">
             <RefreshCw :size="17" :class="{ spinning: dashboard.loading }" />刷新数据
           </button>
         </div>
@@ -116,7 +116,7 @@ onMounted(() => {
         <div class="metric-grid three">
           <MetricCard label="正式题" :value="dashboard.overview.publishedQuestions" note="可跨会话调度" tone="blue" />
           <MetricCard label="候选题" :value="dashboard.overview.candidateQuestions" note="等待审核或会话隔离" tone="peach" />
-          <MetricCard label="调度 Provider" value="weighted" note="Anki / FSRS 规划中" tone="mint" />
+          <MetricCard label="调度方式" :value="dashboard.schedulerName" note="Anki / FSRS 调度规划中" tone="mint" />
         </div>
         <RouterLink class="content-card management-link" to="/admin">
           <div><p class="card-kicker">CONTENT GOVERNANCE</p><h3>进入内容与实例管理</h3><p>查看题库概况、薄弱主题和服务边界。</p></div>

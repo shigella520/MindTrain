@@ -123,7 +123,9 @@ class TrainingFlowIntegrationTest {
         mvc.perform(get("/api/v1/reports/overview"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.attempts").value(2))
-            .andExpect(jsonPath("$.accuracy").value(1.0));
+            .andExpect(jsonPath("$.accuracy").value(1.0))
+            .andExpect(jsonPath("$.schedulerProvider").value("weighted"))
+            .andExpect(jsonPath("$.schedulerProviderName").value("加权调度"));
 
         mvc.perform(post("/api/v1/sessions/{id}/finish", sessionId)
                 .header("Idempotency-Key", "finish-1"))

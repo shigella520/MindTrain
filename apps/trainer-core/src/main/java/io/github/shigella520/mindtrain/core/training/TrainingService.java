@@ -57,9 +57,10 @@ public class TrainingService {
         int target = request.questionCount() == null ? 10 : request.questionCount();
         if (target < 1 || target > 100) throw new IllegalArgumentException("questionCount must be between 1 and 100");
         String domain = blankDefault(request.domainId(), "java-backend");
-        String provider = blankDefault(request.schedulerProvider(), "weighted");
+        String provider = blankDefault(request.schedulerProvider(), scheduler.id());
         if (!scheduler.id().equals(provider)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "scheduler_not_supported", "Only weighted scheduler is available in the MVP");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "scheduler_not_supported",
+                "MVP 目前仅支持加权调度（provider ID: " + scheduler.id() + "）");
         }
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         jdbc.sql("""
@@ -231,6 +232,8 @@ public class TrainingService {
         if (backlog.oldestDueAt() != null) response.put("oldestDueAt", backlog.oldestDueAt().toString());
         response.put("newItemAllowance", backlog.newItemAllowance());
         response.put("newItemsPaused", backlog.newItemsPaused());
+        response.put("schedulerProvider", scheduler.id());
+        response.put("schedulerProviderName", scheduler.displayName());
         response.put("publishedQuestions", published);
         response.put("candidateQuestions", candidates);
         response.set("weakTopics", objectMapper.valueToTree(weakTopics));

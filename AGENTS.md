@@ -6,7 +6,7 @@
 - Use `doc/目标需求.md` as the product requirements source and `doc/概要设计.md` as the architecture source.
 - Keep Training Core as the future source of truth for questions, candidates, prompts, sessions, attempts, review events, scheduler bindings, and plugin sync state.
 - Keep Codex Skills stateless: they orchestrate MCP/API tools and must not become the authoritative application database.
-- Keep scheduler behavior behind a provider contract. The initial providers are the Core weighted scheduler and the optional Anki scheduler plugin.
+- Keep scheduler behavior behind a provider contract. The initial providers are Core 加权调度 (stable ID: `weighted`) and the optional Anki scheduler plugin.
 - Treat Anki as a scheduling plugin and rebuildable local projection, not as the authoritative MindTrain question bank.
 - Keep production runtime data out of the repository after migration; retain only migrations, contracts, deployment configuration, and minimal non-private test fixtures.
 - Do not introduce microservices prematurely. Build Training Core as a modular monolith first.

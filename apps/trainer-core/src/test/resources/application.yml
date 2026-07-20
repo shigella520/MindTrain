@@ -12,6 +12,7 @@ mindtrain:
     bootstrap-user-id: test-user
     bootstrap-display-name: Test User
     bootstrap-token: test-token
+    public-dashboard-enabled: false
   scheduler:
     review-budget: 8
     new-budget: 2

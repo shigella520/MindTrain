@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ArrowLeft, ArrowRight, Check, CircleAlert, LoaderCircle, RotateCcw, Sparkles, X } from '@lucide/vue'
+import { ArrowLeft, ArrowRight, Check, CircleAlert, Code2, LoaderCircle, RotateCcw, Sparkles, X } from '@lucide/vue'
 import { coreApi, CoreApiError } from '../services/core'
 import { useConfigStore } from '../stores/config'
 import type { Assignment, Attempt, Session } from '../types/api'
 
 const config = useConfigStore()
+const showCodexIntro = ref(true)
 const session = ref<Session | null>(null)
 const assignment = ref<Assignment | null>(null)
 const result = ref<Attempt | null>(null)
@@ -14,6 +15,12 @@ const status = ref<'idle' | 'loading' | 'question' | 'result' | 'complete' | 'ge
 const error = ref('')
 const progress = computed(() => session.value ? Math.round((session.value.completedMainQuestions / session.value.targetCount) * 100) : 0)
 const isMultiple = computed(() => assignment.value?.question.type === 'multiple_choice')
+const suggestedMcpUrl = `${window.location.origin}/mcp`
+
+async function continueWithWeb() {
+  showCodexIntro.value = false
+  if (config.configured) await start()
+}
 
 async function start() {
   error.value = ''
@@ -97,7 +104,32 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
       </div>
     </div>
 
-    <section v-if="!config.configured" class="training-card centered-card reveal">
+    <section v-if="showCodexIntro" class="training-card codex-first-card reveal">
+      <div class="intro-icon"><Code2 :size="30" /></div>
+      <p class="eyebrow">CODEX FIRST</p>
+      <h1>推荐使用 Codex 完成完整训练</h1>
+      <p class="codex-first-summary">Codex 可以在答题过程中随时回答追问，并在题库不足时为当前会话生成带来源的候选题。Web 目前只负责复习 Core 中已有的题目。</p>
+      <div class="codex-setup-guide">
+        <article>
+          <span>1</span>
+          <div><h3>添加 MindTrain Marketplace</h3><code>codex plugin marketplace add shigella520/MindTrain --ref main</code></div>
+        </article>
+        <article>
+          <span>2</span>
+          <div><h3>安装 Plugin</h3><code>codex plugin add mindtrain@mindtrain</code></div>
+        </article>
+        <article>
+          <span>3</span>
+          <div><h3>首次配置私有实例</h3><code>$mindtrain Configure my private MindTrain instance.</code><p>配置 MCP 地址 <strong>{{ suggestedMcpUrl }}</strong> 和部署时设置的 Bootstrap Token。</p></div>
+        </article>
+      </div>
+      <div class="codex-first-actions">
+        <a class="button ghost" href="https://github.com/shigella520/MindTrain#接入-codex-plugin" target="_blank" rel="noreferrer">查看完整指引</a>
+        <button class="button primary large" type="button" @click="continueWithWeb">继续通过网页复习旧题 <ArrowRight :size="18" /></button>
+      </div>
+    </section>
+
+    <section v-else-if="!config.configured" class="training-card centered-card reveal">
       <CircleAlert :size="34" />
       <h1>需要先配置实例</h1>
       <p>训练页通过 Training Core 完成精确判分和复习状态更新。</p>
@@ -172,7 +204,7 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
     <section v-else-if="status === 'generation_required'" class="training-card centered-card reveal">
       <Sparkles :size="34" />
       <h1>需要生成新的候选题</h1>
-      <p>Web MVP 不直接调用 AI。请在 Codex 中使用 Knowledge Trainer，为当前会话生成带来源的候选题。</p>
+      <p>Web MVP 不直接调用 AI。请在 Codex 中使用 MindTrain Skill，为当前会话生成带来源的候选题。</p>
       <button class="button primary" type="button" @click="finish">结束并保存会话</button>
     </section>
 

@@ -23,6 +23,7 @@ mindtrain:
     bootstrap-user-id: ${MINDTRAIN_BOOTSTRAP_USER_ID:local-admin}
     bootstrap-display-name: ${MINDTRAIN_BOOTSTRAP_DISPLAY_NAME:Local Admin}
     bootstrap-token: ${MINDTRAIN_BOOTSTRAP_TOKEN:change-me}
+    public-dashboard-enabled: ${MINDTRAIN_PUBLIC_DASHBOARD_ENABLED:false}
   scheduler:
     review-budget: ${MINDTRAIN_REVIEW_BUDGET:8}
     new-budget: ${MINDTRAIN_NEW_BUDGET:2}

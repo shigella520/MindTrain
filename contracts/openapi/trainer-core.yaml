@@ -20,7 +20,11 @@ paths:
               properties:
                 questionCount: {type: integer, minimum: 1, maximum: 100, default: 10}
                 domainId: {type: string, default: java-backend}
-                schedulerProvider: {type: string, enum: [weighted]}
+                schedulerProvider:
+                  type: string
+                  enum: [weighted]
+                  default: weighted
+                  description: 稳定技术标识符；weighted 的中文展示名为“加权调度”。
       responses:
         '200': {description: Session created}
   /api/v1/sessions/{sessionId}/assignments/next:
@@ -75,11 +79,14 @@ paths:
   /api/v1/reports/overview:
     get:
       operationId: getLearningReport
+      description: 默认要求 Bearer Token；仅当实例显式开启公开看板时允许匿名读取聚合统计。
       responses:
-        '200': {description: Learning and content overview}
+        '200':
+          description: 学习与内容概览；调度方式同时返回稳定 ID 和中文展示名。
   /api/v1/schedulers/backlog:
     get:
       operationId: getSchedulerBacklog
+      description: 默认要求 Bearer Token；仅当实例显式开启公开看板时允许匿名读取调度积压。
       responses:
         '200': {description: Due backlog and new-item allowance}
   /api/v1/imports/prototype:

@@ -1,7 +1,7 @@
 {
   "name": "mindtrain",
   "interface": {
-    "displayName": "Mindtrain"
+    "displayName": "MindTrain"
   },
   "plugins": [
     {

@@ -59,7 +59,7 @@ Core 精确判分
 展示正确答案与结构化解释
 ```
 
-Web 不承担 AI 生成。当 Core 返回 `generation_required` 时，页面提示用户转到 Codex Knowledge Trainer 生成带来源的当前会话候选题。
+Web 不承担 AI 生成。当 Core 返回 `generation_required` 时，页面提示用户转到 Codex 中的 MindTrain Skill，生成带来源的当前会话候选题。
 
 ## 鉴权与部署
 
