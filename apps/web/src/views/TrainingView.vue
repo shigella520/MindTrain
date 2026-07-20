@@ -26,7 +26,7 @@ async function start() {
   error.value = ''
   status.value = 'loading'
   try {
-    session.value = await coreApi.createSession(10)
+    session.value = await coreApi.createSession()
     await next()
   } catch (cause) {
     fail(cause)
@@ -138,13 +138,13 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
 
     <section v-else-if="status === 'idle'" class="training-card training-intro reveal">
       <div class="intro-icon"><Sparkles :size="30" /></div>
-      <p class="eyebrow">TEN QUESTIONS</p>
+      <p class="eyebrow">DAILY TRAINING</p>
       <h1>准备好开始今天的训练了吗？</h1>
-      <p>默认优先安排到期复习，并在积压允许时加入最多两道新题。</p>
+      <p>默认优先安排到期复习，并在积压和实例配置允许时加入新题。</p>
       <div class="training-rules">
-        <span>精确判分</span><span>8 / 2 配额</span><span>错误次日复习</span>
+        <span>精确判分</span><span>动态复习 / 新题配额</span><span>错误次日复习</span>
       </div>
-      <button class="button primary large" type="button" @click="start">开始十道题 <ArrowRight :size="18" /></button>
+      <button class="button primary large" type="button" @click="start">开始今日训练 <ArrowRight :size="18" /></button>
     </section>
 
     <section v-else-if="status === 'loading'" class="training-card centered-card reveal">

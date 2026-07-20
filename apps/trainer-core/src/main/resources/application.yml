@@ -29,3 +29,5 @@ mindtrain:
     new-budget: ${MINDTRAIN_NEW_BUDGET:2}
     backlog-pause-threshold: ${MINDTRAIN_BACKLOG_PAUSE_THRESHOLD:20}
     overdue-pause-days: ${MINDTRAIN_OVERDUE_PAUSE_DAYS:3}
+  reporting:
+    time-zone: ${MINDTRAIN_REPORTING_TIME_ZONE:Asia/Shanghai}

@@ -42,8 +42,12 @@ function post<T>(path: string, body?: unknown, prefix = 'web'): Promise<T> {
 export const coreApi = {
   overview: () => request<Overview>('/reports/overview'),
   backlog: () => request<Backlog>('/schedulers/backlog'),
-  createSession: (questionCount = 10, domainId = 'java-backend') =>
-    post<Session>('/sessions', { questionCount, domainId, schedulerProvider: DEFAULT_SCHEDULER_PROVIDER_ID }, 'session'),
+  createSession: (questionCount?: number, domainId = 'java-backend') =>
+    post<Session>('/sessions', {
+      ...(questionCount === undefined ? {} : { questionCount }),
+      domainId,
+      schedulerProvider: DEFAULT_SCHEDULER_PROVIDER_ID,
+    }, 'session'),
   nextAssignment: (sessionId: string) =>
     post<NextAssignment>(`/sessions/${encodeURIComponent(sessionId)}/assignments/next`, undefined, 'next'),
   submitAnswer: (assignmentId: string, answer: string) =>

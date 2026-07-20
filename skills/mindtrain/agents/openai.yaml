@@ -1,7 +1,7 @@
 interface:
   display_name: "MindTrain"
   short_description: "Train and track progress through MindTrain MCP"
-  default_prompt: "Use $mindtrain to start a 10-question knowledge training session."
+  default_prompt: "Use $mindtrain to start today's knowledge training session."
 dependencies:
   tools:
     - type: "mcp"
