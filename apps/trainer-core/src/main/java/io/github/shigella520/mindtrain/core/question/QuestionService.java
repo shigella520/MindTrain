@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.shigella520.mindtrain.core.api.ApiException;
 import io.github.shigella520.mindtrain.core.identity.UserContext;
 import java.time.OffsetDateTime;
@@ -21,6 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class QuestionService {
     private static final List<String> OPTION_IDS = List.of("A", "B", "C", "D");
+    private static final Set<String> REVISION_FIELDS = Set.of(
+        "type", "title", "stem", "options", "correctOptionIds", "topicIds",
+        "difficulty", "importance", "javaVersions", "explanation", "sources"
+    );
     private final JdbcClient jdbc;
     private final ObjectMapper objectMapper;
 
@@ -111,47 +116,168 @@ public class QuestionService {
         return new CandidateResponse(id, version, "candidate", sessionId, true, assignmentId);
     }
 
+    @Transactional
+    public RevisionResponse revisePublished(String questionId, int expectedVersion, JsonNode changes,
+                                            String reason, String sourceAssignmentId,
+                                            String model, String promptVersion) {
+        if (reason == null || reason.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "revision_reason_required", "A revision reason is required");
+        }
+        if (changes == null || !changes.isObject() || changes.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "revision_changes_invalid", "Revision changes must be a non-empty object");
+        }
+        List<String> unsupported = new ArrayList<>();
+        changes.fieldNames().forEachRemaining(field -> {
+            if (!REVISION_FIELDS.contains(field)) unsupported.add(field);
+        });
+        if (!unsupported.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "revision_changes_invalid",
+                "Unsupported revision fields: " + String.join(", ", unsupported));
+        }
+
+        QuestionRecord current = current(questionId);
+        if (!"published".equals(current.status())) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_not_published", "Only published questions can be revised");
+        }
+        if (current.version() != expectedVersion) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_version_conflict",
+                "Question current version is " + current.version() + ", not " + expectedVersion);
+        }
+
+        String userId = UserContext.requireUserId();
+        if (sourceAssignmentId != null && !sourceAssignmentId.isBlank()) {
+            int sourceExists = jdbc.sql("""
+                    SELECT COUNT(*)
+                    FROM assignment a JOIN training_session s ON s.id = a.session_id
+                    WHERE a.id = :assignmentId AND a.question_id = :questionId
+                      AND a.question_version = :version AND s.user_id = :userId
+                    """)
+                .param("assignmentId", sourceAssignmentId).param("questionId", questionId)
+                .param("version", expectedVersion).param("userId", userId)
+                .query(Integer.class).single();
+            if (sourceExists == 0) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "revision_assignment_invalid",
+                    "Source assignment does not match the question version and current user");
+            }
+        }
+
+        int nextVersion = expectedVersion + 1;
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        String revisionPromptVersion = promptVersion == null || promptVersion.isBlank()
+            ? "manual-revision" : promptVersion;
+        ObjectNode revised = current.content().deepCopy();
+        changes.fields().forEachRemaining(entry -> revised.set(entry.getKey(), entry.getValue().deepCopy()));
+        revised.put("id", questionId);
+        revised.put("version", nextVersion);
+        revised.put("status", "published");
+        revised.put("createdBy", model == null || model.isBlank() ? "user" : "ai");
+        if (model == null || model.isBlank()) revised.putNull("model");
+        else revised.put("model", model);
+        revised.put("promptVersion", revisionPromptVersion);
+        revised.put("createdAt", now.toString());
+        revised.put("reviewedAt", now.toString());
+        validateQuestion(revised, null, "revision_invalid");
+
+        int updated = jdbc.sql("""
+                UPDATE question SET current_version = :nextVersion
+                WHERE id = :id AND status = 'published' AND current_version = :expectedVersion
+                """)
+            .param("nextVersion", nextVersion).param("id", questionId).param("expectedVersion", expectedVersion).update();
+        if (updated == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_version_conflict", "Question was revised concurrently");
+        }
+        jdbc.sql("""
+                INSERT INTO question_version(question_id, version, type, topic_ids_json, content_json, created_at)
+                VALUES (:id, :version, :type, :topicIds, :content, :createdAt)
+                """)
+            .param("id", questionId).param("version", nextVersion).param("type", revised.path("type").asText())
+            .param("topicIds", json(revised.path("topicIds"))).param("content", json(revised)).param("createdAt", now).update();
+        String revisionId = "revision-" + java.util.UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO question_revision(id, question_id, from_version, to_version, user_id,
+                  source_assignment_id, change_reason, model, prompt_version, created_at)
+                VALUES (:id, :questionId, :fromVersion, :toVersion, :userId,
+                  :sourceAssignmentId, :reason, :model, :promptVersion, :createdAt)
+                """)
+            .param("id", revisionId).param("questionId", questionId).param("fromVersion", expectedVersion)
+            .param("toVersion", nextVersion).param("userId", userId).param("sourceAssignmentId", blankNull(sourceAssignmentId))
+            .param("reason", reason.trim()).param("model", blankNull(model)).param("promptVersion", revisionPromptVersion)
+            .param("createdAt", now).update();
+        return new RevisionResponse(revisionId, questionId, expectedVersion, nextVersion, "published",
+            reason.trim(), blankNull(sourceAssignmentId), now);
+    }
+
     public void validateCandidate(JsonNode question, String requiredTopicId) {
+        validateQuestion(question, requiredTopicId, "candidate_invalid");
+    }
+
+    private void validateQuestion(JsonNode question, String requiredTopicId, String errorCode) {
         List<String> missing = new ArrayList<>();
         for (String field : List.of("id", "version", "type", "title", "stem", "options", "correctOptionIds",
             "topicIds", "difficulty", "importance", "explanation", "sources", "createdBy", "promptVersion", "createdAt")) {
             if (!question.hasNonNull(field)) missing.add(field);
         }
         if (!missing.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "candidate_invalid", "Missing fields: " + String.join(", ", missing));
+            throw new ApiException(HttpStatus.BAD_REQUEST, errorCode, "Missing fields: " + String.join(", ", missing));
+        }
+        if (question.path("version").asInt() < 1) {
+            invalid(errorCode, "Question version must be positive");
+        }
+        if (!question.path("title").isTextual() || question.path("title").asText().isBlank()
+            || !question.path("stem").isTextual() || question.path("stem").asText().isBlank()) {
+            invalid(errorCode, "Question title and stem are required");
         }
         String type = question.path("type").asText();
         if (!Set.of("single_choice", "multiple_choice").contains(type)) {
-            invalid("Only single_choice and multiple_choice are supported");
+            invalid(errorCode, "Only single_choice and multiple_choice are supported");
         }
         if (!question.path("options").isArray() || question.path("options").size() != 4) {
-            invalid("Candidate must contain exactly four options");
+            invalid(errorCode, "Question must contain exactly four options");
         }
         Set<String> optionIds = new HashSet<>();
         question.path("options").forEach(option -> {
-            if (!option.path("text").isTextual() || option.path("text").asText().isBlank()) invalid("Option text is required");
+            if (!option.path("text").isTextual() || option.path("text").asText().isBlank()) invalid(errorCode, "Option text is required");
             optionIds.add(option.path("id").asText());
         });
-        if (!optionIds.equals(Set.copyOf(OPTION_IDS))) invalid("Option IDs must be A, B, C and D");
+        if (!optionIds.equals(Set.copyOf(OPTION_IDS))) invalid(errorCode, "Option IDs must be A, B, C and D");
         Set<String> correct = new HashSet<>();
         question.path("correctOptionIds").forEach(node -> correct.add(node.asText()));
         if (!optionIds.containsAll(correct) || (type.equals("single_choice") && correct.size() != 1)
             || (type.equals("multiple_choice") && (correct.size() < 2 || correct.size() > 3))) {
-            invalid("Correct option count does not match the question type");
+            invalid(errorCode, "Correct option count does not match the question type");
         }
-        boolean hasTopic = false;
-        for (JsonNode node : question.path("topicIds")) hasTopic |= requiredTopicId.equals(node.asText());
-        if (!hasTopic) invalid("Candidate must include the requested topic");
-        if (!question.path("sources").isArray() || question.path("sources").isEmpty()) invalid("At least one source is required");
+        if (!question.path("topicIds").isArray() || question.path("topicIds").isEmpty()) {
+            invalid(errorCode, "At least one topic is required");
+        }
+        if (requiredTopicId != null) {
+            boolean hasTopic = false;
+            for (JsonNode node : question.path("topicIds")) hasTopic |= requiredTopicId.equals(node.asText());
+            if (!hasTopic) invalid(errorCode, "Candidate must include the requested topic");
+        }
+        if (!question.path("sources").isArray() || question.path("sources").isEmpty()) invalid(errorCode, "At least one source is required");
         question.path("sources").forEach(source -> {
             if (!source.hasNonNull("url") || !source.hasNonNull("title") || !source.hasNonNull("accessedAt")) {
-                invalid("Each source requires url, title and accessedAt");
+                invalid(errorCode, "Each source requires url, title and accessedAt");
             }
         });
         if (!question.path("explanation").has("optionAnalysis")
             || question.path("explanation").path("optionAnalysis").size() != 4) {
-            invalid("Explanation requires four option analyses");
+            invalid(errorCode, "Explanation requires four option analyses");
         }
+    }
+
+    private QuestionRecord current(String questionId) {
+        return jdbc.sql("""
+                SELECT q.id, q.status, q.session_eligible_id, q.current_version, qv.content_json
+                FROM question q JOIN question_version qv
+                  ON qv.question_id = q.id AND qv.version = q.current_version
+                WHERE q.id = :id
+                """)
+            .param("id", questionId)
+            .query((rs, rowNum) -> new QuestionRecord(rs.getString("id"), rs.getInt("current_version"),
+                rs.getString("status"), rs.getString("session_eligible_id"), readTree(rs.getString("content_json"))))
+            .optional()
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "question_not_found", "Question was not found"));
     }
 
     public TopicContext topicContext(String topicId) {
@@ -187,13 +313,20 @@ public class QuestionService {
         return values;
     }
 
-    private void invalid(String message) {
-        throw new ApiException(HttpStatus.BAD_REQUEST, "candidate_invalid", message);
+    private String blankNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private void invalid(String code, String message) {
+        throw new ApiException(HttpStatus.BAD_REQUEST, code, message);
     }
 
     public record QuestionRecord(String id, int version, String status, String sessionEligibleId, JsonNode content) {}
     public record CandidateResponse(String questionId, int version, String status, String sessionId,
                                     boolean usableInCurrentSession, String assignmentId) {}
+    public record RevisionResponse(String revisionId, String questionId, int previousVersion, int version,
+                                   String status, String reason, String sourceAssignmentId,
+                                   OffsetDateTime revisedAt) {}
     public record TopicContext(String id, String name, int importance, List<String> javaVersions,
                                List<String> keywords, List<String> sourceRefs) {}
 }

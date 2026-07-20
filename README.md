@@ -36,6 +36,7 @@ Codex + MindTrain Plugin         MindTrain Web
 - 持久学习记录：保存 Session、Assignment、Attempt、Interaction、Mistake 和题目级复习状态。
 - 默认抗遗忘调度：每次默认训练 10 道主问题，通常安排 8 道复习题和 2 道新题；积压过高时暂停引入新题。
 - AI 候选题治理：题库不足时由 Codex 生成候选题，Core 校验后仅允许当前 Session 使用，不会自动发布到共享题库。
+- 正式题可审计修订：用户确认题目存在问题后，教练可提交局部修订；Core 创建不可变的新版本，历史作答继续引用旧版本。
 - 幂等与审计：写接口支持 `Idempotency-Key`，答题、交互和审核历史采用追加式保存。
 - 数据与 Skill 分离：Training Core 是权威数据源；Skill 无状态，只通过 MCP 调用应用能力。
 - Plugin 分发：仓库可直接作为 Codex Plugin Marketplace 来源，Plugin 同时提供 Skill、本地桥接 MCP 和首次配置流程。
@@ -295,6 +296,7 @@ Training Core 首期 REST API：
 | `POST /api/v1/sessions/{id}/interactions` | 记录追问、提示和质疑 |
 | `POST /api/v1/sessions/{id}/finish` | 结束会话并生成总结 |
 | `POST /api/v1/candidates` | 校验并保存当前会话候选题 |
+| `POST /api/v1/questions/{id}/revisions` | 创建并发布正式题的不可变新版本 |
 | `GET /api/v1/reports/overview` | 获取学习概览 |
 | `GET /api/v1/schedulers/backlog` | 获取到期积压 |
 | `POST /api/v1/imports/prototype` | 创建原型导入任务 |
@@ -310,6 +312,7 @@ get_next_assignment
 submit_choice_answer
 record_interaction
 create_candidate_question
+revise_published_question
 finish_training_session
 get_learning_report
 get_scheduler_backlog

@@ -12,6 +12,7 @@
 - `submit_choice_answer`: accepts `assignmentId` and the user's unmodified `answer` text.
 - `record_interaction`: records a question or follow-up without consuming the assignment.
 - `create_candidate_question`: saves a complete candidate for the owning session only.
+- `revise_published_question`: creates and publishes an immutable next version after explicit user approval. Send `questionId`, `expectedVersion`, changed fields, `reason`, and the source Assignment when available.
 - `finish_training_session`: finishes a session.
 - `get_learning_report`: returns learning and content overview metrics.
 - `get_scheduler_backlog`: returns due backlog and new-item allowance.

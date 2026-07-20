@@ -76,6 +76,33 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200': {description: Session-scoped candidate accepted}
+  /api/v1/questions/{questionId}/revisions:
+    post:
+      operationId: revisePublishedQuestion
+      description: 基于当前正式题创建不可变的新版本；旧 Assignment 和 Attempt 继续引用原版本。
+      parameters:
+        - {name: questionId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, changes, reason]
+              properties:
+                expectedVersion: {type: integer, minimum: 1}
+                changes:
+                  type: object
+                  description: 只提交需要变更的题目字段；不允许修改 id、version、status 和审计字段。
+                reason: {type: string, minLength: 1}
+                sourceAssignmentId: {type: string}
+                model: {type: string}
+                promptVersion: {type: string}
+      responses:
+        '200': {description: 新版本已发布并写入修订审计记录}
+        '400': {description: 修订字段、来源 Assignment 或题目结构无效}
+        '409': {description: 题目不是正式题，或 expectedVersion 已过期}
   /api/v1/reports/overview:
     get:
       operationId: getLearningReport

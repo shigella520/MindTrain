@@ -34,5 +34,10 @@ class PublicDashboardSecurityIntegrationTest {
             .andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/imports/missing"))
             .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/questions/java.concurrency.volatile.001/revisions")
+                .header("Idempotency-Key", "anonymous-revision")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expectedVersion\":1,\"changes\":{\"stem\":\"x\"},\"reason\":\"x\"}"))
+            .andExpect(status().isUnauthorized());
     }
 }

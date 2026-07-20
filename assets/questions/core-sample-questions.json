@@ -42,16 +42,16 @@
   {
     "schemaVersion": 1,
     "id": "java.concurrency.volatile.001",
-    "version": 1,
+    "version": 2,
     "status": "published",
     "type": "multiple_choice",
-    "title": "volatile 语义",
-    "stem": "关于 Java volatile 变量，下列哪些说法正确？",
+    "title": "volatile 内存语义",
+    "stem": "关于 Java 中 volatile 关键字的内存语义，下列说法正确的是哪些？",
     "options": [
-      {"id":"A","text":"对 volatile 变量的写 happens-before 后续对该变量的读"},
-      {"id":"B","text":"volatile 可以保证 i++ 操作的原子性"},
-      {"id":"C","text":"volatile 可以用于建立线程间的可见性"},
-      {"id":"D","text":"volatile 等价于对所有访问自动加 synchronized"}
+      {"id":"A","text":"对某个 volatile 字段的写入，happens-before 随后对该字段的读取。"},
+      {"id":"B","text":"使用 volatile 修饰变量，可以使 i++ 这样的“读取—计算—写回”复合操作具备原子性。"},
+      {"id":"C","text":"一个线程写入 volatile 变量后，随后读取该变量的线程能够看到该写入及其之前的相关写入。"},
+      {"id":"D","text":"volatile 会为该变量的每次访问提供与 synchronized 监视器锁相同的互斥效果。"}
     ],
     "correctOptionIds": ["A", "C"],
     "topicIds": ["java.concurrency.volatile", "java.concurrency.jmm"],
@@ -59,25 +59,25 @@
     "importance": 5,
     "javaVersions": ["8-21"],
     "explanation": {
-      "conclusion": "volatile 提供可见性和特定的有序性/happens-before 保证，但不会把复合读改写操作变成原子操作。",
+      "conclusion": "volatile 提供线程间可见性和特定的 happens-before 有序性保证，但不会把“读取—修改—写回”复合操作变成原子操作。",
       "optionAnalysis": [
-        {"optionId":"A","correct":true,"analysis":"JMM 明确规定：对 volatile 字段的写 happens-before 每一个后续对该字段的读。"},
-        {"optionId":"B","correct":false,"analysis":"i++ 包含读取、计算和写回，多线程下仍可能丢失更新。"},
-        {"optionId":"C","correct":true,"analysis":"写入对随后读取该 volatile 变量的线程可见，并建立相应内存语义。"},
-        {"optionId":"D","correct":false,"analysis":"volatile 不提供互斥，也不等价于监视器锁。"}
+        {"optionId":"A","correct":true,"analysis":"JMM 明确规定：对 volatile 字段的写入 happens-before 每一个随后对该字段的读取。"},
+        {"optionId":"B","correct":false,"analysis":"i++ 包含读取、计算和写回；volatile 不会把这三个步骤合并成不可分割的原子操作。"},
+        {"optionId":"C","correct":true,"analysis":"volatile 写与随后读取之间的 happens-before 关系，使写入值以及写入前的相关内存效果对读取线程可见。"},
+        {"optionId":"D","correct":false,"analysis":"volatile 不提供互斥，多个线程仍可同时执行相关代码，因此不等价于 synchronized 监视器锁。"}
       ],
-      "mechanism": ["volatile 读写是同步动作并参与 happens-before 关系。", "编译器和运行时必须遵守相应重排序限制。"],
+      "mechanism": ["volatile 读写属于同步动作，并通过同步顺序参与 happens-before 关系。", "编译器和运行时必须遵守相应的内存可见性与重排序限制。"],
       "pitfalls": ["把可见性误解为复合操作原子性。", "认为 volatile 能完全替代锁。"],
       "versionNotes": ["Java 5 之后的 JMM 明确了当前 volatile 语义，Java 8–21 继续遵守。"],
       "relatedTopicIds": ["java.concurrency.jmm", "java.concurrency.atomics", "java.concurrency.synchronized"]
     },
-    "sources": [{"sourceId":"src-java-language","url":"https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html","title":"JLS Chapter 17: Threads and Locks","accessedAt":"2026-07-17"}],
+    "sources": [{"sourceId":"src-java-language","url":"https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html","title":"JLS Chapter 17: Threads and Locks","accessedAt":"2026-07-20"}],
     "parentQuestionId": null,
     "createdBy": "human_ai",
     "model": null,
-    "promptVersion": "generate-choice-question-v1",
-    "createdAt": "2026-07-17T00:00:00+08:00",
-    "reviewedAt": "2026-07-17T00:00:00+08:00"
+    "promptVersion": "question-revision-v1",
+    "createdAt": "2026-07-20T18:00:00+08:00",
+    "reviewedAt": "2026-07-20T18:00:00+08:00"
   },
   {
     "schemaVersion": 1,
