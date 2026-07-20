@@ -35,7 +35,19 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200':
-          description: Safe assignment or generation request
+          description: Safe assignment or generation request with a Core-selected question type, difficulty, and knowledge point
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [assignment, generation_required, no_available_items, session_complete]
+                  generationProfile:
+                    oneOf:
+                      - $ref: '#/components/schemas/GenerationProfile'
+                      - type: 'null'
   /api/v1/assignments/{assignmentId}/attempts:
     post:
       operationId: submitChoiceAnswer
@@ -131,6 +143,28 @@ paths:
       responses:
         '200': {description: Import report}
 components:
+  schemas:
+    GenerationProfile:
+      type: object
+      required: [questionType, difficulty, knowledgePoint]
+      properties:
+        questionType:
+          type: string
+          enum: [single_choice, multiple_choice]
+        difficulty:
+          type: integer
+          minimum: 1
+          maximum: 5
+        knowledgePoint:
+          type: object
+          required: [topicId, name, importance, javaVersions, keywords, sourceRefs]
+          properties:
+            topicId: {type: string}
+            name: {type: string}
+            importance: {type: integer, minimum: 1, maximum: 5}
+            javaVersions: {type: array, items: {type: string}}
+            keywords: {type: array, items: {type: string}}
+            sourceRefs: {type: array, items: {type: string}}
   securitySchemes:
     bearerAuth:
       type: http

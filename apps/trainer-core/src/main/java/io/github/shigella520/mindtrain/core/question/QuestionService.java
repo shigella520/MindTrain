@@ -63,7 +63,6 @@ public class QuestionService {
     @Transactional
     public CandidateResponse createCandidate(String sessionId, String topicId, JsonNode question,
                                              String attemptType, String parentAttemptId) {
-        validateCandidate(question, topicId);
         String userId = UserContext.requireUserId();
         boolean sessionExists = jdbc.sql("""
                 SELECT COUNT(*) FROM training_session
@@ -72,6 +71,11 @@ public class QuestionService {
             .param("id", sessionId).param("userId", userId).query(Integer.class).single() > 0;
         if (!sessionExists) {
             throw new ApiException(HttpStatus.CONFLICT, "session_not_active", "Candidate requires an active owning session");
+        }
+        if ("follow_up".equals(attemptType)) {
+            validateCandidate(question, topicId);
+        } else {
+            validateCandidate(question, topicId, generationProfile(userId, sessionId, topicContext(topicId)));
         }
         String id = question.path("id").asText();
         int version = question.path("version").asInt(1);
@@ -211,6 +215,19 @@ public class QuestionService {
         validateQuestion(question, requiredTopicId, "candidate_invalid");
     }
 
+    public void validateCandidate(JsonNode question, String requiredTopicId, GenerationProfile profile) {
+        validateQuestion(question, requiredTopicId, "candidate_invalid");
+        if (!profile.questionType().equals(question.path("type").asText())) {
+            invalid("candidate_profile_mismatch", "Candidate type must match generationProfile.questionType");
+        }
+        if (profile.difficulty() != question.path("difficulty").asInt()) {
+            invalid("candidate_profile_mismatch", "Candidate difficulty must match generationProfile.difficulty");
+        }
+        if (profile.knowledgePoint().importance() != question.path("importance").asInt()) {
+            invalid("candidate_profile_mismatch", "Candidate importance must match generationProfile.knowledgePoint.importance");
+        }
+    }
+
     private void validateQuestion(JsonNode question, String requiredTopicId, String errorCode) {
         List<String> missing = new ArrayList<>();
         for (String field : List.of("id", "version", "type", "title", "stem", "options", "correctOptionIds",
@@ -291,6 +308,34 @@ public class QuestionService {
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "topic_not_found", "Topic was not found"));
     }
 
+    public GenerationProfile generationProfile(String userId, String sessionId, TopicContext topic) {
+        Map<String, Integer> typeCounts = jdbc.sql("""
+                SELECT qv.type, COUNT(*) AS count
+                FROM assignment a
+                JOIN question_version qv
+                  ON qv.question_id = a.question_id AND qv.version = a.question_version
+                WHERE a.session_id = :sessionId AND a.attempt_type = 'main'
+                GROUP BY qv.type
+                """)
+            .param("sessionId", sessionId)
+            .query((rs, rowNum) -> Map.entry(rs.getString("type"), rs.getInt("count")))
+            .list().stream().collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        int singleCount = typeCounts.getOrDefault("single_choice", 0);
+        int multipleCount = typeCounts.getOrDefault("multiple_choice", 0);
+        String questionType = singleCount <= multipleCount ? "single_choice" : "multiple_choice";
+
+        int mastery = jdbc.sql("""
+                SELECT mastery_score FROM topic_mastery
+                WHERE user_id = :userId AND topic_id = :topicId
+                """)
+            .param("userId", userId).param("topicId", topic.id())
+            .query(Integer.class).optional().orElse(50);
+        int difficulty = mastery < 40 ? 2 : mastery < 75 ? 3 : 4;
+        KnowledgePoint knowledgePoint = new KnowledgePoint(topic.id(), topic.name(), topic.importance(),
+            topic.javaVersions(), topic.keywords(), topic.sourceRefs());
+        return new GenerationProfile(questionType, difficulty, knowledgePoint);
+    }
+
     public String json(JsonNode node) {
         try {
             return objectMapper.writeValueAsString(node);
@@ -329,4 +374,7 @@ public class QuestionService {
                                    OffsetDateTime revisedAt) {}
     public record TopicContext(String id, String name, int importance, List<String> javaVersions,
                                List<String> keywords, List<String> sourceRefs) {}
+    public record GenerationProfile(String questionType, int difficulty, KnowledgePoint knowledgePoint) {}
+    public record KnowledgePoint(String topicId, String name, int importance, List<String> javaVersions,
+                                 List<String> keywords, List<String> sourceRefs) {}
 }
