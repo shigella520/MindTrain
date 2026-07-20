@@ -3,7 +3,7 @@ PYTHON := .skill-venv/bin/python
 PIP := .skill-venv/bin/pip
 VENV_STAMP := .skill-venv/.installed
 
-.PHONY: bootstrap check
+.PHONY: bootstrap check check-platform package-platform
 
 bootstrap: $(VENV_STAMP)
 
@@ -17,3 +17,10 @@ check: $(VENV_STAMP)
 	$(PYTHON) skill/java-interview-coach/scripts/validate-assets.py .
 	$(PYTHON) skill/java-interview-coach/scripts/detect-duplicates.py assets
 	$(PYTHON) scripts/validate-skill.py skill/java-interview-coach
+	$(PYTHON) scripts/validate-skill.py skills/knowledge-trainer
+
+check-platform:
+	mvn test
+
+package-platform:
+	mvn -DskipTests package

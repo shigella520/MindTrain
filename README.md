@@ -71,7 +71,15 @@ MindTrain/
 
 ## 当前状态
 
-仓库正从 `java-interview-coach` Codex Skill 原型转型为 MindTrain 平台。
+仓库已经包含第一版 Codex 可用 MVP：
+
+- `apps/trainer-core`：Spring Boot + PostgreSQL 权威数据与训练 API。
+- `apps/trainer-mcp`：监听 `127.0.0.1:8787/mcp` 的 Streamable HTTP MCP Gateway。
+- `skills/knowledge-trainer`：无状态、只调用 MCP 的领域无关 AI 教练 Skill。
+- `tools/prototype-migration`：默认 dry-run 的原型导入和数量对账工具。
+- `deploy/core-only`：Core、MCP、PostgreSQL 的本地 Docker Compose。
+
+Java Interview Coach 文件原型仍保留，用于迁移验证和兼容已有学习数据。
 
 当前可运行原型仍位于：
 
@@ -107,15 +115,88 @@ make check
 
 在 Codex 中可以继续使用 `$java-interview-coach` 完成 Java 面试训练。该 Skill 后续会迁移为调用 Trainer MCP 的领域适配层。
 
+## 启动 Codex MVP
+
+复制部署环境变量并设置随机令牌：
+
+```bash
+cd deploy/core-only
+cp .env.example .env
+# 修改 .env 中的数据库密码和 MINDTRAIN_BOOTSTRAP_TOKEN
+docker compose up -d --build
+```
+
+健康检查：
+
+```bash
+curl http://127.0.0.1:8080/actuator/health
+curl http://127.0.0.1:8787/actuator/health
+```
+
+把 `deploy/core-only/codex-config.toml.example` 中的 MCP 配置合并到 Codex 配置：
+
+```toml
+[mcp_servers.mindtrain]
+url = "http://127.0.0.1:8787/mcp"
+```
+
+然后通过 `$knowledge-trainer` 开始训练。正式答案统一使用中性提示“请回复选项字母，可用逗号分隔”，普通提问和追问会作为 Interaction 保存，不会消耗当前题目。
+
+## 导入原型数据
+
+默认执行 dry-run，只导入共享分类和正式题：
+
+```bash
+python3 tools/prototype-migration/import_prototype.py \
+  --token "$MINDTRAIN_BOOTSTRAP_TOKEN"
+```
+
+确认报告后使用 `--apply` 持久化。私人候选题和学习历史必须显式选择：
+
+```bash
+python3 tools/prototype-migration/import_prototype.py \
+  --token "$MINDTRAIN_BOOTSTRAP_TOKEN" \
+  --include-private-candidates \
+  --include-learning-data \
+  --apply
+```
+
+导入工具只读取原型文件，不修改 JSON/JSONL。
+
+## 平台验证
+
+生产目标为 Java 21：
+
+```bash
+mvn test
+```
+
+当前原型检查仍使用：
+
+```bash
+make check
+```
+
+Core REST 契约见 `contracts/openapi/trainer-core.yaml`。Web 视觉与 LinkPeek 设计语言的复用说明见 `doc/Web设计.md`。
+
+## Docker 镜像发布
+
+GitHub Actions 发布两个 GHCR 镜像：
+
+- `ghcr.io/shigella520/mindtrain-core`
+- `ghcr.io/shigella520/mindtrain-mcp`
+
+向 `main` 推送时，在全部 Java、原型和 Skill 检查通过后自动发布 `latest` 与提交 SHA 标签。Pull Request 只执行验证和镜像试构建，不推送镜像。
+
+`dev` 镜像通过 GitHub Actions 的 `Publish Dev Images` 手动运行，运行时必须选择 `dev` 分支；成功后发布 `dev` 与提交 SHA 标签。
+
 ## 演进路线
 
-1. 建立 `apps/trainer-core`、`contracts`、`database` 和 Core-only 部署骨架。
-2. 实现知识资产、训练会话和 Attempt API。
-3. 迁移原型文件数据并完成数量对账。
-4. 建立 Scheduler SPI、默认加权调度和容量控制。
-5. 建立 Trainer MCP 与领域无关 Knowledge Trainer Skill。
-6. 验证现成 Anki MCP，再实现 MindTrain Anki Bridge。
-7. 清理生产文件数据，提供 Web、Knowledge Pack 和完整部署指引。
+1. 完善 Codex MVP 的真实 PostgreSQL 部署和用户试用反馈。
+2. 扩充 Java Knowledge Pack，并完成私人历史迁移演练。
+3. 实现 Vue 3 混合 Dashboard 和内容管理页面。
+4. 验证现成 Anki MCP，再实现 MindTrain Anki Bridge。
+5. 清理生产文件数据并完善 Knowledge Pack 导入导出。
 
 ## License
 

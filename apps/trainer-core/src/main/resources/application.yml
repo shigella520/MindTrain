@@ -1,0 +1,30 @@
+server:
+  port: ${MINDTRAIN_CORE_PORT:8080}
+
+spring:
+  application:
+    name: trainer-core
+  datasource:
+    url: ${MINDTRAIN_DATABASE_URL:jdbc:postgresql://localhost:5432/mindtrain}
+    username: ${MINDTRAIN_DATABASE_USERNAME:mindtrain}
+    password: ${MINDTRAIN_DATABASE_PASSWORD:mindtrain}
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+mindtrain:
+  security:
+    enabled: ${MINDTRAIN_SECURITY_ENABLED:true}
+    bootstrap-user-id: ${MINDTRAIN_BOOTSTRAP_USER_ID:local-admin}
+    bootstrap-display-name: ${MINDTRAIN_BOOTSTRAP_DISPLAY_NAME:Local Admin}
+    bootstrap-token: ${MINDTRAIN_BOOTSTRAP_TOKEN:change-me}
+  scheduler:
+    review-budget: ${MINDTRAIN_REVIEW_BUDGET:8}
+    new-budget: ${MINDTRAIN_NEW_BUDGET:2}
+    backlog-pause-threshold: ${MINDTRAIN_BACKLOG_PAUSE_THRESHOLD:20}
+    overdue-pause-days: ${MINDTRAIN_OVERDUE_PAUSE_DAYS:3}

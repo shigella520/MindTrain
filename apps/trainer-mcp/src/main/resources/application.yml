@@ -1,0 +1,18 @@
+server:
+  address: ${MINDTRAIN_MCP_BIND_ADDRESS:127.0.0.1}
+  port: ${MINDTRAIN_MCP_PORT:8787}
+
+spring:
+  application:
+    name: trainer-mcp
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+mindtrain:
+  core:
+    base-url: ${MINDTRAIN_CORE_URL:http://127.0.0.1:8080}
+    token: ${MINDTRAIN_CORE_TOKEN:change-me}

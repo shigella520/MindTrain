@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:${random.uuid};MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+  flyway:
+    enabled: true
+
+mindtrain:
+  security:
+    enabled: false
+    bootstrap-user-id: test-user
+    bootstrap-display-name: Test User
+    bootstrap-token: test-token
+  scheduler:
+    review-budget: 8
+    new-budget: 2
+    backlog-pause-threshold: 20
+    overdue-pause-days: 3

@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mindtrain}
+      POSTGRES_USER: ${POSTGRES_USER:-mindtrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mindtrain}
+    volumes:
+      - ../../var/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  trainer-core:
+    build:
+      context: ../..
+      dockerfile: apps/trainer-core/Dockerfile
+    environment:
+      MINDTRAIN_DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mindtrain}
+      MINDTRAIN_DATABASE_USERNAME: ${POSTGRES_USER:-mindtrain}
+      MINDTRAIN_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-mindtrain}
+      MINDTRAIN_BOOTSTRAP_USER_ID: ${MINDTRAIN_BOOTSTRAP_USER_ID:-local-admin}
+      MINDTRAIN_BOOTSTRAP_DISPLAY_NAME: ${MINDTRAIN_BOOTSTRAP_DISPLAY_NAME:-Local Admin}
+      MINDTRAIN_BOOTSTRAP_TOKEN: ${MINDTRAIN_BOOTSTRAP_TOKEN:?set MINDTRAIN_BOOTSTRAP_TOKEN in .env}
+    ports:
+      - "127.0.0.1:${MINDTRAIN_CORE_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  trainer-mcp:
+    build:
+      context: ../..
+      dockerfile: apps/trainer-mcp/Dockerfile
+    environment:
+      MINDTRAIN_MCP_BIND_ADDRESS: 0.0.0.0
+      MINDTRAIN_CORE_URL: http://trainer-core:8080
+      MINDTRAIN_CORE_TOKEN: ${MINDTRAIN_BOOTSTRAP_TOKEN:?set MINDTRAIN_BOOTSTRAP_TOKEN in .env}
+    ports:
+      - "127.0.0.1:${MINDTRAIN_MCP_PORT:-8787}:8787"
+    depends_on:
+      trainer-core:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
