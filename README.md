@@ -1,5 +1,7 @@
 # MindTrain
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 MindTrain 是一个 AI 驱动、调度算法可插拔、领域数据可独立管理的知识训练平台。
 
 平台目标包括：
@@ -114,3 +116,7 @@ make check
 5. 建立 Trainer MCP 与领域无关 Knowledge Trainer Skill。
 6. 验证现成 Anki MCP，再实现 MindTrain Anki Bridge。
 7. 清理生产文件数据，提供 Web、Knowledge Pack 和完整部署指引。
+
+## License
+
+MindTrain 基于 [MIT License](LICENSE) 开源。
