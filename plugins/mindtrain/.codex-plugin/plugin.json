@@ -1,6 +1,6 @@
 {
   "name": "mindtrain",
-  "version": "0.1.0+codex.20260720104238",
+  "version": "0.1.0+codex.20260720135037",
   "description": "Conversational knowledge training backed by a private MindTrain instance.",
   "author": {
     "name": "shigella520",
@@ -30,7 +30,7 @@
     "websiteURL": "https://github.com/shigella520/MindTrain",
     "defaultPrompt": [
       "Use $mindtrain to configure my private MindTrain instance.",
-      "Use $mindtrain to start a 10-question training session.",
+      "Use $mindtrain to start today's training session.",
       "Use $mindtrain to review my learning backlog."
     ],
     "brandColor": "#0A84FF",

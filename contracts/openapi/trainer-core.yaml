@@ -18,7 +18,11 @@ paths:
             schema:
               type: object
               properties:
-                questionCount: {type: integer, minimum: 1, maximum: 100, default: 10}
+                questionCount:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  description: Defaults to the configured review budget plus new-item budget.
                 domainId: {type: string, default: java-backend}
                 schedulerProvider:
                   type: string
@@ -121,7 +125,7 @@ paths:
       description: 默认要求 Bearer Token；仅当实例显式开启公开看板时允许匿名读取聚合统计。
       responses:
         '200':
-          description: 学习与内容概览；调度方式同时返回稳定 ID 和中文展示名。
+          description: 学习与内容概览；包含按 reportingTimeZone 统计的今日主问题数、每日目标和调度配额。
   /api/v1/schedulers/backlog:
     get:
       operationId: getSchedulerBacklog

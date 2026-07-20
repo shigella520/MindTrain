@@ -10,6 +10,11 @@ export interface Overview {
   attempts: number
   correct: number
   accuracy: number
+  todayCompletedMainQuestions: number
+  dailyTarget: number
+  reviewBudget: number
+  newBudget: number
+  reportingTimeZone: string
   completedSessions: number
   dueCount: number
   oldestDueAt?: string

@@ -1,6 +1,7 @@
 package io.github.shigella520.mindtrain.core;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,6 +22,24 @@ import org.springframework.test.web.servlet.MockMvc;
 class SchedulerBacklogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcClient jdbc;
+
+    @Test
+    void exposesConfiguredDailyPlanAndUsesItAsTheDefaultSessionTarget() throws Exception {
+        mvc.perform(post("/api/v1/sessions")
+                .header("Idempotency-Key", "default-daily-target")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.targetCount").value(10));
+
+        mvc.perform(get("/api/v1/reports/overview"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.todayCompletedMainQuestions").value(0))
+            .andExpect(jsonPath("$.dailyTarget").value(10))
+            .andExpect(jsonPath("$.reviewBudget").value(8))
+            .andExpect(jsonPath("$.newBudget").value(2))
+            .andExpect(jsonPath("$.reportingTimeZone").value("Asia/Shanghai"));
+    }
 
     @Test
     void pausesNewItemsWhenBacklogExceedsThresholdOrIsSeverelyOverdue() throws Exception {

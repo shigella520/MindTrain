@@ -139,6 +139,11 @@ class TrainingFlowIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.attempts").value(2))
             .andExpect(jsonPath("$.accuracy").value(1.0))
+            .andExpect(jsonPath("$.todayCompletedMainQuestions").value(1))
+            .andExpect(jsonPath("$.dailyTarget").value(10))
+            .andExpect(jsonPath("$.reviewBudget").value(8))
+            .andExpect(jsonPath("$.newBudget").value(2))
+            .andExpect(jsonPath("$.reportingTimeZone").value("Asia/Shanghai"))
             .andExpect(jsonPath("$.schedulerProvider").value("weighted"))
             .andExpect(jsonPath("$.schedulerProviderName").value("加权调度"));
 

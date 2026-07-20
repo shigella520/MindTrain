@@ -11,7 +11,9 @@ import io.github.shigella520.mindtrain.core.identity.UserContext;
 import io.github.shigella520.mindtrain.core.question.QuestionService;
 import io.github.shigella520.mindtrain.core.question.QuestionService.QuestionRecord;
 import io.github.shigella520.mindtrain.core.scheduling.SchedulerProvider;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,7 +56,9 @@ public class TrainingService {
     public SessionResponse createSession(CreateSessionRequest request) {
         String userId = UserContext.requireUserId();
         String id = "session-" + UUID.randomUUID();
-        int target = request.questionCount() == null ? 10 : request.questionCount();
+        int target = request.questionCount() == null
+            ? properties.scheduler().reviewBudget() + properties.scheduler().newBudget()
+            : request.questionCount();
         if (target < 1 || target > 100) throw new IllegalArgumentException("questionCount must be between 1 and 100");
         String domain = blankDefault(request.domainId(), "java-backend");
         String provider = blankDefault(request.schedulerProvider(), scheduler.id());
@@ -209,6 +213,10 @@ public class TrainingService {
     public JsonNode overview() {
         String userId = UserContext.requireUserId();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        ZoneId reportingZone = ZoneId.of(properties.reporting().timeZone());
+        LocalDate reportingDate = now.atZoneSameInstant(reportingZone).toLocalDate();
+        OffsetDateTime dayStart = reportingDate.atStartOfDay(reportingZone).toOffsetDateTime();
+        OffsetDateTime dayEnd = reportingDate.plusDays(1).atStartOfDay(reportingZone).toOffsetDateTime();
         SchedulerProvider.Backlog backlog = scheduler.backlog(userId, now);
         Map<String, Object> stats = jdbc.sql("""
                 SELECT COUNT(*) AS attempts,
@@ -217,6 +225,17 @@ public class TrainingService {
                 """).param("userId", userId).query().singleRow();
         int attempts = ((Number) stats.get("attempts")).intValue();
         int correct = ((Number) stats.get("correct")).intValue();
+        int todayCompletedMainQuestions = jdbc.sql("""
+                SELECT COUNT(*)
+                FROM attempt at
+                JOIN assignment a ON a.id = at.assignment_id
+                WHERE at.user_id = :userId AND a.attempt_type = 'main'
+                  AND at.answered_at >= :dayStart AND at.answered_at < :dayEnd
+                """)
+            .param("userId", userId).param("dayStart", dayStart).param("dayEnd", dayEnd)
+            .query(Integer.class).single();
+        int reviewBudget = properties.scheduler().reviewBudget();
+        int newBudget = properties.scheduler().newBudget();
         int sessions = jdbc.sql("SELECT COUNT(*) FROM training_session WHERE user_id = :userId AND status = 'completed'")
             .param("userId", userId).query(Integer.class).single();
         int published = jdbc.sql("SELECT COUNT(*) FROM question WHERE status = 'published'").query(Integer.class).single();
@@ -230,6 +249,11 @@ public class TrainingService {
         response.put("attempts", attempts);
         response.put("correct", correct);
         response.put("accuracy", attempts == 0 ? 0.0 : (double) correct / attempts);
+        response.put("todayCompletedMainQuestions", todayCompletedMainQuestions);
+        response.put("dailyTarget", reviewBudget + newBudget);
+        response.put("reviewBudget", reviewBudget);
+        response.put("newBudget", newBudget);
+        response.put("reportingTimeZone", reportingZone.getId());
         response.put("completedSessions", sessions);
         response.put("dueCount", backlog.dueCount());
         if (backlog.oldestDueAt() != null) response.put("oldestDueAt", backlog.oldestDueAt().toString());
