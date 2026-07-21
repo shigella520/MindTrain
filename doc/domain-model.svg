@@ -1,0 +1,441 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1320" viewBox="0 0 1800 1320" role="img" aria-labelledby="title desc">
+  <title id="title">MindTrain 领域模型与领域流转</title>
+  <desc id="desc">展示 MindTrain 当前已落库的身份配置、知识目录、题库、训练、学习状态与调度领域实体、基数关系，以及目录确认、训练判分和 AI 临时题状态流转。虚线表示逻辑关联或规划扩展。</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7f9fc"/>
+      <stop offset="0.52" stop-color="#f4f8ff"/>
+      <stop offset="1" stop-color="#fff8f1"/>
+    </linearGradient>
+    <linearGradient id="titleBand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#183b72"/>
+      <stop offset="0.58" stop-color="#315ea8"/>
+      <stop offset="1" stop-color="#5a69b8"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#7992b4" stroke-opacity=".055"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#34506f" flood-opacity=".12"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" viewBox="0 0 10 10">
+      <path d="M0 0L10 5L0 10Z" fill="#68809d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" viewBox="0 0 10 10">
+      <path d="M0 0L10 5L0 10Z" fill="#3169b1"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" viewBox="0 0 10 10">
+      <path d="M0 0L10 5L0 10Z" fill="#c8782c"/>
+    </marker>
+    <style>
+      text { font-family: "Avenir Next", Inter, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .section { fill:#ffffff; fill-opacity:.72; stroke:#dce5ef; stroke-width:1.5; }
+      .section-title { fill:#24364b; font-size:17px; font-weight:700; letter-spacing:.6px; }
+      .section-subtitle { fill:#708196; font-size:12px; }
+      .entity { fill:#ffffff; stroke:#cfdbe8; stroke-width:1.3; filter:url(#shadow); }
+      .entity-head-blue { fill:#eaf3ff; }
+      .entity-head-purple { fill:#f0edff; }
+      .entity-head-green { fill:#eaf8f1; }
+      .entity-head-orange { fill:#fff2e4; }
+      .entity-head-gray { fill:#eef2f6; }
+      .entity-name { fill:#17283b; font-size:14px; font-weight:700; }
+      .entity-cn { fill:#6f8092; font-size:11px; }
+      .field { fill:#40566e; font-size:11.5px; }
+      .pk { fill:#245c9f; font-size:10px; font-weight:700; }
+      .status { fill:#8b5c1f; font-size:10.5px; font-weight:700; }
+      .rel { fill:none; stroke:#68809d; stroke-width:1.7; marker-end:url(#arrow); }
+      .logical { fill:none; stroke:#8a73bd; stroke-width:1.7; stroke-dasharray:7 6; marker-end:url(#arrow); }
+      .flow { fill:none; stroke:#3169b1; stroke-width:2.7; marker-end:url(#arrowBlue); }
+      .flow-orange { fill:none; stroke:#c8782c; stroke-width:2.7; marker-end:url(#arrowOrange); }
+      .cardinality { fill:#516980; font-size:10.5px; font-weight:700; paint-order:stroke; stroke:#f7f9fc; stroke-width:4px; }
+      .relation-label { fill:#657990; font-size:10.5px; paint-order:stroke; stroke:#f7f9fc; stroke-width:4px; }
+      .flow-box { fill:#ffffff; stroke:#cddbea; stroke-width:1.3; }
+      .flow-title { fill:#1f3854; font-size:13px; font-weight:700; }
+      .flow-note { fill:#61758c; font-size:10.5px; }
+      .pill { fill:#edf3fa; stroke:#d5e0ec; }
+      .pill-text { fill:#48627e; font-size:10.5px; font-weight:700; }
+      .planned { fill:#fafbfc; stroke:#9aa9b9; stroke-width:1.4; stroke-dasharray:7 5; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1320" rx="30" fill="url(#background)"/>
+  <rect width="1800" height="1320" rx="30" fill="url(#grid)"/>
+  <rect x="0" y="0" width="1800" height="114" rx="30" fill="url(#titleBand)"/>
+  <rect x="0" y="82" width="1800" height="32" fill="url(#titleBand)"/>
+  <text x="48" y="50" fill="#ffffff" font-size="27" font-weight="700">MindTrain Domain Model</text>
+  <text x="48" y="82" fill="#ffffff" fill-opacity=".78" font-size="15">当前落库实体、聚合边界与关键业务流转 · Training Core 是唯一权威数据源</text>
+  <g transform="translate(1260 30)">
+    <rect width="492" height="54" rx="17" fill="#ffffff" fill-opacity=".13" stroke="#ffffff" stroke-opacity=".25"/>
+    <rect x="18" y="16" width="22" height="22" rx="6" fill="#fff"/>
+    <text x="50" y="31" fill="#fff" font-size="11.5">实线：数据库 FK / 直接持久化关系</text>
+    <line x1="268" y1="27" x2="303" y2="27" stroke="#fff" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="313" y="31" fill="#fff" font-size="11.5">虚线：JSON 逻辑关联 / 规划扩展</text>
+  </g>
+
+  <!-- Identity and configuration -->
+  <rect class="section" x="34" y="138" width="300" height="676" rx="24"/>
+  <text class="section-title" x="56" y="170">Identity &amp; Configuration</text>
+  <text class="section-subtitle" x="56" y="190">用户归属、全局训练策略与请求一致性</text>
+
+  <g transform="translate(56 216)">
+    <rect class="entity" width="256" height="130" rx="15"/>
+    <rect class="entity-head-blue" width="256" height="42" rx="15"/>
+    <rect class="entity-head-blue" y="28" width="256" height="14"/>
+    <text class="entity-name" x="14" y="20">AppUser</text><text class="entity-cn" x="14" y="35">用户聚合根</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">displayName · tokenHash</text>
+    <text class="field" x="14" y="102">createdAt</text>
+    <text class="status" x="14" y="121">拥有个人目录、训练与学习状态</text>
+  </g>
+
+  <g transform="translate(56 378)">
+    <rect class="entity" width="256" height="154" rx="15"/>
+    <rect class="entity-head-gray" width="256" height="42" rx="15"/>
+    <rect class="entity-head-gray" y="28" width="256" height="14"/>
+    <text class="entity-name" x="14" y="20">ApplicationTrainingSettings</text><text class="entity-cn" x="14" y="35">应用级训练策略</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id = default</text>
+    <text class="field" x="14" y="82">questionCount · newBudget</text>
+    <text class="field" x="14" y="102">backlogPauseThreshold</text>
+    <text class="field" x="14" y="122">overduePauseDays · candidateTTL</text>
+    <text class="field" x="14" y="142">reportingTimeZone</text>
+  </g>
+
+  <g transform="translate(56 564)">
+    <rect class="entity" width="256" height="114" rx="15"/>
+    <rect class="entity-head-gray" width="256" height="42" rx="15"/>
+    <rect class="entity-head-gray" y="28" width="256" height="14"/>
+    <text class="entity-name" x="14" y="20">IdempotencyRecord</text><text class="entity-cn" x="14" y="35">写请求去重</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">userId + key + operation</text>
+    <text class="field" x="14" y="82">responseJson · createdAt</text>
+    <text class="entity-cn" x="14" y="103">跨 API 重试保持同一业务结果</text>
+  </g>
+
+  <g transform="translate(56 710)">
+    <rect class="planned" width="256" height="78" rx="15"/>
+    <text class="entity-name" x="14" y="24">SchedulerProfile / Binding</text>
+    <text class="entity-cn" x="14" y="44">规划模型：Provider 专属状态隔离</text>
+    <text class="entity-cn" x="14" y="63">当前 Session 仅保存 provider ID</text>
+  </g>
+
+  <!-- Catalog -->
+  <rect class="section" x="358" y="138" width="568" height="676" rx="24"/>
+  <text class="section-title" x="380" y="170">Knowledge Catalog</text>
+  <text class="section-subtitle" x="380" y="190">领域结构、知识点拓扑、来源元数据与一次确认草案</text>
+
+  <g transform="translate(380 216)">
+    <rect class="entity" width="244" height="126" rx="15"/>
+    <rect class="entity-head-green" width="244" height="42" rx="15"/>
+    <rect class="entity-head-green" y="28" width="244" height="14"/>
+    <text class="entity-name" x="14" y="20">KnowledgeDomain</text><text class="entity-cn" x="14" y="35">训练领域聚合根</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">userId + id</text>
+    <text class="field" x="14" y="82">name · originType · sortOrder</text>
+    <text class="field" x="14" y="102">contentJson · timestamps</text>
+  </g>
+
+  <g transform="translate(660 216)">
+    <rect class="entity" width="244" height="150" rx="15"/>
+    <rect class="entity-head-green" width="244" height="42" rx="15"/>
+    <rect class="entity-head-green" y="28" width="244" height="14"/>
+    <text class="entity-name" x="14" y="20">Topic</text><text class="entity-cn" x="14" y="35">知识点树节点</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">domainId · parentId</text>
+    <text class="field" x="14" y="102">name · kind · importance</text>
+    <text class="field" x="14" y="122">sortOrder · contentJson</text>
+    <text class="entity-cn" x="14" y="142">parentId 构成多根知识树</text>
+  </g>
+
+  <g transform="translate(380 398)">
+    <rect class="entity" width="244" height="132" rx="15"/>
+    <rect class="entity-head-green" width="244" height="42" rx="15"/>
+    <rect class="entity-head-green" y="28" width="244" height="14"/>
+    <text class="entity-name" x="14" y="20">TopicRelation</text><text class="entity-cn" x="14" y="35">知识点图关系</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">userId + id</text>
+    <text class="field" x="14" y="82">fromTopicId → toTopicId</text>
+    <text class="field" x="14" y="102">relationType · contentJson</text>
+    <text class="entity-cn" x="14" y="122">先修、关联、扩展等语义边</text>
+  </g>
+
+  <g transform="translate(660 398)">
+    <rect class="entity" width="244" height="148" rx="15"/>
+    <rect class="entity-head-orange" width="244" height="42" rx="15"/>
+    <rect class="entity-head-orange" y="28" width="244" height="14"/>
+    <text class="entity-name" x="14" y="20">SourceAsset</text><text class="entity-cn" x="14" y="35">来源元数据</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">userId + id</text>
+    <text class="field" x="14" y="82">sourceType · libraryId</text>
+    <text class="field" x="14" y="102">relativePath · contentHash</text>
+    <text class="field" x="14" y="122">metadataJson · createdAt</text>
+    <text class="status" x="14" y="141">不保存原文、绝对路径或抽取内容</text>
+  </g>
+
+  <g transform="translate(380 580)">
+    <rect class="entity" width="524" height="174" rx="15"/>
+    <rect class="entity-head-purple" width="524" height="42" rx="15"/>
+    <rect class="entity-head-purple" y="28" width="524" height="14"/>
+    <text class="entity-name" x="14" y="20">CatalogImport</text><text class="entity-cn" x="14" y="35">不可变领域草案 / 确认事务</text>
+    <text class="pk" x="14" y="64">PK</text><text class="field" x="42" y="64">id</text>
+    <text class="field" x="14" y="87">userId · originType · libraryId · contextJson</text>
+    <text class="field" x="14" y="110">proposalHash · proposalJson · validationJson · diffJson</text>
+    <text class="status" x="14" y="135">previewed → applied</text>
+    <text class="status" x="206" y="135">或 invalid / conflict / rejected</text>
+    <text class="entity-cn" x="14" y="158">只有 hash 匹配、无冲突且用户明确确认的草案才事务性写入 Catalog</text>
+  </g>
+
+  <!-- Question bank -->
+  <rect class="section" x="950" y="138" width="816" height="390" rx="24"/>
+  <text class="section-title" x="972" y="170">Question Bank &amp; Curation</text>
+  <text class="section-subtitle" x="972" y="190">稳定题目身份、不可变内容版本、受控候选题与修订审计</text>
+
+  <g transform="translate(972 216)">
+    <rect class="entity" width="236" height="150" rx="15"/>
+    <rect class="entity-head-purple" width="236" height="42" rx="15"/>
+    <rect class="entity-head-purple" y="28" width="236" height="14"/>
+    <text class="entity-name" x="14" y="20">Question</text><text class="entity-cn" x="14" y="35">题目聚合根</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">currentVersion</text>
+    <text class="field" x="14" y="102">sessionEligibleId</text>
+    <text class="status" x="14" y="124">status: candidate | active</text>
+    <text class="entity-cn" x="14" y="142">不保留 rejected 状态</text>
+  </g>
+
+  <g transform="translate(1244 216)">
+    <rect class="entity" width="236" height="174" rx="15"/>
+    <rect class="entity-head-purple" width="236" height="42" rx="15"/>
+    <rect class="entity-head-purple" y="28" width="236" height="14"/>
+    <text class="entity-name" x="14" y="20">QuestionVersion</text><text class="entity-cn" x="14" y="35">题目内容快照</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">questionId + version</text>
+    <text class="field" x="14" y="82">type · topicIdsJson</text>
+    <text class="field" x="14" y="102">contentJson:</text>
+    <text class="field" x="26" y="122">stem · options · correctOptionIds</text>
+    <text class="field" x="26" y="142">explanation · sources · metadata</text>
+    <text class="entity-cn" x="14" y="164">Assignment 固定引用作答时版本</text>
+  </g>
+
+  <g transform="translate(1516 216)">
+    <rect class="entity" width="228" height="174" rx="15"/>
+    <rect class="entity-head-gray" width="228" height="42" rx="15"/>
+    <rect class="entity-head-gray" y="28" width="228" height="14"/>
+    <text class="entity-name" x="14" y="20">QuestionRevision</text><text class="entity-cn" x="14" y="35">版本修订审计</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">questionId · from → to</text>
+    <text class="field" x="14" y="102">userId · sourceAssignmentId</text>
+    <text class="field" x="14" y="122">reason · model · promptVersion</text>
+    <text class="field" x="14" y="142">createdAt</text>
+    <text class="entity-cn" x="14" y="164">已作答内容变更必须升版本</text>
+  </g>
+
+  <!-- Training -->
+  <rect class="section" x="950" y="552" width="816" height="536" rx="24"/>
+  <text class="section-title" x="972" y="584">Training &amp; Assessment</text>
+  <text class="section-subtitle" x="972" y="604">会话预算、题目派发、精确判分、交互与追加式学习历史</text>
+
+  <g transform="translate(972 630)">
+    <rect class="entity" width="236" height="174" rx="15"/>
+    <rect class="entity-head-blue" width="236" height="42" rx="15"/>
+    <rect class="entity-head-blue" y="28" width="236" height="14"/>
+    <text class="entity-name" x="14" y="20">TrainingSession</text><text class="entity-cn" x="14" y="35">训练会话聚合根</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">userId · domainId · provider</text>
+    <text class="field" x="14" y="102">targetCount · completedMain</text>
+    <text class="field" x="14" y="122">followUpCount · introducedNew</text>
+    <text class="status" x="14" y="144">active → completed</text>
+    <text class="field" x="14" y="164">startedAt · endedAt · summaryJson</text>
+  </g>
+
+  <g transform="translate(1244 630)">
+    <rect class="entity" width="236" height="194" rx="15"/>
+    <rect class="entity-head-blue" width="236" height="42" rx="15"/>
+    <rect class="entity-head-blue" y="28" width="236" height="14"/>
+    <text class="entity-name" x="14" y="20">Assignment</text><text class="entity-cn" x="14" y="35">一次题目派发</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">sessionId · questionId + version</text>
+    <text class="field" x="14" y="102">attemptType: main | follow_up</text>
+    <text class="field" x="14" y="122">parentAttemptId · sourceKind</text>
+    <text class="status" x="14" y="144">pending → answered</text>
+    <text class="field" x="14" y="164">createdAt · answeredAt</text>
+    <text class="entity-cn" x="14" y="184">追问不会改变 pending 状态</text>
+  </g>
+
+  <g transform="translate(1516 630)">
+    <rect class="entity" width="228" height="194" rx="15"/>
+    <rect class="entity-head-blue" width="228" height="42" rx="15"/>
+    <rect class="entity-head-blue" y="28" width="228" height="14"/>
+    <text class="entity-name" x="14" y="20">Attempt</text><text class="entity-cn" x="14" y="35">不可变作答事实</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">assignmentId (UNIQUE)</text>
+    <text class="field" x="14" y="102">userId · questionId + version</text>
+    <text class="field" x="14" y="122">raw / selected / correct options</text>
+    <text class="field" x="14" y="142">correct · score · answeredAt</text>
+    <text class="status" x="14" y="164">精确集合相等；score ∈ {0,100}</text>
+    <text class="entity-cn" x="14" y="184">答案快照保证历史可审计</text>
+  </g>
+
+  <g transform="translate(972 858)">
+    <rect class="entity" width="236" height="154" rx="15"/>
+    <rect class="entity-head-orange" width="236" height="42" rx="15"/>
+    <rect class="entity-head-orange" y="28" width="236" height="14"/>
+    <text class="entity-name" x="14" y="20">InteractionEvent</text><text class="entity-cn" x="14" y="35">对话交互事件</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">sessionId · assignmentId?</text>
+    <text class="field" x="14" y="102">eventType · content</text>
+    <text class="field" x="14" y="122">model · promptVersion · createdAt</text>
+    <text class="entity-cn" x="14" y="144">解释、提示、质疑不计为 Attempt</text>
+  </g>
+
+  <g transform="translate(1244 858)">
+    <rect class="entity" width="236" height="154" rx="15"/>
+    <rect class="entity-head-orange" width="236" height="42" rx="15"/>
+    <rect class="entity-head-orange" y="28" width="236" height="14"/>
+    <text class="entity-name" x="14" y="20">Mistake</text><text class="entity-cn" x="14" y="35">错题事实</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
+    <text class="field" x="14" y="82">attemptId (UNIQUE)</text>
+    <text class="field" x="14" y="102">userId · questionId</text>
+    <text class="field" x="14" y="122">resolved · recordedAt</text>
+    <text class="entity-cn" x="14" y="144">只在答错时创建</text>
+  </g>
+
+  <g transform="translate(1516 858)">
+    <rect class="planned" width="228" height="154" rx="15"/>
+    <text class="entity-name" x="14" y="25">ReviewEvent</text>
+    <text class="entity-cn" x="14" y="47">规划中的统一调度事件</text>
+    <text class="field" x="14" y="72">attemptId · provider</text>
+    <text class="field" x="14" y="94">rating · providerRef</text>
+    <text class="field" x="14" y="116">syncStatus · occurredAt</text>
+    <text class="entity-cn" x="14" y="139">当前 weighted 直接更新 ReviewState</text>
+  </g>
+
+  <!-- Learning state -->
+  <rect class="section" x="34" y="840" width="892" height="248" rx="24"/>
+  <text class="section-title" x="56" y="872">Learning State &amp; Scheduling</text>
+  <text class="section-subtitle" x="56" y="892">由 Attempt 派生、可重建的用户学习状态；内容事实仍保留在题库与作答历史中</text>
+
+  <g transform="translate(56 918)">
+    <rect class="entity" width="260" height="142" rx="15"/>
+    <rect class="entity-head-green" width="260" height="42" rx="15"/>
+    <rect class="entity-head-green" y="28" width="260" height="14"/>
+    <text class="entity-name" x="14" y="20">ReviewState</text><text class="entity-cn" x="14" y="35">用户 × 题目复习状态</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">userId + questionId</text>
+    <text class="field" x="14" y="82">correct / wrong / streak</text>
+    <text class="field" x="14" y="102">intervalDays · nextReviewAt</text>
+    <text class="entity-cn" x="14" y="128">weighted 的 due backlog 来源</text>
+  </g>
+
+  <g transform="translate(342 918)">
+    <rect class="entity" width="260" height="142" rx="15"/>
+    <rect class="entity-head-green" width="260" height="42" rx="15"/>
+    <rect class="entity-head-green" y="28" width="260" height="14"/>
+    <text class="entity-name" x="14" y="20">TopicMastery</text><text class="entity-cn" x="14" y="35">用户 × 知识点掌握度</text>
+    <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">userId + topicId</text>
+    <text class="field" x="14" y="82">masteryScore · correct / wrong</text>
+    <text class="field" x="14" y="102">lastAnsweredAt</text>
+    <text class="entity-cn" x="14" y="128">用于薄弱项、难度与生成主题选择</text>
+  </g>
+
+  <g transform="translate(628 918)">
+    <rect class="entity" width="276" height="142" rx="15"/>
+    <rect class="entity-head-blue" width="276" height="42" rx="15"/>
+    <rect class="entity-head-blue" y="28" width="276" height="14"/>
+    <text class="entity-name" x="14" y="20">SchedulerProvider</text><text class="entity-cn" x="14" y="35">调度端口 / 当前 weighted 实现</text>
+    <text class="field" x="14" y="64">backlog(user, now)</text>
+    <text class="field" x="14" y="84">dueCount · oldestDueAt</text>
+    <text class="field" x="14" y="104">newItemAllowance · paused</text>
+    <text class="entity-cn" x="14" y="128">读取 Settings + ReviewState 决定容量</text>
+  </g>
+
+  <!-- Relationships -->
+  <path class="rel" d="M312 280H350Q370 280 380 278"/>
+  <text class="cardinality" x="322" y="270">1</text><text class="cardinality" x="365" y="270">N</text>
+  <text class="relation-label" x="329" y="296">owns</text>
+
+  <path class="rel" d="M624 278H660"/>
+  <text class="cardinality" x="629" y="268">1</text><text class="cardinality" x="649" y="268">N</text>
+  <text class="relation-label" x="627" y="294">contains</text>
+  <path class="rel" d="M886 366V382Q886 390 868 390H800V366"/>
+  <text class="relation-label" x="807" y="385">parent 0..1 → children N</text>
+  <path class="rel" d="M660 456H624"/>
+  <text class="relation-label" x="629" y="447">from / to</text>
+
+  <path class="logical" d="M904 292H950Q960 292 972 292"/>
+  <text class="relation-label" x="915" y="282">N:M via topicIdsJson</text>
+  <path class="logical" d="M904 472H932Q944 472 944 405Q944 377 1244 348"/>
+  <text class="relation-label" x="929" y="425">sources in contentJson</text>
+
+  <path class="rel" d="M1208 286H1244"/>
+  <text class="cardinality" x="1214" y="276">1</text><text class="cardinality" x="1233" y="276">N</text>
+  <path class="rel" d="M1480 300H1516"/>
+  <text class="relation-label" x="1484" y="290">audits</text>
+
+  <path class="rel" d="M1208 716H1244"/>
+  <text class="cardinality" x="1214" y="706">1</text><text class="cardinality" x="1233" y="706">N</text>
+  <path class="rel" d="M1480 728H1516"/>
+  <text class="cardinality" x="1486" y="718">1</text><text class="cardinality" x="1503" y="718">0..1</text>
+  <path class="rel" d="M1362 824V858"/>
+  <text class="relation-label" x="1371" y="846">incorrect</text>
+  <path class="rel" d="M1208 936H1228Q1238 936 1244 936"/>
+  <text class="relation-label" x="1154" y="926">session / assignment 0..N</text>
+
+  <path class="logical" d="M1516 760H1490Q1468 760 1468 840Q1468 1080 316 1032"/>
+  <text class="relation-label" x="982" y="1070">Attempt 更新 ReviewState（user × question）</text>
+  <path class="logical" d="M1588 824V1080Q1588 1100 602 1038"/>
+  <text class="relation-label" x="1148" y="1095">Attempt 按 QuestionVersion.topicIds 更新 TopicMastery</text>
+  <path class="rel" d="M628 990H602"/>
+  <text class="relation-label" x="607" y="980">reads</text>
+
+  <!-- Domain flow -->
+  <rect x="34" y="1112" width="1732" height="174" rx="24" fill="#ffffff" fill-opacity=".78" stroke="#d7e2ee"/>
+  <text class="section-title" x="56" y="1144">领域流转主链</text>
+  <text class="section-subtitle" x="56" y="1164">目录构建与训练闭环共享同一个 Core；Skill、Web 和未来 Anki 只负责编排或投影</text>
+
+  <g transform="translate(56 1190)">
+    <rect class="flow-box" width="188" height="66" rx="15"/>
+    <text class="flow-title" x="94" y="25" text-anchor="middle">资料 / AI 对话</text>
+    <text class="flow-note" x="94" y="46" text-anchor="middle">仅提交结构与来源元数据</text>
+  </g>
+  <path class="flow" d="M244 1223H284"/>
+  <g transform="translate(300 1190)">
+    <rect class="flow-box" width="188" height="66" rx="15"/>
+    <text class="flow-title" x="94" y="25" text-anchor="middle">Catalog 草案</text>
+    <text class="flow-note" x="94" y="46" text-anchor="middle">preview · diff · hash · confirm</text>
+  </g>
+  <path class="flow" d="M488 1223H528"/>
+  <g transform="translate(544 1190)">
+    <rect class="flow-box" width="188" height="66" rx="15"/>
+    <text class="flow-title" x="94" y="25" text-anchor="middle">Catalog + Question</text>
+    <text class="flow-note" x="94" y="46" text-anchor="middle">领域拓扑与版本化知识资产</text>
+  </g>
+  <path class="flow" d="M732 1223H772"/>
+  <g transform="translate(788 1190)">
+    <rect class="flow-box" width="188" height="66" rx="15"/>
+    <text class="flow-title" x="94" y="25" text-anchor="middle">Session + Assignment</text>
+    <text class="flow-note" x="94" y="46" text-anchor="middle">预算与调度决定下一项</text>
+  </g>
+  <path class="flow" d="M976 1223H1016"/>
+  <g transform="translate(1032 1190)">
+    <rect class="flow-box" width="188" height="66" rx="15"/>
+    <text class="flow-title" x="94" y="25" text-anchor="middle">Attempt</text>
+    <text class="flow-note" x="94" y="46" text-anchor="middle">精确判分并追加事实</text>
+  </g>
+  <path class="flow" d="M1220 1223H1260"/>
+  <g transform="translate(1276 1190)">
+    <rect class="flow-box" width="188" height="66" rx="15"/>
+    <text class="flow-title" x="94" y="25" text-anchor="middle">学习状态 / 报告</text>
+    <text class="flow-note" x="94" y="46" text-anchor="middle">复习间隔、掌握度、积压</text>
+  </g>
+  <path class="flow" d="M1464 1223H1504"/>
+  <g transform="translate(1520 1190)">
+    <rect class="planned" width="224" height="66" rx="15"/>
+    <text class="flow-title" x="112" y="25" text-anchor="middle">Anki / FSRS 投影</text>
+    <text class="flow-note" x="112" y="46" text-anchor="middle">可重建，不成为题库权威源</text>
+  </g>
+
+  <!-- Candidate lifecycle inset -->
+  <g transform="translate(974 422)">
+    <rect class="pill" width="124" height="30" rx="15"/>
+    <text class="pill-text" x="62" y="20" text-anchor="middle">candidate / 待答</text>
+    <path class="flow" d="M124 15H190"/>
+    <rect x="202" width="114" height="30" rx="15" fill="#eaf8f1" stroke="#c9e7d7"/>
+    <text class="pill-text" x="259" y="20" text-anchor="middle">作答 → active</text>
+    <path class="flow-orange" d="M62 30V61H190"/>
+    <rect x="202" y="47" width="268" height="30" rx="15" fill="#fff1e5" stroke="#f0d1b3"/>
+    <text class="pill-text" x="336" y="67" text-anchor="middle">明确拒绝 / Session 结束 → 物理删除</text>
+  </g>
+</svg>
