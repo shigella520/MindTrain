@@ -16,13 +16,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Ensure selected ref is dev
-        run: |
-          if [ "${GITHUB_REF}" != "refs/heads/dev" ]; then
-            echo "This workflow only publishes dev images. Please run it against the dev branch."
-            exit 1
-          fi
-
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
@@ -82,13 +75,6 @@ jobs:
             image: shigella520/mindtrain-web
             dockerfile: apps/web/Dockerfile
     steps:
-      - name: Ensure selected ref is dev
-        run: |
-          if [ "${GITHUB_REF}" != "refs/heads/dev" ]; then
-            echo "This workflow only publishes dev images. Please run it against the dev branch."
-            exit 1
-          fi
-
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
