@@ -14,10 +14,6 @@ $(VENV_STAMP): requirements-skill.txt
 
 check: $(VENV_STAMP)
 	$(PYTHON) -m unittest discover -s tests -v
-	$(PYTHON) skill/java-interview-coach/scripts/validate-assets.py .
-	$(PYTHON) skill/java-interview-coach/scripts/detect-duplicates.py assets
-	$(PYTHON) scripts/validate-skill.py skill/java-interview-coach
-	$(PYTHON) scripts/validate-skill.py skills/mindtrain
 	$(PYTHON) scripts/validate-skill.py plugins/mindtrain/skills/mindtrain
 
 check-platform:

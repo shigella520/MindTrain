@@ -1,3 +1,0 @@
-[mcp_servers.mindtrain]
-url = "https://mindtrain.example.com/mcp"
-bearer_token_env_var = "MINDTRAIN_BOOTSTRAP_TOKEN"

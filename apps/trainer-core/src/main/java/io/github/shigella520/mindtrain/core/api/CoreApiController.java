@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.TrainingSettings;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.UpdateTrainingSettingsRequest;
-import io.github.shigella520.mindtrain.core.importer.PrototypeImportService;
 import io.github.shigella520.mindtrain.core.question.QuestionService;
 import io.github.shigella520.mindtrain.core.scheduling.SchedulerProvider;
 import io.github.shigella520.mindtrain.core.training.TrainingService;
@@ -27,16 +26,14 @@ import org.springframework.web.bind.annotation.PutMapping;
 public class CoreApiController {
     private final TrainingService training;
     private final QuestionService questions;
-    private final PrototypeImportService imports;
     private final IdempotencyService idempotency;
     private final ApplicationSettingsService applicationSettings;
 
     public CoreApiController(TrainingService training, QuestionService questions,
-                             PrototypeImportService imports, IdempotencyService idempotency,
+                             IdempotencyService idempotency,
                              ApplicationSettingsService applicationSettings) {
         this.training = training;
         this.questions = questions;
-        this.imports = imports;
         this.idempotency = idempotency;
         this.applicationSettings = applicationSettings;
     }
@@ -119,18 +116,6 @@ public class CoreApiController {
                                                     @RequestBody UpdateTrainingSettingsRequest request) {
         return idempotency.execute("update-training-settings", key, TrainingSettings.class,
             () -> applicationSettings.update(request));
-    }
-
-    @PostMapping("/imports/prototype")
-    public PrototypeImportService.ImportResponse importPrototype(@RequestHeader("Idempotency-Key") String key,
-                                                                  @RequestBody JsonNode request) {
-        return idempotency.execute("prototype-import", key, PrototypeImportService.ImportResponse.class,
-            () -> imports.importPrototype(request));
-    }
-
-    @GetMapping("/imports/{id}")
-    public PrototypeImportService.ImportResponse importReport(@PathVariable String id) {
-        return imports.get(id);
     }
 
     public record CandidateRequest(String sessionId, String topicId, JsonNode question,

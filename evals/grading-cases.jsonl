@@ -1,6 +1,0 @@
-{"id":"single-correct-letter","questionId":"java.collections.hashmap.001","input":"B","expected":{"valid":true,"selectedOptionIds":["B"],"correct":true,"score":100}}
-{"id":"single-natural-language","questionId":"java.collections.hashmap.001","input":"我选 B","expected":{"valid":true,"selectedOptionIds":["B"],"correct":true,"score":100}}
-{"id":"single-invalid-multiple","questionId":"java.collections.hashmap.001","input":"AB","expected":{"valid":false}}
-{"id":"multi-order-independent","questionId":"java.concurrency.volatile.001","input":"CA","expected":{"valid":true,"selectedOptionIds":["A","C"],"correct":true,"score":100}}
-{"id":"multi-missing-option","questionId":"java.concurrency.volatile.001","input":"A","expected":{"valid":true,"selectedOptionIds":["A"],"correct":false,"score":0}}
-{"id":"multi-extra-option","questionId":"java.concurrency.volatile.001","input":"ACD","expected":{"valid":true,"selectedOptionIds":["A","C","D"],"correct":false,"score":0}}
