@@ -56,11 +56,13 @@ Authorization: Bearer <MINDTRAIN_BOOTSTRAP_TOKEN>
 codex plugin marketplace add shigella520/MindTrain --ref main
 ```
 
-开发版本：
+测试短期功能分支：
 
 ```bash
-codex plugin marketplace add shigella520/MindTrain --ref dev
+codex plugin marketplace add shigella520/MindTrain --ref <feature-branch>
 ```
+
+功能合并后建议切回 `main` 并重新安装 Plugin。仓库不维护长期 `dev` 分支；开发镜像的 `dev` 标签可由任意短期功能分支手动发布。
 
 确认 Marketplace：
 

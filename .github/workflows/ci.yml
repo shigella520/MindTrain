@@ -43,7 +43,7 @@ jobs:
       - name: Verify platform
         run: mvn -B verify
 
-      - name: Verify prototype and Skills
+      - name: Verify Plugin and repository checks
         run: |
           make bootstrap
           make check

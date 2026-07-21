@@ -1,5 +1,0 @@
-{"id":"reject-missing-source","description":"A generated question without at least one source must fail schema validation.","expectedValid":false}
-{"id":"reject-missing-answer","description":"A generated question without correctOptionIds must fail schema validation.","expectedValid":false}
-{"id":"reject-incomplete-analysis","description":"A generated question without analyses for A-D must fail schema or invariant validation.","expectedValid":false}
-{"id":"reject-unstated-version","description":"A generated question without javaVersions must fail schema validation.","expectedValid":false}
-{"id":"accept-complete-candidate","description":"A four-option sourced candidate with exact answers and complete structured explanation passes validation but remains non-published.","expectedValid":true}

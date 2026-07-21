@@ -30,7 +30,7 @@ class TrainingFlowIntegrationTest {
 
     @Test
     void runsSafeConversationalTrainingAndSessionScopedCandidateFlow() throws Exception {
-        importFixture();
+        insertFixture();
         String sessionId = createSession("session-create-1");
 
         JsonNode first = json(mvc.perform(post("/api/v1/sessions/{id}/assignments/next", sessionId)
@@ -285,26 +285,10 @@ class TrainingFlowIntegrationTest {
             .query(Integer.class).single()).isZero();
     }
 
-    private void importFixture() throws Exception {
+    private void insertFixture() throws Exception {
         JsonNode question = candidate("java.concurrency.atomics", "java.concurrency.atomics.active");
-        ((com.fasterxml.jackson.databind.node.ObjectNode) question).put("status", "active");
-        JsonNode payload = objectMapper.readTree("""
-            {
-              "dryRun": false,
-              "taxonomy": {"topics": [{
-                "id":"java.concurrency.atomics","name":"Atomic 原子类","kind":"leaf","importance":5,
-                "javaVersions":["8-21"],"keywords":["CAS"],"sourceRefs":["src-java-api"]
-              }]},
-              "questions": [], "candidates": [], "sessions": [], "attempts": [], "mastery": {}
-            }
-            """);
-        ((com.fasterxml.jackson.databind.node.ArrayNode) payload.path("questions")).add(question);
-        mvc.perform(post("/api/v1/imports/prototype")
-                .header("Idempotency-Key", "fixture-import")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(payload)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.report.questionsImported").value(1));
+        TestFixtures.insertTopicAndActiveQuestion(jdbc, objectMapper, "java-backend",
+            "java.concurrency.atomics", "Atomic 原子类", 5, question);
     }
 
     private String createSession(String key) throws Exception {

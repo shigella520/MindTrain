@@ -190,7 +190,7 @@ docker compose up -d --build
 | 了解 Dashboard、Web 训练和视觉设计 | [Web 设计](doc/Web设计.md) |
 | 查看 REST API | [Training Core OpenAPI](contracts/openapi/trainer-core.yaml) |
 | 查看产品目标、架构与仓库边界 | [目标需求](doc/目标需求.md) · [概要设计](doc/概要设计.md) · [仓库目录规划](doc/仓库目录规划.md) |
-| 查看 Skill 工作流 | [MindTrain Skill](skills/mindtrain/SKILL.md) |
+| 查看 Skill 工作流 | [MindTrain Plugin Skill](plugins/mindtrain/skills/mindtrain/SKILL.md) |
 
 ## 路线图
 

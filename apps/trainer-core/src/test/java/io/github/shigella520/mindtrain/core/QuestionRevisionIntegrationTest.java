@@ -30,7 +30,7 @@ class QuestionRevisionIntegrationTest {
     @Test
     void createsAuditedImmutableQuestionRevisionAndRejectsStaleUpdates() throws Exception {
         String questionId = "java.concurrency.volatile." + UUID.randomUUID();
-        importActiveQuestion(questionId);
+        insertActiveQuestion(questionId);
         String sessionId = createSession();
         JsonNode assignment = json(mvc.perform(post("/api/v1/sessions/{id}/assignments/next", sessionId)
                 .header("Idempotency-Key", "revision-next"))
@@ -117,26 +117,10 @@ class QuestionRevisionIntegrationTest {
             .andExpect(jsonPath("$.code").value("revision_changes_invalid"));
     }
 
-    private void importActiveQuestion(String questionId) throws Exception {
+    private void insertActiveQuestion(String questionId) throws Exception {
         JsonNode question = question(questionId);
-        ((com.fasterxml.jackson.databind.node.ObjectNode) question).put("status", "active");
-        JsonNode payload = objectMapper.readTree("""
-            {
-              "dryRun": false,
-              "taxonomy": {"topics": [{
-                "id":"java.concurrency.volatile","name":"volatile","kind":"leaf","importance":5,
-                "javaVersions":["8-21"],"keywords":["volatile"],"sourceRefs":["src-jls"]
-              }]},
-              "questions": [], "candidates": [], "sessions": [], "attempts": [], "mastery": {}
-            }
-            """);
-        ((com.fasterxml.jackson.databind.node.ArrayNode) payload.path("questions")).add(question);
-        mvc.perform(post("/api/v1/imports/prototype")
-                .header("Idempotency-Key", "revision-fixture-import")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(payload)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.report.questionsImported").value(1));
+        TestFixtures.insertTopicAndActiveQuestion(jdbc, objectMapper, "java-backend",
+            "java.concurrency.volatile", "volatile", 5, question);
     }
 
     private String createSession() throws Exception {

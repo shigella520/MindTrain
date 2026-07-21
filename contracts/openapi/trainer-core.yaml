@@ -166,20 +166,6 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/TrainingSettings'}
         '400': {description: 配置值或时区无效}
-  /api/v1/imports/prototype:
-    post:
-      operationId: importPrototype
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      responses:
-        '200': {description: Dry-run or applied import report}
-  /api/v1/imports/{importId}:
-    get:
-      operationId: getPrototypeImport
-      parameters:
-        - {name: importId, in: path, required: true, schema: {type: string}}
-      responses:
-        '200': {description: Import report}
 components:
   schemas:
     UpdateTrainingSettings:
