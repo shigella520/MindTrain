@@ -186,6 +186,56 @@ https://mindtrain.example.com/mcp -> http://127.0.0.1:8787/mcp
 
 Nginx/Caddy/Cloudflare Tunnel、健康检查、备份恢复、升级和完整配置说明见[部署与运维](doc/部署与运维.md)。
 
+## 升级 MindTrain
+
+升级分为服务端和 Codex Plugin 两部分。升级前先备份 PostgreSQL；训练领域、题库、作答记录和应用配置都保存在数据库中，不应依赖容器本身保存。
+
+### 1. 备份数据库
+
+在 `deploy/core-only` 目录执行：
+
+```bash
+mkdir -p ../../backup
+docker compose exec -T postgres \
+  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
+  > ../../backup/mindtrain.dump
+```
+
+同时把 `.env` 备份到密码管理器或其他受控位置，不要提交到 Git。
+
+### 2. 升级服务端
+
+使用仓库源码部署时：
+
+```bash
+cd MindTrain
+git pull --ff-only
+cd deploy/core-only
+docker compose up -d --build
+docker compose ps
+```
+
+如果自己的 Compose 使用 `ghcr.io/shigella520/mindtrain-*:latest` 镜像，则执行：
+
+```bash
+docker compose pull
+docker compose up -d --remove-orphans
+docker compose ps
+```
+
+`latest` 对应 `main` 的稳定构建，`dev` 用于测试任意功能分支，不建议长期作为正式实例的固定升级通道。Training Core 启动时会由 Flyway 自动迁移数据库；如果迁移失败，应保留日志并恢复旧版本，不要手工修改 Flyway 历史表。
+
+### 3. 升级 Codex Plugin
+
+```bash
+codex plugin marketplace upgrade mindtrain
+codex plugin add mindtrain@mindtrain
+```
+
+更新后新建一个 Codex 任务，使新版 Skill 和 MCP bridge 重新加载。现有实例地址和 Token 保存在 Plugin 之外，不会因升级而丢失。
+
+升级完成后确认 Core、MCP 和 Web 均为 `healthy`，再开始训练。备份恢复、版本回退和故障排查见[部署与运维](doc/部署与运维.md)，Plugin 细节见[Codex Plugin 部署](doc/CodexPlugin部署.md)。
+
 ## 常用操作
 
 ```bash
@@ -196,10 +246,6 @@ docker compose logs -f trainer-core trainer-mcp web
 
 # 停止服务但保留数据
 docker compose down
-
-# 更新当前源码并重建
-git pull
-docker compose up -d --build
 ```
 
 训练题量、新题额度、积压阈值、临时题有效期和报表时区可在 Web 的“管理 → 训练配置”中修改，不需要重启服务。
