@@ -64,6 +64,22 @@ public class TrainerTools {
             schema(Map.of("sessionId", string("Session ID")), List.of("sessionId"))));
         tools.add(tool("get_learning_report", "Get learning, backlog and content overview metrics.", schema(Map.of(), List.of())));
         tools.add(tool("get_scheduler_backlog", "Get due backlog and current new-item allowance.", schema(Map.of(), List.of())));
+        tools.add(tool("preview_knowledge_catalog_import",
+            "Preview a training domain and knowledge-point structure organized from the user's selected references without changing active data.",
+            schema(Map.of(
+                "libraryId", string("Local reference library ID; no absolute path"),
+                "proposal", object("Domains, topics, relations and source metadata proposal")
+            ), List.of("libraryId", "proposal"))));
+        tools.add(tool("get_knowledge_catalog_import", "Get a training-domain preview, validation result and persistence diff.",
+            schema(Map.of("importId", string("Catalog import ID")), List.of("importId"))));
+        tools.add(tool("apply_knowledge_catalog_import",
+            "Save and enable a previously previewed training domain after explicit user confirmation.",
+            schema(Map.of(
+                "importId", string("Catalog import ID"),
+                "proposalHash", string("Exact hash returned by preview")
+            ), List.of("importId", "proposalHash"))));
+        tools.add(tool("reject_knowledge_catalog_import", "Discard a training-domain proposal without changing active data.",
+            schema(Map.of("importId", string("Catalog import ID")), List.of("importId"))));
         return tools;
     }
 
@@ -88,6 +104,16 @@ public class TrainerTools {
                 objectMapper.createObjectNode(), key);
             case "get_learning_report" -> core.get("/api/v1/reports/overview");
             case "get_scheduler_backlog" -> core.get("/api/v1/schedulers/backlog");
+            case "preview_knowledge_catalog_import" -> core.post("/api/v1/catalog/imports/preview",
+                without(arguments, "idempotencyKey"), key);
+            case "get_knowledge_catalog_import" -> core.get(
+                "/api/v1/catalog/imports/" + required(arguments, "importId"));
+            case "apply_knowledge_catalog_import" -> core.post(
+                "/api/v1/catalog/imports/" + required(arguments, "importId") + "/apply",
+                objectMapper.createObjectNode().put("proposalHash", required(arguments, "proposalHash")), key);
+            case "reject_knowledge_catalog_import" -> core.post(
+                "/api/v1/catalog/imports/" + required(arguments, "importId") + "/reject",
+                objectMapper.createObjectNode(), key);
             default -> throw new IllegalArgumentException("Unknown tool: " + name);
         };
     }

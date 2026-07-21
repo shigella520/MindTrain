@@ -1,6 +1,7 @@
 package io.github.shigella520.mindtrain.core.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.github.shigella520.mindtrain.core.catalog.CatalogService;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.TrainingSettings;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.UpdateTrainingSettingsRequest;
@@ -28,14 +29,17 @@ public class CoreApiController {
     private final QuestionService questions;
     private final IdempotencyService idempotency;
     private final ApplicationSettingsService applicationSettings;
+    private final CatalogService catalog;
 
     public CoreApiController(TrainingService training, QuestionService questions,
                              IdempotencyService idempotency,
-                             ApplicationSettingsService applicationSettings) {
+                             ApplicationSettingsService applicationSettings,
+                             CatalogService catalog) {
         this.training = training;
         this.questions = questions;
         this.idempotency = idempotency;
         this.applicationSettings = applicationSettings;
+        this.catalog = catalog;
     }
 
     @PostMapping("/sessions")
@@ -116,6 +120,33 @@ public class CoreApiController {
                                                     @RequestBody UpdateTrainingSettingsRequest request) {
         return idempotency.execute("update-training-settings", key, TrainingSettings.class,
             () -> applicationSettings.update(request));
+    }
+
+    @PostMapping("/catalog/imports/preview")
+    public CatalogService.ImportResponse previewCatalog(@RequestHeader("Idempotency-Key") String key,
+                                                         @RequestBody CatalogService.PreviewRequest request) {
+        return idempotency.execute("preview-catalog-import", key, CatalogService.ImportResponse.class,
+            () -> catalog.preview(request));
+    }
+
+    @GetMapping("/catalog/imports/{id}")
+    public CatalogService.ImportResponse getCatalogImport(@PathVariable String id) {
+        return catalog.get(id);
+    }
+
+    @PostMapping("/catalog/imports/{id}/apply")
+    public CatalogService.ImportResponse applyCatalog(@PathVariable String id,
+                                                       @RequestHeader("Idempotency-Key") String key,
+                                                       @RequestBody CatalogService.ApplyRequest request) {
+        return idempotency.execute("apply-catalog-import:" + id, key, CatalogService.ImportResponse.class,
+            () -> catalog.apply(id, request.proposalHash()));
+    }
+
+    @PostMapping("/catalog/imports/{id}/reject")
+    public CatalogService.ImportResponse rejectCatalog(@PathVariable String id,
+                                                        @RequestHeader("Idempotency-Key") String key) {
+        return idempotency.execute("reject-catalog-import:" + id, key, CatalogService.ImportResponse.class,
+            () -> catalog.reject(id));
     }
 
     public record CandidateRequest(String sessionId, String topicId, JsonNode question,

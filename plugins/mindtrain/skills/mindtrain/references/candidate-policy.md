@@ -21,9 +21,9 @@ Required fields:
 - `type`, `title`, `stem`, `options`, `correctOptionIds`
 - returned `topicId` in `topicIds`
 - `difficulty` and `importance` from 1 to 5
-- applicable versions
+- `applicableVersions` when versions constrain correctness; accept legacy `javaVersions` only when the profile contains no general field
 - structured `explanation`
-- at least one source with ID, URL, title, and access date
+- at least one source with ID, URL, title, access date, and content hash for local references
 - `createdBy`, model, Prompt version, and creation time
 
 For single choice, provide one correct option. For multiple choice, provide two or three. Do not mention the correct-option count in the stem or answer prompt.
@@ -47,6 +47,6 @@ The explanation must contain:
 - version notes
 - related topic IDs
 
-Use the knowledge point's source references first. If they are insufficient or version-sensitive, use authoritative documentation and record its URL and access date. Never invent a source. Set `promptVersion` to `mindtrain-candidate-v2` and include the actual model identifier.
+Use the knowledge point's source references first. For a local reference, cite its `mindtrain-local://` URL, library ID, relative path, content hash, and the supplied section/page locator. Never expose its absolute path or copy long passages. If local evidence is insufficient or version-sensitive, ask the user before using authoritative external documentation, then record its URL and access date. Never invent a source. Set `promptVersion` to `mindtrain-candidate-v3` and include the actual model identifier.
 
 `candidate` is a temporary pre-answer persistence state. Core activates an answered candidate for ordinary scheduling, or physically deletes it when the user rejects it before answering.

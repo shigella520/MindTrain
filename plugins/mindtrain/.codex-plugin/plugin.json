@@ -1,7 +1,7 @@
 {
   "name": "mindtrain",
-  "version": "0.1.0+codex.20260721010431",
-  "description": "Conversational knowledge training backed by a private MindTrain instance.",
+  "version": "0.1.0+codex.20260721155900",
+  "description": "Turn private local references into user-approved training domains and run conversational training with MindTrain.",
   "author": {
     "name": "shigella520",
     "url": "https://github.com/shigella520"
@@ -19,8 +19,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "MindTrain",
-    "shortDescription": "Connect to a private MindTrain instance for knowledge training",
-    "longDescription": "Configure a private MindTrain instance, then train, ask follow-up questions, grade answers, schedule reviews, and inspect learning reports in Codex.",
+    "shortDescription": "Build private training domains from your own references",
+    "longDescription": "Configure a private MindTrain instance, index local references without uploading their content, let Codex organize training domains and knowledge points for your approval, then save them and begin conversational training and review.",
     "developerName": "shigella520",
     "category": "Productivity",
     "capabilities": [
@@ -30,6 +30,7 @@
     "websiteURL": "https://github.com/shigella520/MindTrain",
     "defaultPrompt": [
       "Use $mindtrain to configure my private MindTrain instance.",
+      "Use $mindtrain to organize a training domain from my local reference directory, preview it, and save it after I confirm.",
       "Use $mindtrain to start today's training session.",
       "Use $mindtrain to review my learning backlog."
     ],

@@ -12,6 +12,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,7 @@ public class QuestionService {
     private static final List<String> OPTION_IDS = List.of("A", "B", "C", "D");
     private static final Set<String> REVISION_FIELDS = Set.of(
         "type", "title", "stem", "options", "correctOptionIds", "topicIds",
-        "difficulty", "importance", "javaVersions", "explanation", "sources"
+        "difficulty", "importance", "applicableVersions", "javaVersions", "explanation", "sources"
     );
     private final JdbcClient jdbc;
     private final ObjectMapper objectMapper;
@@ -299,6 +300,23 @@ public class QuestionService {
             if (!source.hasNonNull("url") || !source.hasNonNull("title") || !source.hasNonNull("accessedAt")) {
                 invalid(errorCode, "Each source requires url, title and accessedAt");
             }
+            if ("local_reference".equals(source.path("sourceType").asText())) {
+                if (!source.path("url").asText().startsWith("mindtrain-local://")
+                    || source.path("libraryId").asText().isBlank()
+                    || source.path("relativePath").asText().isBlank()
+                    || !source.path("contentHash").asText().matches("[0-9a-f]{64}")) {
+                    invalid(errorCode, "Local sources require a safe URI, libraryId, relativePath and SHA-256 contentHash");
+                }
+                int known = jdbc.sql("""
+                        SELECT COUNT(*) FROM source_asset
+                        WHERE user_id = :userId AND library_id = :libraryId
+                          AND relative_path = :relativePath AND content_hash = :contentHash
+                        """)
+                    .param("userId", UserContext.requireUserId()).param("libraryId", source.path("libraryId").asText())
+                    .param("relativePath", source.path("relativePath").asText())
+                    .param("contentHash", source.path("contentHash").asText()).query(Integer.class).single();
+                if (known == 0) invalid(errorCode, "Local source metadata has not been imported into the catalog");
+            }
         });
         if (!question.path("explanation").has("optionAnalysis")
             || question.path("explanation").path("optionAnalysis").size() != 4) {
@@ -325,8 +343,10 @@ public class QuestionService {
             .param("id", topicId)
             .query((rs, rowNum) -> {
                 JsonNode content = readTree(rs.getString("content_json"));
+                JsonNode versions = content.has("applicableVersions")
+                    ? content.path("applicableVersions") : content.path("javaVersions");
                 return new TopicContext(topicId, rs.getString("name"), content.path("importance").asInt(),
-                    jsonList(content.path("javaVersions")), jsonList(content.path("keywords")), jsonList(content.path("sourceRefs")));
+                    jsonList(versions), jsonList(content.path("keywords")), jsonList(content.path("sourceRefs")));
             }).optional()
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "topic_not_found", "Topic was not found"));
     }
@@ -354,9 +374,24 @@ public class QuestionService {
             .param("userId", userId).param("topicId", topic.id())
             .query(Integer.class).optional().orElse(50);
         int difficulty = mastery < 40 ? 2 : mastery < 75 ? 3 : 4;
+        List<JsonNode> sourceReferences = sourceReferences(userId, topic.sourceRefs());
+        List<String> libraryIds = sourceReferences.stream().map(source -> source.path("libraryId").asText())
+            .filter(value -> !value.isBlank()).collect(java.util.stream.Collectors.collectingAndThen(
+                java.util.stream.Collectors.toCollection(LinkedHashSet::new), ArrayList::new));
         KnowledgePoint knowledgePoint = new KnowledgePoint(topic.id(), topic.name(), topic.importance(),
-            topic.javaVersions(), topic.keywords(), topic.sourceRefs());
+            topic.applicableVersions(), topic.applicableVersions(), topic.keywords(), topic.sourceRefs(),
+            sourceReferences, libraryIds);
         return new GenerationProfile(questionType, difficulty, knowledgePoint);
+    }
+
+    private List<JsonNode> sourceReferences(String userId, List<String> sourceIds) {
+        List<JsonNode> sources = new ArrayList<>();
+        for (String sourceId : sourceIds) {
+            jdbc.sql("SELECT metadata_json FROM source_asset WHERE user_id=:userId AND id=:id")
+                .param("userId", userId).param("id", sourceId).query(String.class).optional()
+                .map(this::readTree).ifPresent(sources::add);
+        }
+        return sources;
     }
 
     public String json(JsonNode node) {
@@ -395,9 +430,11 @@ public class QuestionService {
     public record RevisionResponse(String revisionId, String questionId, int previousVersion, int version,
                                    String status, String reason, String sourceAssignmentId,
                                    OffsetDateTime revisedAt) {}
-    public record TopicContext(String id, String name, int importance, List<String> javaVersions,
+    public record TopicContext(String id, String name, int importance, List<String> applicableVersions,
                                List<String> keywords, List<String> sourceRefs) {}
     public record GenerationProfile(String questionType, int difficulty, KnowledgePoint knowledgePoint) {}
-    public record KnowledgePoint(String topicId, String name, int importance, List<String> javaVersions,
-                                 List<String> keywords, List<String> sourceRefs) {}
+    public record KnowledgePoint(String topicId, String name, int importance, List<String> applicableVersions,
+                                 List<String> javaVersions,
+                                 List<String> keywords, List<String> sourceRefs,
+                                 List<JsonNode> sourceReferences, List<String> referenceLibraryIds) {}
 }

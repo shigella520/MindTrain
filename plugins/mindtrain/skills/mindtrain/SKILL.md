@@ -1,6 +1,6 @@
 ---
 name: mindtrain
-description: Configure a private MindTrain instance and run persistent conversational knowledge training through its Trainer MCP, including sessions, safe choice questions, generated-question rejection, clarification questions, exact grading, question revisions, summaries, reports, and scheduler backlog. Use when the user installs MindTrain, configures its private server, starts or continues training, answers or rejects a generated question, challenges question content, asks to revise a flawed saved question, requests a deeper follow-up, ends a session, or inspects learning progress.
+description: Configure a private MindTrain instance and local reference libraries, organize user-approved training domains and knowledge points from local documents, and run persistent conversational training through its Trainer MCP. Use when the user configures MindTrain, selects a local document directory, asks to create or preview a training domain, confirms saving it, starts or continues training, generates reference-grounded questions, answers or rejects a question, asks follow-ups, revises a saved question, ends a session, or inspects learning progress.
 ---
 
 # MindTrain
@@ -16,6 +16,12 @@ Use the bundled MindTrain bridge as the only application data interface. Do not 
 5. Continue only after configuration validation succeeds. If validation fails, report the sanitized error and let the user retry.
 
 The bridge saves configuration outside the repository with user-only file permissions. Never put the private URL or Token into Skill files, Git configuration, examples, or commits.
+
+## Build a training domain from local references
+
+When the user names a local directory as a reference library, read [reference-library.md](references/reference-library.md) and follow its configure, sync, organize, preview, and confirmation workflow. The user chooses what to learn; Codex organizes the selected material into a proposed training domain, topic hierarchy, and relations. Local files, extracted text, absolute paths, and indexes must remain on the Codex host. Core receives only source metadata, hashes, the approved training structure, and generated questions.
+
+Never call `apply_knowledge_catalog_import` until the user has seen the complete training-domain preview and explicitly confirmed saving it once. Reuse the exact `proposalHash` returned by preview. A conflict requires a revised proposal and a new preview; never overwrite an existing topic implicitly. When speaking to the user, say “save and enable the training domain,” not “import/apply a knowledge catalog.”
 
 ## Run training
 
@@ -40,7 +46,7 @@ On `question_version_conflict`, do not retry with a guessed version. Explain tha
 
 ## Generate a missing question
 
-When `get_next_assignment` returns `generation_required`, read [candidate-policy.md](references/candidate-policy.md), follow the returned `generationProfile` exactly, and generate one compliant question. Do not choose a different type, difficulty, or primary topic. Call `create_candidate_question`, then call `get_next_assignment` again only after the candidate is accepted.
+When `get_next_assignment` returns `generation_required`, read [candidate-policy.md](references/candidate-policy.md), follow the returned `generationProfile` exactly, and generate one compliant question. Do not choose a different type, difficulty, or primary topic. If the profile references a local library, search it and read only the smallest relevant passages. When local evidence is insufficient, ask the user each time before using external authoritative sources. Call `create_candidate_question`, then call `get_next_assignment` again only after the candidate is accepted.
 
 Before it is answered, the generated candidate is temporary and usable only by its owning session. A successful answer activates it for ordinary cross-session scheduling.
 
@@ -60,6 +66,7 @@ For a deeper training question, generate another four-option question on the sam
 - On `answer_unparseable`, ask for option letters again without revealing answer count.
 - On `no_available_items`, explain the scheduler reason and offer to finish or inspect backlog.
 - On Core or MCP unavailability, retain the current visible question in conversation and retry the tool; do not fabricate persistence success.
+- On a local parser warning, report the affected file and continue with usable documents; never claim an unreadable document was indexed.
 - Use a new idempotency key for a new user action and reuse it only when retrying that same action.
 
 Read [tool-contract.md](references/tool-contract.md) when tool inputs, statuses, or retry behavior are unclear.

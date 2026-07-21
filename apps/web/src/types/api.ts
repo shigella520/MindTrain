@@ -96,6 +96,9 @@ export interface NextAssignment {
       name: string
       importance: number
       javaVersions: string[]
+      applicableVersions?: string[]
+      sourceReferences?: Array<Record<string, unknown>>
+      referenceLibraryIds?: string[]
       keywords: string[]
       sourceRefs: string[]
     }

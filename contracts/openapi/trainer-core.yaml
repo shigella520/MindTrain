@@ -166,8 +166,101 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/TrainingSettings'}
         '400': {description: 配置值或时区无效}
+  /api/v1/catalog/imports/preview:
+    post:
+      operationId: previewKnowledgeCatalogImport
+      description: 校验并保存由用户所选资料整理出的训练领域与知识点草案，不修改正式领域、知识点、关系或来源资产。
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CatalogPreviewRequest'}
+      responses:
+        '200':
+          description: 草案、哈希、校验结果和差异
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CatalogImport'}
+  /api/v1/catalog/imports/{importId}:
+    get:
+      operationId: getKnowledgeCatalogImport
+      parameters:
+        - {name: importId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Catalog import preview}
+        '404': {description: Import not found for the authenticated user}
+  /api/v1/catalog/imports/{importId}/apply:
+    post:
+      operationId: applyKnowledgeCatalogImport
+      description: 用户确认后，使用预览返回的精确 proposalHash 事务性写入正式 Catalog。
+      parameters:
+        - {name: importId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proposalHash]
+              properties:
+                proposalHash: {type: string, pattern: '^[0-9a-f]{64}$'}
+      responses:
+        '200': {description: Catalog applied or an idempotent prior result}
+        '409': {description: Hash mismatch, conflict, invalid or already rejected import}
+  /api/v1/catalog/imports/{importId}/reject:
+    post:
+      operationId: rejectKnowledgeCatalogImport
+      parameters:
+        - {name: importId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': {description: Preview rejected without changing active catalog}
 components:
   schemas:
+    CatalogPreviewRequest:
+      type: object
+      required: [libraryId, proposal]
+      properties:
+        libraryId: {type: string}
+        proposal:
+          type: object
+          required: [domains, topics, relations, sources]
+          description: 只包含知识体系及来源元数据；禁止绝对路径、原文和抽取文本。
+          properties:
+            domains: {type: array, items: {type: object}}
+            topics: {type: array, items: {type: object}}
+            relations: {type: array, items: {type: object}}
+            sources: {type: array, items: {$ref: '#/components/schemas/SourceAsset'}}
+    SourceAsset:
+      type: object
+      required: [id, sourceType, url, title, accessedAt]
+      properties:
+        id: {type: string}
+        sourceType: {type: string}
+        url: {type: string}
+        libraryId: {type: string}
+        relativePath: {type: string}
+        contentHash: {type: string, pattern: '^[0-9a-f]{64}$'}
+        title: {type: string}
+        accessedAt: {type: string, format: date}
+        locator: {type: string}
+    CatalogImport:
+      type: object
+      required: [importId, libraryId, proposalHash, status, proposal, validation, diff, createdAt]
+      properties:
+        importId: {type: string}
+        libraryId: {type: string}
+        proposalHash: {type: string}
+        status: {type: string, enum: [previewed, invalid, conflict, applied, rejected]}
+        proposal: {type: object}
+        validation: {type: object}
+        diff: {type: object}
+        createdAt: {type: string, format: date-time}
+        appliedAt: {type: [string, 'null'], format: date-time}
+        rejectedAt: {type: [string, 'null'], format: date-time}
     UpdateTrainingSettings:
       type: object
       required: [questionCount, newBudget, backlogPauseThreshold, overduePauseDays, pendingCandidateTtlHours, reportingTimeZone]
@@ -200,14 +293,25 @@ components:
           maximum: 5
         knowledgePoint:
           type: object
-          required: [topicId, name, importance, javaVersions, keywords, sourceRefs]
+          required: [topicId, name, importance, applicableVersions, keywords, sourceRefs, sourceReferences, referenceLibraryIds]
           properties:
             topicId: {type: string}
             name: {type: string}
             importance: {type: integer, minimum: 1, maximum: 5}
-            javaVersions: {type: array, items: {type: string}}
+            applicableVersions: {type: array, items: {type: string}}
+            javaVersions:
+              type: array
+              deprecated: true
+              description: 向后兼容字段；新客户端使用 applicableVersions。
+              items: {type: string}
             keywords: {type: array, items: {type: string}}
             sourceRefs: {type: array, items: {type: string}}
+            sourceReferences:
+              type: array
+              items: {$ref: '#/components/schemas/SourceAsset'}
+            referenceLibraryIds:
+              type: array
+              items: {type: string}
   securitySchemes:
     bearerAuth:
       type: http

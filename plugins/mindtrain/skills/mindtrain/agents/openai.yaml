@@ -1,4 +1,4 @@
 interface:
   display_name: "MindTrain"
-  short_description: "Configure, train, and track progress with MindTrain"
-  default_prompt: "Use $mindtrain to configure my private MindTrain instance or start a training session."
+  short_description: "Build training domains from your private references"
+  default_prompt: "Use $mindtrain to organize a training domain from my local references, preview it, and save it after I confirm."

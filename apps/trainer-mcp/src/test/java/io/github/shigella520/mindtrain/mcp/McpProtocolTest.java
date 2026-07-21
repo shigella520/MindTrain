@@ -43,7 +43,7 @@ class McpProtocolTest {
                 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
                 """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.result.tools.length()").value(10))
+            .andExpect(jsonPath("$.result.tools.length()").value(14))
             .andExpect(jsonPath("$.result.tools[0].name").value("create_training_session"));
 
         when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("""
@@ -55,6 +55,32 @@ class McpProtocolTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.result.isError").value(false))
             .andExpect(jsonPath("$.result.structuredContent.id").value("session-test"));
+    }
+
+    @Test
+    void proxiesCatalogPreviewAndApply() throws Exception {
+        when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("""
+            {"importId":"catalog-test","proposalHash":"sha256:test","status":"previewed"}
+            """));
+
+        mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+                {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{
+                  "name":"preview_knowledge_catalog_import",
+                  "arguments":{"libraryId":"java-notes","proposal":{"domains":[],"topics":[],"relations":[],"sources":[]}}
+                }}
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.result.structuredContent.importId").value("catalog-test"));
+        verify(coreClient).post(eq("/api/v1/catalog/imports/preview"), any(), any());
+
+        mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+                {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{
+                  "name":"apply_knowledge_catalog_import",
+                  "arguments":{"importId":"catalog-test","proposalHash":"sha256:test"}
+                }}
+                """))
+            .andExpect(status().isOk());
+        verify(coreClient).post(eq("/api/v1/catalog/imports/catalog-test/apply"), any(), any());
     }
 
     @Test

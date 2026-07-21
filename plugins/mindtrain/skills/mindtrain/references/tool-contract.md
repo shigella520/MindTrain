@@ -19,3 +19,23 @@
 - `get_scheduler_backlog`: returns due backlog and new-item allowance.
 
 Assignment payloads intentionally exclude `correctOptionIds`, explanations, and sources. Keep the returned assignment ID until an answer succeeds. Use a stable idempotency key when retrying the same write.
+
+## Local reference tools
+
+- `configure_reference_library`: saves a named absolute directory only in local Plugin configuration.
+- `sync_reference_library`: incrementally extracts supported documents and refreshes the local FTS index.
+- `get_reference_library_status`, `list_reference_libraries`, and `list_reference_documents`: inspect local configuration and sync warnings.
+- `search_reference_library`: returns ranked snippets and source metadata; use it before reading content.
+- `read_reference_document`: reads a bounded local passage by document ID and locator.
+- `remove_reference_library`: removes only local configuration and indexes.
+
+## Catalog import tools
+
+These are internal persistence tool names. In user-facing conversation, describe the workflow as previewing, saving, and enabling a training domain organized from the user's selected references.
+
+- `preview_knowledge_catalog_import`: validates and saves a proposal without changing active domains or topics.
+- `get_knowledge_catalog_import`: returns the proposal, hash, validation, conflicts, and diff.
+- `apply_knowledge_catalog_import`: requires the exact preview `proposalHash` and explicit user confirmation.
+- `reject_knowledge_catalog_import`: rejects the proposal without changing the active catalog.
+
+Catalog payloads may include domain, topic hierarchy, topic relations, and source metadata. Never send an absolute local path or extracted document content to these tools.
