@@ -4,479 +4,203 @@
 
 <h1 align="center">MindTrain</h1>
 
-[![CI](https://github.com/shigella520/MindTrain/actions/workflows/ci.yml/badge.svg)](https://github.com/shigella520/MindTrain/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+<p align="center">
+  <strong>你的私人 AI 知识训练场：边问、边练、边复习，把一次对话变成长期记忆。</strong>
+</p>
 
-MindTrain 是一个面向 Codex 和其他 AI 客户端的知识训练平台。它把对话式讲解、确定性判分、题库治理和抗遗忘调度组合在同一条训练链路中，让用户可以在答题过程中随时追问，又不丢失可审计的学习记录。
+<p align="center">
+  <a href="https://mindtrain.jianyutan.com/">在线演示</a> ·
+  <a href="#5-分钟开始使用">快速开始</a> ·
+  <a href="doc/CodexPlugin部署.md">Codex Plugin</a> ·
+  <a href="doc/部署与运维.md">部署与运维</a>
+</p>
 
-当前版本已提供可由 Codex 使用的 MVP：`Training Core + Trainer MCP + PostgreSQL + MindTrain Skill`。Java 后端面试知识是首个领域原型，但平台核心不绑定 Java。
+<p align="center">
+  <a href="https://github.com/shigella520/MindTrain/actions/workflows/ci.yml"><img src="https://github.com/shigella520/MindTrain/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License" /></a>
+  <a href="https://openjdk.org/projects/jdk/21/"><img src="https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white" alt="Java 21" /></a>
+  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 3.5" /></a>
+</p>
 
-![MindTrain Dashboard 预览](doc/preview-dashboard.png)
+MindTrain 是一个面向 Codex 和其他 AI 客户端的开源知识训练平台。你可以像普通聊天一样随时追问、质疑和索要提示；MindTrain 在后台负责题库、精确判分、学习记录和抗遗忘调度。
 
-在线演示：[https://mindtrain.jianyutan.com/](https://mindtrain.jianyutan.com/)（看板统计可公开查看；开始训练需要配置私有实例 Token）
+- **对话不中断**：遇到不懂的概念直接问，当前题目不会被误判为已作答。
+- **数据归自己**：单用户私有部署，题库和学习历史保存在自己的 PostgreSQL 中。
+- **真正形成闭环**：复习旧题、按需生成新题、记录错误，并控制每天的新题与到期积压。
 
-```text
-Codex + MindTrain Plugin         MindTrain Web
-              |                      |
-              | local bridge MCP     | REST
-              v                      v
-     Private Trainer MCP ------ Training Core -------- PostgreSQL
-              |
-              +-- 加权调度（当前可用，provider ID: weighted）
-              +-- Anki / FSRS Provider（规划中）
-```
+MindTrain 核心不绑定具体知识领域；每个私有实例可以独立管理自己的领域、知识点和题库。
 
-## 功能特点
+## 使用预览
 
-- 对话式训练：在 Codex 中完成出题、回答、追问、提示、深入讲解和会话总结，无需切换到其他客户端。
-- 安全出题：正式出题接口只返回题干和选项，提交答案前不返回正确答案、解释或可能泄露答案组合的提示。
-- 精确判分：单选和多选都按选项集合完全相等判分，结果只为 `0` 或 `100`。
-- 持久学习记录：保存 Session、Assignment、Attempt、Interaction、Mistake 和题目级复习状态。
-- 默认抗遗忘调度：数据库默认配置每轮 10 道主问题和 2 道新题，复习题数自动计算为 8；积压过高时暂停引入新题。
-- AI 临时题：题库不足时由 Codex 生成并在展示前入库；未作答时可拒绝并物理删除，作答后自动进入普通调度。
-- 可复习题版本修订：用户确认题目存在问题后，教练可提交局部修订；Core 创建不可变的新版本，历史作答继续引用旧版本。
-- 幂等与审计：写接口支持 `Idempotency-Key`，答题、交互和审核历史采用追加式保存。
-- 数据与 Skill 分离：Training Core 是权威数据源；Skill 无状态，只通过 MCP 调用应用能力。
-- Plugin 分发：仓库可直接作为 Codex Plugin Marketplace 来源，Plugin 同时提供 Skill、本地桥接 MCP 和首次配置流程。
-- Web 训练：提供学习 Dashboard、选择题训练、实例设置和内容治理概览，响应式覆盖桌面与手机。
-- 调度器可插拔：Core 已建立 Scheduler SPI，当前提供加权调度器，后续可接入 Anki/FSRS。
-- 原型可迁移：提供默认 dry-run 的迁移工具，将现有 Java 题库和可选的私人学习历史导入 Core。
+### 如何工作
 
-## 当前状态
+![MindTrain 内部架构](doc/architecture-overview.svg)
 
-| 能力 | 状态 | 说明 |
-| --- | --- | --- |
-| Training Core | 可用 | Spring Boot 模块化单体、REST API、PostgreSQL、Flyway |
-| Trainer MCP | 可用 | Streamable HTTP MCP，默认监听 `127.0.0.1:8787/mcp` |
-| Codex Plugin Marketplace | 可用 | 安装后首次配置私有实例 URL 和单用户 Token |
-| MindTrain Skill | 可用 | 领域无关、无状态、面向 Codex 的训练工作流 |
-| 加权调度 | 可用 | 默认调度方式；复习/新题配额、积压控制、薄弱项优先 |
-| Java 原型迁移 | 可用 | 可复习题默认导入，私人数据必须显式选择 |
-| MindTrain Web | 可用 | Vue 3 Dashboard、Web 答题、训练配置管理与实例设置 |
-| Anki / FSRS Provider | 规划中 | Anki 作为可选调度插件和可重建投影 |
+- Training Core 是题目、会话、作答、复习状态和配置的权威数据源。
+- Trainer MCP 只调用 Core API，不直接访问数据库。
+- Skill 负责教学和工具编排，不保存业务数据。
+- AI 临时题会先校验并入库再展示；作答前可拒绝并物理删除，作答后转为普通复习题。
 
-## 安装（Docker Compose）
+设计决策和数据边界见[概要设计](doc/概要设计.md)。
 
-### 1. 准备配置
+### 训练流程
+
+![MindTrain 训练流程](doc/training-flow.svg)
+
+一次训练并不是简单的“显示答案”：调度器先根据到期状态和新题额度选题；用户可以在提交前无限追问；只有明确提交选项后，Core 才会精确判分并追加学习记录。题库不足时，Core 会返回结构化生成要求，由 Codex 生成、Core 校验入库后再展示。
+
+每轮题量、复习与新题配额、积压暂停规则和 AI 临时题有效期均由数据库配置控制，可在 Web 管理页调整。
+
+### 在 Codex 中训练、追问和复习
+
+![MindTrain Codex 对话式训练示例](doc/preview-codex-training.png)
+
+在线演示：[https://mindtrain.jianyutan.com/](https://mindtrain.jianyutan.com/)（可公开查看示例统计；训练需要连接自己的私有实例）
+
+## 为什么使用 MindTrain
+
+| 能力 | 你得到什么 |
+| --- | --- |
+| 对话式 AI 教练 | 在同一题中追问概念、索要提示、质疑答案，再继续作答 |
+| 确定性判分 | 单选和多选按选项集合精确判分，不让模型“凭感觉”决定分数 |
+| 抗遗忘调度 | 默认平衡复习题和新题；积压过高时自动暂停新题 |
+| AI 补题 | 题库不足时由 Codex 按指定知识点、题型和难度生成并校验新题 |
+| 私有数据 | Core 是唯一权威数据源；Skill 无状态，仓库不承载运行数据 |
+| Web + Codex | Web 用于看板、旧题复习和配置；Codex 用于完整的 AI 教练体验 |
+
+当前可用：Training Core、Trainer MCP、MindTrain Web、Codex Plugin 和加权调度。Anki / FSRS Provider 尚在规划中。
+
+## 5 分钟开始使用
+
+### 前置条件
+
+- Git
+- Docker 与 Docker Compose
+- Codex CLI 或 Codex App（使用 AI 教练时需要）
+
+### 1. 下载并配置
 
 ```bash
-cd deploy/core-only
+git clone https://github.com/shigella520/MindTrain.git
+cd MindTrain/deploy/core-only
 cp .env.example .env
 ```
 
-至少修改 `.env` 中的以下配置：
+编辑 `.env`，至少替换下面两项：
 
 ```dotenv
-POSTGRES_PASSWORD=replace-with-a-database-password
-MINDTRAIN_BOOTSTRAP_TOKEN=replace-with-a-long-random-token
+POSTGRES_PASSWORD=请替换为随机数据库密码
+MINDTRAIN_BOOTSTRAP_TOKEN=请替换为随机长令牌
 ```
 
-`MINDTRAIN_BOOTSTRAP_TOKEN` 是单用户部署令牌，同时保护 Codex → Trainer MCP 和 Trainer MCP → Core。请使用随机长字符串，不要把真实令牌提交到仓库。
+可以使用 `openssl rand -hex 32` 生成随机值。`MINDTRAIN_BOOTSTRAP_TOKEN` 同时保护 Codex → Trainer MCP 和 Trainer MCP → Core，请勿提交或公开。
 
-### 2. 启动服务
-
-使用当前源码构建并启动：
+### 2. 启动 MindTrain
 
 ```bash
 docker compose up -d --build
+docker compose ps
 ```
 
-默认只映射到宿主机 loopback：
+等待四个容器健康后访问：
 
-| 服务 | 地址 | 用途 |
-| --- | --- | --- |
-| Training Core | `http://127.0.0.1:8080` | 权威数据、训练、调度与报告 API |
-| Trainer MCP | `http://127.0.0.1:8787/mcp` | Codex 和其他 MCP 客户端入口 |
-| MindTrain Web | `http://127.0.0.1:4173` | 学习看板、Web 训练、训练配置与管理概览 |
-| PostgreSQL | 不对宿主机开放 | 保存题库、会话、学习历史和调度状态 |
+- Web：[http://127.0.0.1:4173](http://127.0.0.1:4173)
+- Core 健康检查：[http://127.0.0.1:8080/actuator/health](http://127.0.0.1:8080/actuator/health)
+- MCP 健康检查：[http://127.0.0.1:8787/actuator/health](http://127.0.0.1:8787/actuator/health)
 
-健康检查：
+PostgreSQL 不对宿主机开放；Core、MCP 和 Web 默认只监听 `127.0.0.1`。
+
+### 3. 安装 Codex Plugin
 
 ```bash
-curl http://127.0.0.1:8080/actuator/health
-curl http://127.0.0.1:8787/actuator/health
-curl http://127.0.0.1:4173/healthz
+codex plugin marketplace add shigella520/MindTrain --ref main
+codex plugin add mindtrain@mindtrain
 ```
 
-停止服务：
+安装完成后新建一个 Codex 任务，输入：
 
-```bash
-docker compose down
+```text
+$mindtrain 配置我的 MindTrain 实例
 ```
 
-PostgreSQL 数据默认保存在仓库根目录的 `var/postgres/`。删除或迁移该目录前请先备份数据库。
+按提示提供：
 
-### 3. 云端暴露 Trainer MCP
+1. MCP 地址。本机部署使用 `http://127.0.0.1:8787/mcp`；云端部署使用自己的 HTTPS 地址。
+2. `.env` 中的 `MINDTRAIN_BOOTSTRAP_TOKEN`。
 
-Training Core 和 PostgreSQL 应继续保持在 loopback 或容器私网中。通过 Nginx、Caddy、Cloudflare Tunnel 或同类入口暴露 Web 和 Trainer MCP：
+配置只保存在本机用户配置目录，不进入项目仓库。完整安装、升级和故障排查见 [Codex Plugin 部署](doc/CodexPlugin部署.md)。
+
+### 4. 开始第一次训练
+
+新建一个任务并输入：
+
+```text
+$mindtrain 开始训练
+```
+
+你可以在任何一道题中直接问：
+
+```text
+这个概念具体是什么？
+为什么 B 不对？
+先给我一个提示，不要公布答案。
+这道题不适合当前主题，换一道。
+```
+
+只有明确提交选项时才会产生 Attempt；普通追问不会消耗题目。
+
+## 云端私有部署
+
+MindTrain 面向单用户私有部署。推荐只通过反向代理公开 Web 和 Trainer MCP：
 
 ```text
 https://mindtrain.example.com/     -> http://127.0.0.1:4173/
 https://mindtrain.example.com/mcp -> http://127.0.0.1:8787/mcp
 ```
 
-Trainer MCP 会验证：
+云端 MCP 必须使用 HTTPS 和 Bearer Token。不要公开 PostgreSQL，也没有必要把 Core 端口暴露到公网。
 
-```http
-Authorization: Bearer <MINDTRAIN_BOOTSTRAP_TOKEN>
-```
+Nginx/Caddy/Cloudflare Tunnel、健康检查、备份恢复、升级和完整配置说明见[部署与运维](doc/部署与运维.md)。
 
-未提供 Token 或 Token 错误时返回 `401 Unauthorized`。健康检查端点不要求 Token，便于容器和反向代理探活。
-
-## 接入 Codex Plugin
-
-### 1. 添加 Marketplace 来源
-
-MindTrain 仓库包含 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json)，可以直接作为 Codex Marketplace 来源：
+## 常用操作
 
 ```bash
-codex plugin marketplace add shigella520/MindTrain --ref main
+# 查看状态和日志
+cd deploy/core-only
+docker compose ps
+docker compose logs -f trainer-core trainer-mcp web
+
+# 停止服务但保留数据
+docker compose down
+
+# 更新当前源码并重建
+git pull
+docker compose up -d --build
 ```
 
-开发版本可以显式选择 `dev`：
+训练题量、新题额度、积压阈值、临时题有效期和报表时区可在 Web 的“管理 → 训练配置”中修改，不需要重启服务。
 
-```bash
-codex plugin marketplace add shigella520/MindTrain --ref dev
-```
+## 文档导航
 
-### 2. 安装 Plugin
-
-在 Codex CLI 中安装：
-
-```bash
-codex plugin add mindtrain@mindtrain
-```
-
-也可以打开 Codex 的 `/plugins`，选择 `MindTrain` Marketplace 后安装。安装完成后开启一个新任务，使 bundled Skill 和本地 MCP bridge 生效。
-
-### 3. 首次使用配置私有实例
-
-在新任务中调用：
-
-```text
-$mindtrain Configure my private MindTrain instance.
-```
-
-Skill 会先调用 `get_mindtrain_configuration`。尚未配置时，它会依次询问：
-
-1. 私有 Trainer MCP 完整 HTTPS 地址，例如 `https://mindtrain.example.com/mcp`。
-2. 部署时设置的 `MINDTRAIN_BOOTSTRAP_TOKEN`。
-
-本地 bridge 会使用该 Token 请求远程 `initialize`，验证地址、Token 和服务身份后，将配置保存到用户配置目录：
-
-```text
-~/.config/mindtrain/plugin.json
-```
-
-该文件使用仅当前用户可读写的权限，不进入项目仓库；状态查询也不会返回 Token。之后可以直接使用 `$mindtrain` 开始训练。
-
-如果不希望在 Codex 对话中输入 Token，可以在已安装 Plugin 目录执行交互式配置：
-
-```bash
-python3 scripts/mindtrain_mcp_bridge.py --configure
-```
-
-### 手动 MCP 配置（备用）
-
-不使用 Plugin 时，可以参考 [`deploy/core-only/codex-config.toml.example`](deploy/core-only/codex-config.toml.example) 手动连接：
-
-```toml
-[mcp_servers.mindtrain]
-url = "https://mindtrain.example.com/mcp"
-bearer_token_env_var = "MINDTRAIN_BOOTSTRAP_TOKEN"
-```
-
-这种方式仍需单独安装或加载 [`skills/mindtrain`](skills/mindtrain)，推荐普通用户优先使用 Plugin。
-
-一个典型会话如下：
-
-```text
-用户：开始练习 JVM
-
-Codex：创建训练会话并从 Core 获取下一题
-Codex：展示题干和 A-D 选项
-Codex：请回复选项字母，可用逗号分隔。
-
-用户：这个选项里的“方法区”具体是什么？
-
-Codex：记录 Interaction，解释概念，当前题目保持未提交
-
-用户：AC
-
-Codex：向 Core 提交答案，返回判分、正确答案和结构化解释
-Codex：提供“下一题、深入追问、结束总结”
-```
-
-普通提问、质疑和索要提示只会记录为 Interaction，不会消耗当前题目；只有明确提交选项后才会产生 Attempt。
-
-## 核心训练流程
-
-```text
-创建 Session（默认 10 道主问题）
-        |
-        v
-调度器规划复习题与新题配额
-        |
-        v
-Core 创建 Assignment，只返回题干与选项
-        |
-        +-------------------------------+
-        |                               |
-        v                               v
-用户提交选项                       用户提问或索要提示
-        |                               |
-        v                               v
-Core 精确判分                     追加 Interaction
-        |                               |
-        v                               +-- 当前题保持待答
-追加 Attempt / Mistake / Review State
-        |
-        v
-返回正确答案与结构化解释
-        |
-        v
-下一题 / 深入追问 / 结束总结
-```
-
-当没有可用普通题时，Core 返回 `generation_required`、目标知识点上下文和结构化 `generationProfile`。Codex 按 Profile 生成 AI 临时题并交给 Core 校验、入库后展示。用户在作答前拒绝时，Core 物理删除该题及待答 Assignment，恢复新题额度并生成替代题；作答后题目自动转为可跨 Session 复习的普通题。
-
-## 默认调度策略
-
-默认的加权调度（稳定 provider ID 为 `weighted`）以可控的每日训练容量为优先：
-
-- 每个 Session 默认包含 10 道主问题。
-- 默认数据库配置为每轮 10 题、新题 2 题，复习题自动计算为 8 题；可在 Web 管理页调整。
-- 到期复习题不足时，继续使用未学习题或 AI 生成题补足 Session 目标。
-- Due Backlog 超过 20，或最老题目逾期超过 3 天时，暂停引入新题。
-- Learning、Relearning、严重逾期、薄弱和高错误率题目优先。
-- 正确后的初始复习间隔采用 3、7、14、30 天阶梯；错误后次日复习。
-
-这些规则用于避免“每天只能完成 10 题，但新增内容持续制造更多到期复习”的失控状态。调度实现位于 Core 内部，并通过 Scheduler SPI 为后续 Anki/FSRS Provider 保留替换边界。
-
-## 导入 Java 原型数据
-
-迁移工具默认执行 dry-run，并只处理共享知识分类、来源和可复习题：
-
-```bash
-python3 tools/prototype-migration/import_prototype.py \
-  --token "$MINDTRAIN_BOOTSTRAP_TOKEN"
-```
-
-检查数量、冲突、跳过项和数据哈希后，使用 `--apply` 持久化：
-
-```bash
-python3 tools/prototype-migration/import_prototype.py \
-  --token "$MINDTRAIN_BOOTSTRAP_TOKEN" \
-  --apply
-```
-
-原型私人 AI 临时题和学习历史不会默认导入，必须显式选择：
-
-```bash
-python3 tools/prototype-migration/import_prototype.py \
-  --token "$MINDTRAIN_BOOTSTRAP_TOKEN" \
-  --include-private-candidates \
-  --include-learning-data \
-  --apply
-```
-
-迁移工具只读取原型 JSON/JSONL，不会修改原始文件；稳定 ID、版本和数据哈希用于保证重复执行时可对账。
-
-## API 与 MCP 工具
-
-Training Core 首期 REST API：
-
-| 接口 | 用途 |
+| 想做什么 | 阅读 |
 | --- | --- |
-| `POST /api/v1/sessions` | 创建训练会话 |
-| `POST /api/v1/sessions/{id}/assignments/next` | 获取下一题或生成需求 |
-| `POST /api/v1/assignments/{id}/attempts` | 提交选项并精确判分 |
-| `POST /api/v1/assignments/{id}/reject` | 物理删除未作答 AI 临时题并恢复额度 |
-| `POST /api/v1/sessions/{id}/interactions` | 记录追问、提示和质疑 |
-| `POST /api/v1/sessions/{id}/finish` | 结束会话并生成总结 |
-| `POST /api/v1/candidates` | 校验并保存当前会话 AI 临时题 |
-| `POST /api/v1/questions/{id}/revisions` | 为已作答普通题创建不可变新版本 |
-| `GET /api/v1/reports/overview` | 获取学习概览 |
-| `GET /api/v1/schedulers/backlog` | 获取到期积压 |
-| `GET /api/v1/settings/training` | 读取数据库训练配置 |
-| `PUT /api/v1/settings/training` | 更新数据库训练配置 |
-| `POST /api/v1/imports/prototype` | 创建原型导入任务 |
-| `GET /api/v1/imports/{id}` | 查询导入结果 |
-
-完整契约见 [`contracts/openapi/trainer-core.yaml`](contracts/openapi/trainer-core.yaml)。
-
-Trainer MCP 当前提供：
-
-```text
-create_training_session
-get_next_assignment
-submit_choice_answer
-reject_generated_question
-record_interaction
-create_candidate_question
-revise_saved_question
-finish_training_session
-get_learning_report
-get_scheduler_backlog
-```
-
-MCP 只调用 Core API，不直接访问 PostgreSQL。
-
-## 配置项
-
-Core-only Compose 常用配置：
-
-| 变量名 | 默认值 | 说明 |
-| --- | --- | --- |
-| `POSTGRES_DB` | `mindtrain` | PostgreSQL 数据库名 |
-| `POSTGRES_USER` | `mindtrain` | PostgreSQL 用户名 |
-| `POSTGRES_PASSWORD` | 无安全默认值 | PostgreSQL 密码，部署时必须修改 |
-| `MINDTRAIN_BOOTSTRAP_USER_ID` | `local-admin` | 启动时创建的本地管理员 ID |
-| `MINDTRAIN_BOOTSTRAP_DISPLAY_NAME` | `Local Admin` | 本地管理员显示名 |
-| `MINDTRAIN_BOOTSTRAP_TOKEN` | 无安全默认值 | Core Bearer Token，MCP 使用同一令牌访问 Core |
-| `MINDTRAIN_PUBLIC_DASHBOARD_ENABLED` | `false` | 匿名开放看板概览与积压接口；只建议示例站点显式启用 |
-| `MINDTRAIN_CORE_PORT` | `8080` | Core 映射到宿主机的端口 |
-| `MINDTRAIN_MCP_PORT` | `8787` | MCP 映射到宿主机的端口 |
-
-### 公开看板接口
-
-Web 看板查询两个只读接口：
-
-| 接口 | 返回内容 |
-| --- | --- |
-| `GET /api/v1/reports/overview` | 作答数、正确率、会话数、题库数量、薄弱知识点和调度器展示名 |
-| `GET /api/v1/schedulers/backlog` | 到期数量、最老到期时间、新题额度和暂停状态 |
-
-默认情况下它们与其他 Core API 一样要求 Bearer Token。示例站点可以设置 `MINDTRAIN_PUBLIC_DASHBOARD_ENABLED=true` 允许匿名读取；创建 Session、获取题目、提交答案、AI 临时题、导入和其他接口仍要求 Token。
-
-公开概览会暴露聚合学习数据及薄弱知识点名称。私人实例应保持默认值 `false`，不要为了省去 Web 配置而开启。
-
-训练策略不再通过环境变量维护。首次升级时 Flyway 创建默认数据库配置，可在 Web 的“管理 → 训练配置”中修改：
-
-| 配置 | 默认值 | 说明 |
-| --- | --- | --- |
-| 每轮总题数 `questionCount` | `10` | 新建 Session 的主问题目标 |
-| 新题计划数 `newBudget` | `2` | 复习题计划数自动计算为 `questionCount - newBudget` |
-| 积压暂停阈值 | `20` | 到期题超过该数量时暂停新题 |
-| 严重逾期天数 | `3` | 最老到期题超过该天数时暂停新题 |
-| AI 临时题有效期 | `24` 小时 | 超时未作答题自动物理清理 |
-| 报表时区 | `Asia/Shanghai` | 决定“今日训练”的统计边界 |
-
-数据库连接、端口、Bootstrap Token 和公开看板安全开关仍通过环境变量配置；这些启动与安全参数不会写入业务数据库。
-
-## 项目结构
-
-```text
-MindTrain/
-├── apps/
-│   ├── trainer-core/             # 权威业务数据、判分、调度、报告 REST API
-│   ├── trainer-mcp/              # 面向 Codex/AI 客户端的 MCP Gateway
-│   └── web/                      # Vue Dashboard、训练页、管理概览与 Nginx 镜像
-├── plugins/
-│   └── mindtrain/                # Codex Plugin、首次配置 bridge 和 bundled Skill
-├── skills/
-│   └── mindtrain/                # 领域无关、无状态的 AI 教练 Skill
-├── contracts/
-│   ├── openapi/                  # Training Core REST 契约
-│   └── scheduler-spi/            # 调度器 Provider 契约
-├── deploy/
-│   └── core-only/                # Core、MCP、PostgreSQL 本地部署
-├── tools/
-│   └── prototype-migration/      # 原型迁移与数量对账工具
-├── doc/                          # 需求、概要设计、仓库和 Web 设计文档
-├── assets/                       # 迁移期 Java 原型知识资产
-├── learning-data/                # 迁移期私人学习数据，不应进入新增提交
-├── skill/java-interview-coach/   # 迁移期兼容 Skill
-├── .github/workflows/            # 验证与 GHCR 镜像发布
-├── .agents/plugins/              # Codex Marketplace 清单
-└── pom.xml                       # Java 21 Maven 多模块入口
-```
-
-依赖边界：
-
-- 只有 Training Core 可以直接访问业务数据库。
-- Trainer MCP、Web 和未来 Anki Bridge 只能通过 Core API 访问权威数据。
-- Skill 只编排 MCP 工具，不保存题库、会话和学习记录。
-- Plugin bridge 只保存私有实例 URL 和 Token，且保存在用户配置目录而非仓库。
-- Anki 是可选调度插件和可重建投影，不是 MindTrain 主数据库。
-- 生产运行数据写入 PostgreSQL 或 `var/`，不得提交到仓库。
-
-## 本地开发
-
-要求：
-
-- Java 21
-- Maven 3.9+
-- Python 3.12+（原型校验与迁移工具）
-- Docker / Docker Compose（集成部署）
-- Node.js 22 与 pnpm 10（Web 开发）
-
-验证平台代码：
-
-```bash
-mvn -B verify
-```
-
-验证 Java 原型、数据协议和 Skills：
-
-```bash
-make bootstrap
-make check
-```
-
-Core REST 契约变更应同步更新 OpenAPI；Skill 或 MCP 工具变更应保持中性答题提示，不能在提交答案前泄露正确选项数量或组合。
-
-Web 本地开发：
-
-```bash
-cd apps/web
-pnpm install
-pnpm dev
-```
-
-Web 测试与生产构建：
-
-```bash
-pnpm test
-pnpm build
-```
-
-## Docker 镜像发布
-
-GitHub Actions 构建三个 GHCR 镜像：
-
-- `ghcr.io/shigella520/mindtrain-core`
-- `ghcr.io/shigella520/mindtrain-mcp`
-- `ghcr.io/shigella520/mindtrain-web`
-
-发布规则：
-
-- Pull Request 到 `main`：运行 Java、Web、原型和 Skill 验证，并试构建三个镜像，不推送。
-- 推送到 `main`：验证通过后发布 `latest` 和提交 SHA 标签。
-- `dev`：手动运行 `Publish Dev Images`，且必须选择 `dev` 分支，发布 `dev` 和提交 SHA 标签。
+| 部署到服务器、配置反向代理、备份或升级 | [部署与运维](doc/部署与运维.md) |
+| 安装、切换分支、更新或排查 Codex Plugin | [Codex Plugin 部署](doc/CodexPlugin部署.md) |
+| 本地开发、运行测试、构建镜像或了解 CI | [开发指南](doc/开发指南.md) |
+| 了解 Dashboard、Web 训练和视觉设计 | [Web 设计](doc/Web设计.md) |
+| 查看 REST API | [Training Core OpenAPI](contracts/openapi/trainer-core.yaml) |
+| 查看产品目标、架构与仓库边界 | [目标需求](doc/目标需求.md) · [概要设计](doc/概要设计.md) · [仓库目录规划](doc/仓库目录规划.md) |
+| 查看 Skill 工作流 | [MindTrain Skill](skills/mindtrain/SKILL.md) |
 
 ## 路线图
 
-1. 完成 Codex MVP 的真实 PostgreSQL 部署验证和训练反馈闭环。
-2. 扩充领域无关 Knowledge Pack，并完成 Java 原型数据迁移演练。
-3. 补充题库查询、AI 临时题观测和近期会话 API，完成 Web 内容管理闭环。
-4. 实现 MindTrain Anki Bridge，并接入 FSRS Scheduler Provider。
-5. 完成多用户、备份恢复、导入导出和插件治理能力。
+- 扩充领域无关 Knowledge Pack 和内容管理能力。
+- 完善 Web 题库治理、近期会话和训练洞察。
+- 接入 Anki Bridge 与 FSRS Scheduler Provider。
+- 增加备份恢复、导入导出和多用户能力。
 
-## 文档
-
-- [目标需求](doc/目标需求.md)
-- [概要设计](doc/概要设计.md)
-- [仓库目录规划](doc/仓库目录规划.md)
-- [Web 设计](doc/Web设计.md)
-- [Training Core OpenAPI](contracts/openapi/trainer-core.yaml)
-- [MindTrain Skill](skills/mindtrain/SKILL.md)
-- [Codex Plugin 部署](doc/CodexPlugin部署.md)
+欢迎通过 Issue 提交使用反馈、题目质量问题和新的知识领域建议。
 
 ## 许可证
 
-MindTrain 使用 [MIT License](LICENSE) 开源。
-
-这意味着允许自由使用、修改、分发和商用，但需要保留原始版权声明和许可证文本。
+MindTrain 使用 [MIT License](LICENSE) 开源，可自由使用、修改、分发和商用，但需保留原始版权声明和许可证文本。

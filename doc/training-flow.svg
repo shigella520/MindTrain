@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="880" viewBox="0 0 1440 880" role="img" aria-labelledby="title desc">
+  <title id="title">MindTrain 训练流程</title>
+  <desc id="desc">训练会话从调度获取题目，用户可追问或提交答案；题库不足时由 Codex 按 generationProfile 生成并由 Core 校验入库。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8f7f4"/>
+      <stop offset="0.5" stop-color="#f2f7ff"/>
+      <stop offset="1" stop-color="#fff7ee"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a84ff"/>
+      <stop offset="1" stop-color="#5868eb"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb35c"/>
+      <stop offset="1" stop-color="#ff7f50"/>
+    </linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7b68ee"/>
+      <stop offset="1" stop-color="#b45de5"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#8aa1bf" stroke-opacity=".085"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="11" stdDeviation="15" flood-color="#46617f" flood-opacity=".13"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#7890ad"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#3977dd"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#df802d"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#8066dd"/>
+    </marker>
+  </defs>
+
+  <rect width="1440" height="880" rx="34" fill="url(#bg)"/>
+  <rect width="1440" height="880" rx="34" fill="url(#grid)"/>
+  <circle cx="1300" cy="70" r="210" fill="#ff9f43" opacity=".07"/>
+  <circle cx="90" cy="810" r="230" fill="#0a84ff" opacity=".06"/>
+
+  <text x="64" y="72" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="32" font-weight="700">From Question to Long-term Memory</text>
+  <text x="64" y="108" fill="#6f6b66" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="17">追问不消耗题目，作答后精确判分，题库不足时由 AI 安全补题</text>
+
+  <!-- Legend -->
+  <rect x="986" y="52" width="390" height="42" rx="21" fill="#fff" fill-opacity=".75" stroke="#fff"/>
+  <circle cx="1012" cy="73" r="6" fill="#0a84ff"/>
+  <text x="1027" y="78" fill="#536b83" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">主流程</text>
+  <circle cx="1092" cy="73" r="6" fill="#ff8c42"/>
+  <text x="1107" y="78" fill="#536b83" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">追问分支</text>
+  <circle cx="1192" cy="73" r="6" fill="#8a68df"/>
+  <text x="1207" y="78" fill="#536b83" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">AI 补题</text>
+  <circle cx="1274" cy="73" r="6" fill="#32c46c"/>
+  <text x="1289" y="78" fill="#536b83" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">持久化</text>
+
+  <!-- Main lane -->
+  <text x="64" y="160" fill="#8a8883" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="700" letter-spacing="2">TRAINING LOOP</text>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="186" width="220" height="150" rx="26" fill="#fff" fill-opacity=".9" stroke="#fff"/>
+    <circle cx="104" cy="226" r="22" fill="#edf5ff"/>
+    <text x="97" y="233" fill="#0a84ff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="20" font-weight="800">1</text>
+    <text x="140" y="226" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="20" font-weight="700">创建 Session</text>
+    <text x="88" y="271" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">读取数据库训练配置</text>
+    <text x="88" y="298" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">确定本轮题量与新题额度</text>
+  </g>
+  <path d="M284 261H329" stroke="#3977dd" stroke-width="4" marker-end="url(#arrowBlue)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="346" y="186" width="220" height="150" rx="26" fill="#fff" fill-opacity=".9" stroke="#fff"/>
+    <circle cx="386" cy="226" r="22" fill="#edf5ff"/>
+    <text x="379" y="233" fill="#0a84ff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="20" font-weight="800">2</text>
+    <text x="422" y="226" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="20" font-weight="700">调度下一题</text>
+    <text x="370" y="271" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">复习优先 · 薄弱项优先</text>
+    <text x="370" y="298" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">积压过高时暂停新题</text>
+  </g>
+  <path d="M566 261H611" stroke="#3977dd" stroke-width="4" marker-end="url(#arrowBlue)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="628" y="186" width="220" height="150" rx="26" fill="#fff" fill-opacity=".9" stroke="#fff"/>
+    <circle cx="668" cy="226" r="22" fill="#edf5ff"/>
+    <text x="661" y="233" fill="#0a84ff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="20" font-weight="800">3</text>
+    <text x="704" y="226" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="20" font-weight="700">安全展示</text>
+    <text x="652" y="271" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">只返回题干、选项和元数据</text>
+    <text x="652" y="298" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">提交前不泄露答案与解释</text>
+  </g>
+  <path d="M848 261H893" stroke="#3977dd" stroke-width="4" marker-end="url(#arrowBlue)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="910" y="174" width="244" height="174" rx="30" fill="url(#blue)"/>
+    <circle cx="956" cy="220" r="24" fill="#fff" fill-opacity=".18"/>
+    <path d="M946 220h20M956 210v20" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+    <text x="996" y="226" fill="#fff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="21" font-weight="700">用户互动</text>
+    <text x="942" y="272" fill="#fff" fill-opacity=".86" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">提交选项，或继续提问</text>
+    <rect x="942" y="296" width="82" height="28" rx="14" fill="#fff" fill-opacity=".16"/>
+    <text x="962" y="315" fill="#fff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">ANSWER</text>
+    <rect x="1034" y="296" width="88" height="28" rx="14" fill="#fff" fill-opacity=".16"/>
+    <text x="1057" y="315" fill="#fff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">ASK</text>
+  </g>
+  <path d="M1154 261H1199" stroke="#3977dd" stroke-width="4" marker-end="url(#arrowBlue)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="1216" y="186" width="160" height="150" rx="26" fill="#fff" fill-opacity=".92" stroke="#fff"/>
+    <circle cx="1256" cy="226" r="22" fill="#eaf9ef"/>
+    <path d="M1247 226l6 6 13-15" fill="none" stroke="#28a95d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1290" y="226" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="18" font-weight="700">精确判分</text>
+    <text x="1240" y="271" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">选项集合完全相等</text>
+    <text x="1240" y="297" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">分数仅 0 或 100</text>
+  </g>
+
+  <!-- Persistence branch -->
+  <path d="M1296 336V426" stroke="#3977dd" stroke-width="4" marker-end="url(#arrowBlue)"/>
+  <g filter="url(#shadow)">
+    <rect x="1076" y="444" width="300" height="150" rx="28" fill="#fff" fill-opacity=".92" stroke="#fff"/>
+    <circle cx="1118" cy="486" r="22" fill="#eaf9ef"/>
+    <ellipse cx="1118" cy="480" rx="10" ry="4" fill="none" stroke="#28a95d" stroke-width="2.2"/>
+    <path d="M1108 480v13c0 3 4 5 10 5s10-2 10-5v-13M1108 487c0 3 4 5 10 5s10-2 10-5" fill="none" stroke="#28a95d" stroke-width="2.2"/>
+    <text x="1156" y="483" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="20" font-weight="700">追加学习记录</text>
+    <text x="1100" y="530" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">Attempt · Mistake · Review State</text>
+    <text x="1100" y="558" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">更新间隔、掌握度和学习报告</text>
+  </g>
+  <path d="M1076 519H1007C970 519 952 494 952 449V365" fill="none" stroke="#7890ad" stroke-width="3" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
+  <rect x="927" y="410" width="102" height="28" rx="14" fill="#fff" stroke="#dce6f2"/>
+  <text x="949" y="429" fill="#647d98" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">下一题</text>
+
+  <!-- Ask branch -->
+  <path d="M1034 348V408C1034 428 1016 438 982 438H797" fill="none" stroke="#df802d" stroke-width="4" marker-end="url(#arrowOrange)"/>
+  <g filter="url(#shadow)">
+    <rect x="500" y="418" width="280" height="176" rx="28" fill="#fffaf4" stroke="#ffd9b4" stroke-width="1.5"/>
+    <circle cx="544" cy="462" r="23" fill="url(#orange)"/>
+    <path d="M535 457h18M535 464h12M535 471h8" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="584" y="460" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="20" font-weight="700">追问 / 提示 / 质疑</text>
+    <text x="526" y="507" fill="#755f4d" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">Codex 结合当前上下文解释</text>
+    <text x="526" y="536" fill="#755f4d" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">Core 追加 InteractionEvent</text>
+    <rect x="526" y="555" width="225" height="26" rx="13" fill="#fff0df"/>
+    <text x="548" y="573" fill="#c66a16" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">当前 Assignment 保持待答</text>
+  </g>
+  <path d="M500 506H432C400 506 384 487 384 449V351C384 330 402 320 432 320H628" fill="none" stroke="#df802d" stroke-width="3" stroke-dasharray="7 7" marker-end="url(#arrowOrange)"/>
+  <rect x="390" y="370" width="116" height="28" rx="14" fill="#fff" stroke="#f2c99f"/>
+  <text x="412" y="389" fill="#b66a29" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">继续当前题</text>
+
+  <!-- Generation branch -->
+  <text x="64" y="654" fill="#8a8883" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="700" letter-spacing="2">WHEN THE QUESTION BANK IS NOT ENOUGH</text>
+  <path d="M456 336V642" fill="none" stroke="#8066dd" stroke-width="3.5" stroke-dasharray="8 7" marker-end="url(#arrowPurple)"/>
+  <rect x="386" y="606" width="140" height="28" rx="14" fill="#fff" stroke="#d8cdf5"/>
+  <text x="407" y="625" fill="#7559c8" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">无可用普通题</text>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="680" width="276" height="142" rx="27" fill="#fff" fill-opacity=".92" stroke="#fff"/>
+    <circle cx="106" cy="722" r="22" fill="#f0ebff"/>
+    <path d="M97 722h18M106 713v18" stroke="#8066dd" stroke-width="2.8" stroke-linecap="round"/>
+    <text x="144" y="719" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="19" font-weight="700">Core 发出生成需求</text>
+    <text x="88" y="765" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">generationProfile 明确知识点、</text>
+    <text x="88" y="790" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">题型、难度与来源上下文</text>
+  </g>
+  <path d="M340 751H393" stroke="#8066dd" stroke-width="4" marker-end="url(#arrowPurple)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="410" y="680" width="276" height="142" rx="27" fill="url(#purple)"/>
+    <circle cx="452" cy="722" r="22" fill="#fff" fill-opacity=".18"/>
+    <path d="M443 722l6 6 13-15" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="490" y="719" fill="#fff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="19" font-weight="700">Codex 生成候选题</text>
+    <text x="434" y="765" fill="#fff" fill-opacity=".82" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">遵守题目规范与答案防泄露规则</text>
+    <text x="434" y="790" fill="#fff" fill-opacity=".82" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">提交结构化题目给 Training Core</text>
+  </g>
+  <path d="M686 751H739" stroke="#8066dd" stroke-width="4" marker-end="url(#arrowPurple)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="756" y="680" width="276" height="142" rx="27" fill="#fff" fill-opacity=".92" stroke="#fff"/>
+    <circle cx="798" cy="722" r="22" fill="#f0ebff"/>
+    <path d="M789 722l6 6 13-15" fill="none" stroke="#8066dd" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="836" y="719" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="19" font-weight="700">校验并先入库</text>
+    <text x="780" y="765" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">验证 Profile、结构、来源和 Session</text>
+    <text x="780" y="790" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">保存后才作为 Assignment 展示</text>
+  </g>
+  <path d="M1032 751H1085" stroke="#8066dd" stroke-width="4" marker-end="url(#arrowPurple)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="1102" y="680" width="274" height="142" rx="27" fill="#fff" fill-opacity=".92" stroke="#fff"/>
+    <circle cx="1144" cy="722" r="22" fill="#eaf9ef"/>
+    <path d="M1135 722l6 6 13-15" fill="none" stroke="#28a95d" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1182" y="719" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="19" font-weight="700">进入正常训练</text>
+    <text x="1126" y="765" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">拒绝：物理删除并恢复新题额度</text>
+    <text x="1126" y="790" fill="#617184" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13">作答：转为可跨 Session 的普通题</text>
+  </g>
+  <path d="M1239 680V626C1239 610 1217 606 1186 606H760C730 606 718 589 718 560V348" fill="none" stroke="#8066dd" stroke-width="3" stroke-dasharray="7 7" marker-end="url(#arrowPurple)"/>
+</svg>

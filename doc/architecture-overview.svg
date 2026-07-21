@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="820" viewBox="0 0 1440 820" role="img" aria-labelledby="title desc">
+  <title id="title">MindTrain 内部架构</title>
+  <desc id="desc">Codex Plugin 和 Web 通过 Trainer MCP 或 REST 访问 Training Core，Core 管理 PostgreSQL 权威数据和可插拔调度器。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8f7f4"/>
+      <stop offset="0.52" stop-color="#f1f6ff"/>
+      <stop offset="1" stop-color="#fff5ea"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a84ff"/>
+      <stop offset="0.55" stop-color="#6675ff"/>
+      <stop offset="1" stop-color="#ff9f43"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#116fe8"/>
+      <stop offset="1" stop-color="#6957e8"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#8aa1bf" stroke-opacity=".09"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#46617f" flood-opacity=".14"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#46617f" flood-opacity=".1"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#7890ad"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#4a78df"/>
+    </marker>
+  </defs>
+
+  <rect width="1440" height="820" rx="34" fill="url(#bg)"/>
+  <rect width="1440" height="820" rx="34" fill="url(#grid)"/>
+  <circle cx="1300" cy="54" r="190" fill="#ffad55" opacity=".08"/>
+  <circle cx="104" cy="762" r="230" fill="#0a84ff" opacity=".07"/>
+
+  <text x="64" y="72" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="32" font-weight="700">MindTrain Architecture</text>
+  <text x="64" y="108" fill="#6f6b66" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="17">AI 教练、应用服务与权威数据清晰分离</text>
+  <rect x="1178" y="52" width="198" height="40" rx="20" fill="#ffffff" fill-opacity=".72" stroke="#ffffff"/>
+  <circle cx="1204" cy="72" r="7" fill="#32c46c"/>
+  <text x="1222" y="78" fill="#466078" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15" font-weight="600">Single-user private</text>
+
+  <!-- Client layer -->
+  <text x="64" y="158" fill="#8a8883" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="700" letter-spacing="2">EXPERIENCE LAYER</text>
+  <g filter="url(#soft)">
+    <rect x="64" y="184" width="394" height="154" rx="28" fill="#ffffff" fill-opacity=".82" stroke="#ffffff" stroke-width="2"/>
+    <rect x="86" y="206" width="54" height="54" rx="17" fill="url(#brand)"/>
+    <path d="M103 222h20v17h-20zM108 217h10M108 244h10" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="158" y="228" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="22" font-weight="700">Codex + MindTrain Plugin</text>
+    <text x="158" y="254" fill="#6f6b66" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15">对话出题 · 随时追问 · AI 补题 · 总结</text>
+    <rect x="86" y="285" width="124" height="30" rx="15" fill="#edf5ff"/>
+    <text x="108" y="305" fill="#2875d2" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="600">Stateless Skill</text>
+    <rect x="220" y="285" width="150" height="30" rx="15" fill="#fff2e4"/>
+    <text x="242" y="305" fill="#c66a16" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="600">Local MCP Bridge</text>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="982" y="184" width="394" height="154" rx="28" fill="#ffffff" fill-opacity=".82" stroke="#ffffff" stroke-width="2"/>
+    <rect x="1004" y="206" width="54" height="54" rx="17" fill="#171717"/>
+    <rect x="1017" y="220" width="28" height="21" rx="3" fill="none" stroke="#fff" stroke-width="2.5"/>
+    <path d="M1024 247h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="1076" y="228" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="22" font-weight="700">MindTrain Web</text>
+    <text x="1076" y="254" fill="#6f6b66" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15">Dashboard · Web 复习 · 配置 · 内容治理</text>
+    <rect x="1004" y="285" width="116" height="30" rx="15" fill="#f1f0ee"/>
+    <text x="1028" y="305" fill="#5e5b57" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="600">Vue 3 + Nginx</text>
+    <rect x="1130" y="285" width="132" height="30" rx="15" fill="#edf5ff"/>
+    <text x="1154" y="305" fill="#2875d2" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="600">Same-origin REST</text>
+  </g>
+
+  <!-- Connections -->
+  <path d="M261 338V424" fill="none" stroke="#7890ad" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="211" y="369" width="100" height="28" rx="14" fill="#fff" stroke="#dce6f2"/>
+  <text x="230" y="388" fill="#647d98" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">HTTPS MCP</text>
+  <path d="M1179 338V390C1179 420 1138 435 960 468" fill="none" stroke="#7890ad" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="1117" y="367" width="110" height="28" rx="14" fill="#fff" stroke="#dce6f2"/>
+  <text x="1146" y="386" fill="#647d98" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">REST /api</text>
+
+  <!-- Service layer -->
+  <text x="64" y="408" fill="#8a8883" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="700" letter-spacing="2">APPLICATION LAYER</text>
+  <g filter="url(#shadow)">
+    <rect x="64" y="438" width="394" height="226" rx="30" fill="#ffffff" fill-opacity=".9" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="111" cy="486" r="25" fill="#edf5ff"/>
+    <path d="M101 486h20M111 476v20" stroke="#0a84ff" stroke-width="3" stroke-linecap="round"/>
+    <text x="152" y="482" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="24" font-weight="700">Trainer MCP</text>
+    <text x="152" y="508" fill="#6f6b66" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">AI 客户端的安全工具网关</text>
+    <line x1="88" y1="535" x2="434" y2="535" stroke="#e9edf2"/>
+    <text x="90" y="568" fill="#41566d" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15">• Bearer Token 验证</text>
+    <text x="90" y="599" fill="#41566d" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15">• MCP 工具 ↔ Core REST 适配</text>
+    <text x="90" y="630" fill="#41566d" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15">• 不直接访问 PostgreSQL</text>
+  </g>
+
+  <path d="M458 551H509" fill="none" stroke="#4a78df" stroke-width="4" marker-end="url(#arrowBlue)"/>
+  <g filter="url(#shadow)">
+    <rect x="526" y="390" width="408" height="330" rx="34" fill="url(#core)"/>
+    <rect x="548" y="412" width="364" height="286" rx="25" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".22"/>
+    <circle cx="594" cy="466" r="28" fill="#ffffff" fill-opacity=".18"/>
+    <path d="M581 466h26M594 453v26" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+    <text x="638" y="461" fill="#ffffff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="28" font-weight="700">Training Core</text>
+    <text x="638" y="489" fill="#ffffff" fill-opacity=".78" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">唯一权威业务服务 · Modular Monolith</text>
+    <rect x="570" y="528" width="148" height="54" rx="18" fill="#fff" fill-opacity=".13" stroke="#fff" stroke-opacity=".2"/>
+    <text x="592" y="551" fill="#fff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14" font-weight="700">Catalog &amp; Question</text>
+    <text x="592" y="570" fill="#fff" fill-opacity=".7" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="11">知识点 · 题目 · 版本</text>
+    <rect x="742" y="528" width="148" height="54" rx="18" fill="#fff" fill-opacity=".13" stroke="#fff" stroke-opacity=".2"/>
+    <text x="768" y="551" fill="#fff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14" font-weight="700">Training</text>
+    <text x="763" y="570" fill="#fff" fill-opacity=".7" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="11">会话 · 作答 · 交互</text>
+    <rect x="570" y="596" width="148" height="54" rx="18" fill="#fff" fill-opacity=".13" stroke="#fff" stroke-opacity=".2"/>
+    <text x="597" y="619" fill="#fff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14" font-weight="700">Scheduling</text>
+    <text x="589" y="638" fill="#fff" fill-opacity=".7" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="11">复习状态 · Provider SPI</text>
+    <rect x="742" y="596" width="148" height="54" rx="18" fill="#fff" fill-opacity=".13" stroke="#fff" stroke-opacity=".2"/>
+    <text x="765" y="619" fill="#fff" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14" font-weight="700">Reporting</text>
+    <text x="762" y="638" fill="#fff" fill-opacity=".7" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="11">看板 · 薄弱项 · 审计</text>
+    <rect x="625" y="668" width="210" height="24" rx="12" fill="#101d69" fill-opacity=".35"/>
+    <text x="655" y="685" fill="#fff" fill-opacity=".88" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="11" font-weight="700" letter-spacing="1">SOURCE OF TRUTH</text>
+  </g>
+
+  <path d="M934 551H985" fill="none" stroke="#4a78df" stroke-width="4" marker-end="url(#arrowBlue)"/>
+  <g filter="url(#shadow)">
+    <rect x="1002" y="438" width="374" height="226" rx="30" fill="#ffffff" fill-opacity=".9" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="1050" cy="486" r="25" fill="#fff2e4"/>
+    <ellipse cx="1050" cy="479" rx="12" ry="5" fill="none" stroke="#e27b1d" stroke-width="2.4"/>
+    <path d="M1038 479v15c0 3 5 5 12 5s12-2 12-5v-15M1038 487c0 3 5 5 12 5s12-2 12-5" fill="none" stroke="#e27b1d" stroke-width="2.4"/>
+    <text x="1091" y="482" fill="#171717" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="24" font-weight="700">PostgreSQL</text>
+    <text x="1091" y="508" fill="#6f6b66" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="14">用户私有、可备份的权威数据</text>
+    <line x1="1026" y1="535" x2="1352" y2="535" stroke="#e9edf2"/>
+    <text x="1028" y="568" fill="#41566d" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15">• 题库与不可变版本</text>
+    <text x="1028" y="599" fill="#41566d" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15">• 学习历史与复习状态</text>
+    <text x="1028" y="630" fill="#41566d" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="15">• 应用配置与审计记录</text>
+  </g>
+
+  <!-- Provider strip -->
+  <rect x="526" y="748" width="408" height="42" rx="21" fill="#fff" fill-opacity=".8" stroke="#dce6f2"/>
+  <circle cx="552" cy="769" r="6" fill="#0a84ff"/>
+  <text x="569" y="775" fill="#466078" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="700">加权调度 · available</text>
+  <line x1="721" y1="758" x2="721" y2="780" stroke="#dce6f2"/>
+  <circle cx="747" cy="769" r="6" fill="#ff9f43"/>
+  <text x="764" y="775" fill="#7a6855" font-family="Avenir Next, Inter, PingFang SC, sans-serif" font-size="13" font-weight="700">Anki / FSRS · planned</text>
+</svg>
