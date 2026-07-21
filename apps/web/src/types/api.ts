@@ -96,6 +96,9 @@ export interface NextAssignment {
       name: string
       importance: number
       javaVersions: string[]
+      applicableVersions?: string[]
+      sourceReferences?: Array<Record<string, unknown>>
+      referenceLibraryIds?: string[]
       keywords: string[]
       sourceRefs: string[]
     }
@@ -128,4 +131,67 @@ export interface RejectedGeneratedQuestion {
   rejected: boolean
   physicallyDeleted: boolean
   newItemAllowanceRestored: boolean
+}
+
+export interface KnowledgeDomain {
+  id: string
+  name: string
+  description: string
+  originType: 'local_reference' | 'ai_dialogue' | 'legacy'
+  rootTopicCount: number
+  topicCount: number
+  activeQuestionCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface KnowledgeTopicNode {
+  id: string
+  domainId: string
+  parentId: string | null
+  name: string
+  description: string
+  kind: string
+  importance: number
+  sortOrder: number
+  keywords: string[]
+  sourceRefs: string[]
+  childCount: number
+  activeQuestionCount: number
+  masteryScore: number | null
+  children: KnowledgeTopicNode[]
+}
+
+export interface KnowledgeCatalogTree {
+  domain: KnowledgeDomain
+  roots: KnowledgeTopicNode[]
+}
+
+export interface KnowledgeTopicSearchResult {
+  id: string
+  domainId: string
+  domainName: string
+  parentId: string | null
+  name: string
+  description: string
+  ancestorPath: string[]
+  keywords: string[]
+  activeQuestionCount: number
+  masteryScore: number | null
+}
+
+export interface KnowledgeTopicSearchResponse {
+  items: KnowledgeTopicSearchResult[]
+  total: number
+  nextCursor: string | null
+}
+
+export interface KnowledgeTopicDetail extends Omit<KnowledgeTopicNode, 'children'> {
+  domainName: string
+  ancestorPath: string[]
+  children: KnowledgeTopicNode[]
+  relations: Array<Record<string, unknown>>
+  sources: Array<Record<string, unknown>>
+  createdAt: string
+  updatedAt: string
 }

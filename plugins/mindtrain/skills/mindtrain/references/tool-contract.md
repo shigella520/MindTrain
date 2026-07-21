@@ -19,3 +19,27 @@
 - `get_scheduler_backlog`: returns due backlog and new-item allowance.
 
 Assignment payloads intentionally exclude `correctOptionIds`, explanations, and sources. Keep the returned assignment ID until an answer succeeds. Use a stable idempotency key when retrying the same write.
+
+## Local reference tools
+
+- `configure_reference_library`: saves a named absolute directory only in local Plugin configuration.
+- `sync_reference_library`: incrementally extracts supported documents and refreshes the local FTS index.
+- `get_reference_library_status`, `list_reference_libraries`, and `list_reference_documents`: inspect local configuration and sync warnings.
+- `search_reference_library`: returns ranked snippets and source metadata; use it before reading content.
+- `read_reference_document`: reads a bounded local passage by document ID and locator.
+- `remove_reference_library`: removes only local configuration and indexes.
+
+## Knowledge catalog tools
+
+All catalog tools require the configured private instance Token.
+
+- `list_knowledge_domains`: lists domains with root Topic, Topic, and active-question counts.
+- `get_knowledge_catalog_tree`: returns the complete ordered Topic forest for one domain.
+- `search_knowledge_topics`: searches topic names, descriptions, and keywords with optional domain filtering and cursor pagination.
+- `get_knowledge_topic`: returns one Topic's path, children, relations, sources, coverage, and mastery.
+- `preview_training_domain`: validates and saves an immutable proposal without changing active domains or topics. Use `originType: local_reference` with `libraryId`, or `originType: ai_dialogue` without it.
+- `get_training_domain_draft`: returns the proposal, hash, validation warnings, conflicts, and diff.
+- `confirm_training_domain`: requires the exact `proposalHash` and explicit user confirmation.
+- `discard_training_domain_draft`: discards a proposal without changing the active catalog.
+
+One draft targets exactly one new or existing domain and may contain multiple root Topics. Catalog payloads may include domain, topic hierarchy, topic relations, and source metadata. Never send an absolute local path or extracted document content. Legacy `*_knowledge_catalog_import` tools are compatibility aliases and should not be selected for new workflows.

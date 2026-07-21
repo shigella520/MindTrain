@@ -1,7 +1,7 @@
 {
   "name": "mindtrain",
-  "version": "0.1.0+codex.20260721010431",
-  "description": "Conversational knowledge training backed by a private MindTrain instance.",
+  "version": "0.1.0+codex.20260721164702",
+  "description": "Build and query private knowledge catalogs, then run conversational spaced-repetition training with MindTrain.",
   "author": {
     "name": "shigella520",
     "url": "https://github.com/shigella520"
@@ -19,8 +19,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "MindTrain",
-    "shortDescription": "Connect to a private MindTrain instance for knowledge training",
-    "longDescription": "Configure a private MindTrain instance, then train, ask follow-up questions, grade answers, schedule reviews, and inspect learning reports in Codex.",
+    "shortDescription": "Build and search private training knowledge catalogs",
+    "longDescription": "Configure a private MindTrain instance, query its knowledge catalog, create user-approved training domains from AI dialogue or local references, then begin conversational training and review.",
     "developerName": "shigella520",
     "category": "Productivity",
     "capabilities": [
@@ -29,9 +29,9 @@
     ],
     "websiteURL": "https://github.com/shigella520/MindTrain",
     "defaultPrompt": [
-      "Use $mindtrain to configure my private MindTrain instance.",
-      "Use $mindtrain to start today's training session.",
-      "Use $mindtrain to review my learning backlog."
+      "Use $mindtrain to show my training domains and knowledge points.",
+      "Use $mindtrain to create a training domain after I confirm its topic tree.",
+      "Use $mindtrain to start today's training session."
     ],
     "brandColor": "#0A84FF",
     "composerIcon": "./assets/icon.png",

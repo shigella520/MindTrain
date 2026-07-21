@@ -1,6 +1,7 @@
 package io.github.shigella520.mindtrain.core.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.github.shigella520.mindtrain.core.catalog.CatalogService;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.TrainingSettings;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.UpdateTrainingSettingsRequest;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PutMapping;
 
@@ -28,14 +30,17 @@ public class CoreApiController {
     private final QuestionService questions;
     private final IdempotencyService idempotency;
     private final ApplicationSettingsService applicationSettings;
+    private final CatalogService catalog;
 
     public CoreApiController(TrainingService training, QuestionService questions,
                              IdempotencyService idempotency,
-                             ApplicationSettingsService applicationSettings) {
+                             ApplicationSettingsService applicationSettings,
+                             CatalogService catalog) {
         this.training = training;
         this.questions = questions;
         this.idempotency = idempotency;
         this.applicationSettings = applicationSettings;
+        this.catalog = catalog;
     }
 
     @PostMapping("/sessions")
@@ -116,6 +121,58 @@ public class CoreApiController {
                                                     @RequestBody UpdateTrainingSettingsRequest request) {
         return idempotency.execute("update-training-settings", key, TrainingSettings.class,
             () -> applicationSettings.update(request));
+    }
+
+    @PostMapping({"/catalog/drafts/preview", "/catalog/imports/preview"})
+    public CatalogService.ImportResponse previewCatalog(@RequestHeader("Idempotency-Key") String key,
+                                                         @RequestBody CatalogService.PreviewRequest request) {
+        return idempotency.execute("preview-catalog-import", key, CatalogService.ImportResponse.class,
+            () -> catalog.preview(request));
+    }
+
+    @GetMapping({"/catalog/drafts/{id}", "/catalog/imports/{id}"})
+    public CatalogService.ImportResponse getCatalogImport(@PathVariable String id) {
+        return catalog.get(id);
+    }
+
+    @PostMapping({"/catalog/drafts/{id}/confirm", "/catalog/imports/{id}/apply"})
+    public CatalogService.ImportResponse applyCatalog(@PathVariable String id,
+                                                       @RequestHeader("Idempotency-Key") String key,
+                                                       @RequestBody CatalogService.ApplyRequest request) {
+        return idempotency.execute("apply-catalog-import:" + id, key, CatalogService.ImportResponse.class,
+            () -> catalog.apply(id, request.proposalHash()));
+    }
+
+    @PostMapping({"/catalog/drafts/{id}/discard", "/catalog/imports/{id}/reject"})
+    public CatalogService.ImportResponse rejectCatalog(@PathVariable String id,
+                                                        @RequestHeader("Idempotency-Key") String key) {
+        return idempotency.execute("reject-catalog-import:" + id, key, CatalogService.ImportResponse.class,
+            () -> catalog.reject(id));
+    }
+
+    @GetMapping("/catalog/domains")
+    public java.util.List<CatalogService.DomainSummary> knowledgeDomains(
+        @RequestParam(name = "q", required = false) String query) {
+        return catalog.domains(query);
+    }
+
+    @GetMapping("/catalog/domains/{domainId}/tree")
+    public CatalogService.TopicTreeResponse knowledgeDomainTree(@PathVariable String domainId) {
+        return catalog.tree(domainId);
+    }
+
+    @GetMapping("/catalog/topics/search")
+    public CatalogService.TopicSearchResponse searchKnowledgeTopics(
+        @RequestParam("q") String query,
+        @RequestParam(name = "domainId", required = false) String domainId,
+        @RequestParam(name = "limit", defaultValue = "20") int limit,
+        @RequestParam(name = "cursor", required = false) String cursor) {
+        return catalog.search(query, domainId, limit, cursor);
+    }
+
+    @GetMapping("/catalog/topics/{topicId}")
+    public CatalogService.TopicDetail knowledgeTopic(@PathVariable String topicId) {
+        return catalog.topic(topicId);
     }
 
     public record CandidateRequest(String sessionId, String topicId, JsonNode question,

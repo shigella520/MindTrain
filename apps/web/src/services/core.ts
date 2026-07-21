@@ -1,6 +1,6 @@
 import { useConfigStore } from '../stores/config'
 import { DEFAULT_SCHEDULER_PROVIDER_ID } from '../domain/schedulers'
-import type { Attempt, Backlog, NextAssignment, Overview, RejectedGeneratedQuestion, Session, TrainingSettings } from '../types/api'
+import type { Attempt, Backlog, KnowledgeCatalogTree, KnowledgeDomain, KnowledgeTopicDetail, KnowledgeTopicSearchResponse, NextAssignment, Overview, RejectedGeneratedQuestion, Session, TrainingSettings } from '../types/api'
 
 export class CoreApiError extends Error {
   constructor(
@@ -62,4 +62,14 @@ export const coreApi = {
       headers: { 'Idempotency-Key': idempotencyKey('training-settings') },
       body: JSON.stringify(settings),
     }),
+  knowledgeDomains: (query = '') => request<KnowledgeDomain[]>(`/catalog/domains${query ? `?q=${encodeURIComponent(query)}` : ''}`),
+  knowledgeCatalogTree: (domainId: string) =>
+    request<KnowledgeCatalogTree>(`/catalog/domains/${encodeURIComponent(domainId)}/tree`),
+  searchKnowledgeTopics: (query: string, domainId?: string) => {
+    const params = new URLSearchParams({ q: query, limit: '100' })
+    if (domainId) params.set('domainId', domainId)
+    return request<KnowledgeTopicSearchResponse>(`/catalog/topics/search?${params}`)
+  },
+  knowledgeTopic: (topicId: string) =>
+    request<KnowledgeTopicDetail>(`/catalog/topics/${encodeURIComponent(topicId)}`),
 }
