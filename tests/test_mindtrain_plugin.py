@@ -59,7 +59,23 @@ class MindTrainPluginTest(unittest.TestCase):
         self.assertIn("revise_saved_question", names)
         self.assertIn("reject_generated_question", names)
         self.assertIn("preview_knowledge_catalog_import", names)
+        self.assertIn("list_knowledge_domains", names)
+        self.assertIn("get_knowledge_catalog_tree", names)
+        self.assertIn("search_knowledge_topics", names)
+        self.assertIn("preview_training_domain", names)
+        self.assertIn("confirm_training_domain", names)
         self.assertIn("sync_reference_library", names)
+
+    def test_skill_documents_dialogue_and_local_catalog_workflows(self):
+        skill_root = ROOT / "plugins/mindtrain/skills/mindtrain"
+        skill = (skill_root / "SKILL.md").read_text()
+        catalog = (skill_root / "references/knowledge-catalog.md").read_text()
+        local = (skill_root / "references/reference-library.md").read_text()
+
+        self.assertIn("ai_dialogue", skill)
+        self.assertIn("list_knowledge_domains", catalog)
+        self.assertIn("multiple root topics", catalog)
+        self.assertIn("confirm_training_domain", local)
 
     def test_url_requires_https_for_non_local_instances(self):
         self.assertEqual(

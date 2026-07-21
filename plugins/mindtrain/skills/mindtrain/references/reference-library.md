@@ -15,11 +15,11 @@ The directory path, extracted text, and SQLite index are local-only. Never inclu
 1. Inspect `list_reference_documents`, document headings, and representative search results. Read bounded passages only when needed.
 2. Organize the user-selected material into a proposed training domain, hierarchical knowledge points, semantic relations, and immutable source metadata. The user decides the learning goal; do not substitute a different domain. Bind every topic to at least one source when possible.
 3. Use `applicableVersions` for domain-independent version constraints. Do not create new `javaVersions` fields.
-4. Call `preview_knowledge_catalog_import` once the proposal is internally consistent.
+4. Call `preview_training_domain` with `originType: local_reference`, the configured `libraryId`, a concise learning context, and the proposal once it is internally consistent.
 5. Show the user the full training-domain and knowledge-point tree, relations summary, source coverage, warnings, conflicts, and create/unchanged counts.
-6. Ask whether to save and enable this training domain. After one explicit confirmation, call `apply_knowledge_catalog_import` with the returned import ID and exact proposal hash. Otherwise call `reject_knowledge_catalog_import`.
+6. Ask whether to save and enable this training domain. After one explicit confirmation, call `confirm_training_domain` with the returned draft ID and exact proposal hash. Otherwise call `discard_training_domain_draft`.
 
-Treat Catalog Import as an internal persistence term only. Do not tell the user that MindTrain is importing a predefined knowledge domain. If preview reports a conflict, revise the stable ID or content deliberately and preview again. Never silently overwrite or delete an active topic.
+Describe this as a training-domain draft, not as importing a predefined catalog. If preview reports a conflict, revise the stable ID or content deliberately and preview again. Never silently overwrite or delete an active topic.
 
 ## Source metadata
 

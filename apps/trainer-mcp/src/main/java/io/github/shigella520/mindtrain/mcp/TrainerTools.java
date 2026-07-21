@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -64,8 +66,38 @@ public class TrainerTools {
             schema(Map.of("sessionId", string("Session ID")), List.of("sessionId"))));
         tools.add(tool("get_learning_report", "Get learning, backlog and content overview metrics.", schema(Map.of(), List.of())));
         tools.add(tool("get_scheduler_backlog", "Get due backlog and current new-item allowance.", schema(Map.of(), List.of())));
+        tools.add(tool("list_knowledge_domains", "List the authenticated user's training domains and catalog coverage.",
+            schema(Map.of("query", string("Optional domain name or description filter")), List.of())));
+        tools.add(tool("get_knowledge_catalog_tree", "Get all root knowledge points and descendants for one domain.",
+            schema(Map.of("domainId", string("Knowledge domain ID")), List.of("domainId"))));
+        tools.add(tool("search_knowledge_topics", "Search knowledge points and return their domain and ancestor path.",
+            schema(Map.of(
+                "query", string("Required topic name, description or keyword query"),
+                "domainId", string("Optional domain filter"),
+                "limit", integer("Optional page size from 1 to 100"),
+                "cursor", string("Optional cursor returned by a prior search")
+            ), List.of("query"))));
+        tools.add(tool("get_knowledge_topic", "Get one knowledge point with children, relations, sources and coverage.",
+            schema(Map.of("topicId", string("Knowledge point ID")), List.of("topicId"))));
+        tools.add(tool("preview_training_domain",
+            "Validate and save an immutable training-domain draft from local references or AI dialogue without changing active data.",
+            schema(Map.of(
+                "originType", string("local_reference or ai_dialogue"),
+                "libraryId", string("Required only for local_reference; never send an absolute path"),
+                "context", object("Learning goal, audience, scope, model and prompt version metadata"),
+                "proposal", object("Exactly one domain target with topics, relations and source metadata")
+            ), List.of("originType", "proposal"))));
+        tools.add(tool("get_training_domain_draft", "Get a training-domain draft, validation, warnings and persistence diff.",
+            schema(Map.of("draftId", string("Training-domain draft ID")), List.of("draftId"))));
+        tools.add(tool("confirm_training_domain", "Save and enable a complete draft after explicit user confirmation.",
+            schema(Map.of(
+                "draftId", string("Training-domain draft ID"),
+                "proposalHash", string("Exact hash returned by preview")
+            ), List.of("draftId", "proposalHash"))));
+        tools.add(tool("discard_training_domain_draft", "Discard a draft without changing active catalog data.",
+            schema(Map.of("draftId", string("Training-domain draft ID")), List.of("draftId"))));
         tools.add(tool("preview_knowledge_catalog_import",
-            "Preview a training domain and knowledge-point structure organized from the user's selected references without changing active data.",
+            "Compatibility alias for preview_training_domain for local-reference clients.",
             schema(Map.of(
                 "libraryId", string("Local reference library ID; no absolute path"),
                 "proposal", object("Domains, topics, relations and source metadata proposal")
@@ -104,6 +136,22 @@ public class TrainerTools {
                 objectMapper.createObjectNode(), key);
             case "get_learning_report" -> core.get("/api/v1/reports/overview");
             case "get_scheduler_backlog" -> core.get("/api/v1/schedulers/backlog");
+            case "list_knowledge_domains" -> core.get("/api/v1/catalog/domains" + query(arguments, "query", "q"));
+            case "get_knowledge_catalog_tree" -> core.get(
+                "/api/v1/catalog/domains/" + encode(required(arguments, "domainId")) + "/tree");
+            case "search_knowledge_topics" -> core.get("/api/v1/catalog/topics/search" + searchQuery(arguments));
+            case "get_knowledge_topic" -> core.get(
+                "/api/v1/catalog/topics/" + encode(required(arguments, "topicId")));
+            case "preview_training_domain" -> core.post("/api/v1/catalog/drafts/preview",
+                without(arguments, "idempotencyKey"), key);
+            case "get_training_domain_draft" -> core.get(
+                "/api/v1/catalog/drafts/" + encode(required(arguments, "draftId")));
+            case "confirm_training_domain" -> core.post(
+                "/api/v1/catalog/drafts/" + encode(required(arguments, "draftId")) + "/confirm",
+                objectMapper.createObjectNode().put("proposalHash", required(arguments, "proposalHash")), key);
+            case "discard_training_domain_draft" -> core.post(
+                "/api/v1/catalog/drafts/" + encode(required(arguments, "draftId")) + "/discard",
+                objectMapper.createObjectNode(), key);
             case "preview_knowledge_catalog_import" -> core.post("/api/v1/catalog/imports/preview",
                 without(arguments, "idempotencyKey"), key);
             case "get_knowledge_catalog_import" -> core.get(
@@ -122,6 +170,27 @@ public class TrainerTools {
         ObjectNode result = source.deepCopy();
         for (String name : names) result.remove(name);
         return result;
+    }
+
+    private String query(JsonNode arguments, String argumentName, String parameterName) {
+        String value = arguments.path(argumentName).asText("").trim();
+        return value.isEmpty() ? "" : "?" + parameterName + "=" + encode(value);
+    }
+
+    private String searchQuery(JsonNode arguments) {
+        StringBuilder query = new StringBuilder("?q=").append(encode(required(arguments, "query")));
+        appendQuery(query, "domainId", arguments.path("domainId").asText(""));
+        if (arguments.has("limit")) appendQuery(query, "limit", Integer.toString(arguments.path("limit").asInt()));
+        appendQuery(query, "cursor", arguments.path("cursor").asText(""));
+        return query.toString();
+    }
+
+    private void appendQuery(StringBuilder query, String name, String value) {
+        if (value != null && !value.isBlank()) query.append('&').append(name).append('=').append(encode(value));
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private String required(JsonNode arguments, String field) {

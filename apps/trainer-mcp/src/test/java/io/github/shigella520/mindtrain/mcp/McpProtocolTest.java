@@ -43,7 +43,7 @@ class McpProtocolTest {
                 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
                 """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.result.tools.length()").value(14))
+            .andExpect(jsonPath("$.result.tools.length()").value(22))
             .andExpect(jsonPath("$.result.tools[0].name").value("create_training_session"));
 
         when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("""
@@ -81,6 +81,34 @@ class McpProtocolTest {
                 """))
             .andExpect(status().isOk());
         verify(coreClient).post(eq("/api/v1/catalog/imports/catalog-test/apply"), any(), any());
+    }
+
+    @Test
+    void proxiesKnowledgeCatalogQueriesAndDialogueDrafts() throws Exception {
+        when(coreClient.get(anyString())).thenReturn(objectMapper.readTree("[]"));
+        when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("""
+            {"draftId":"catalog-draft-test","importId":"catalog-draft-test","originType":"ai_dialogue","status":"previewed"}
+            """));
+
+        mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+                {"jsonrpc":"2.0","id":8,"method":"tools/call","params":{
+                  "name":"search_knowledge_topics","arguments":{"query":"volatile","domainId":"java-backend"}
+                }}
+                """))
+            .andExpect(status().isOk());
+        verify(coreClient).get(eq("/api/v1/catalog/topics/search?q=volatile&domainId=java-backend"));
+
+        mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+                {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{
+                  "name":"preview_training_domain","arguments":{
+                    "originType":"ai_dialogue","context":{"goal":"Learn Kubernetes"},
+                    "proposal":{"domains":[],"topics":[],"relations":[],"sources":[]}
+                  }
+                }}
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.result.structuredContent.originType").value("ai_dialogue"));
+        verify(coreClient).post(eq("/api/v1/catalog/drafts/preview"), any(), any());
     }
 
     @Test

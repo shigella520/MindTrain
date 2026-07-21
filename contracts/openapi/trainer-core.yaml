@@ -166,10 +166,49 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/TrainingSettings'}
         '400': {description: 配置值或时区无效}
-  /api/v1/catalog/imports/preview:
+  /api/v1/catalog/domains:
+    get:
+      operationId: listKnowledgeDomains
+      description: 列出当前用户的所有训练领域；知识目录始终要求认证，不受公开 Dashboard 开关影响。
+      parameters:
+        - {name: q, in: query, required: false, schema: {type: string}}
+      responses:
+        '200':
+          description: 领域及根节点、知识点和题目覆盖统计
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/KnowledgeDomain'}}
+  /api/v1/catalog/domains/{domainId}/tree:
+    get:
+      operationId: getKnowledgeCatalogTree
+      parameters:
+        - {name: domainId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 一个领域下按稳定顺序组织的多根知识点森林
+        '404': {description: Domain not found for the authenticated user}
+  /api/v1/catalog/topics/search:
+    get:
+      operationId: searchKnowledgeTopics
+      parameters:
+        - {name: q, in: query, required: true, schema: {type: string, minLength: 1}}
+        - {name: domainId, in: query, required: false, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: 匹配知识点、所属领域和祖先路径}
+  /api/v1/catalog/topics/{topicId}:
+    get:
+      operationId: getKnowledgeTopic
+      parameters:
+        - {name: topicId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: 知识点详情、子节点、关系、来源、题目覆盖和掌握度}
+        '404': {description: Topic not found for the authenticated user}
+  /api/v1/catalog/drafts/preview:
     post:
-      operationId: previewKnowledgeCatalogImport
-      description: 校验并保存由用户所选资料整理出的训练领域与知识点草案，不修改正式领域、知识点、关系或来源资产。
+      operationId: previewTrainingDomain
+      description: 校验并保存由本地资料或 AI 对话整理出的不可变训练领域草案，不修改正式目录。
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -182,21 +221,21 @@ paths:
           description: 草案、哈希、校验结果和差异
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CatalogImport'}
-  /api/v1/catalog/imports/{importId}:
+              schema: {$ref: '#/components/schemas/TrainingDomainDraft'}
+  /api/v1/catalog/drafts/{draftId}:
     get:
-      operationId: getKnowledgeCatalogImport
+      operationId: getTrainingDomainDraft
       parameters:
-        - {name: importId, in: path, required: true, schema: {type: string}}
+        - {name: draftId, in: path, required: true, schema: {type: string}}
       responses:
-        '200': {description: Catalog import preview}
-        '404': {description: Import not found for the authenticated user}
-  /api/v1/catalog/imports/{importId}/apply:
+        '200': {description: Training-domain draft preview}
+        '404': {description: Draft not found for the authenticated user}
+  /api/v1/catalog/drafts/{draftId}/confirm:
     post:
-      operationId: applyKnowledgeCatalogImport
-      description: 用户确认后，使用预览返回的精确 proposalHash 事务性写入正式 Catalog。
+      operationId: confirmTrainingDomain
+      description: 用户确认后，使用预览返回的精确 proposalHash 原子写入正式知识目录。
       parameters:
-        - {name: importId, in: path, required: true, schema: {type: string}}
+        - {name: draftId, in: path, required: true, schema: {type: string}}
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -208,23 +247,60 @@ paths:
               properties:
                 proposalHash: {type: string, pattern: '^[0-9a-f]{64}$'}
       responses:
-        '200': {description: Catalog applied or an idempotent prior result}
-        '409': {description: Hash mismatch, conflict, invalid or already rejected import}
+        '200': {description: Draft confirmed or an idempotent prior result}
+        '409': {description: Hash mismatch, conflict, invalid or already discarded draft}
+  /api/v1/catalog/drafts/{draftId}/discard:
+    post:
+      operationId: discardTrainingDomainDraft
+      parameters:
+        - {name: draftId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': {description: Draft discarded without changing active catalog}
+  /api/v1/catalog/imports/preview:
+    post:
+      deprecated: true
+      operationId: previewKnowledgeCatalogImport
+      description: previewTrainingDomain 的本地资料兼容别名。
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '200': {description: Compatibility response}
+  /api/v1/catalog/imports/{importId}:
+    get:
+      deprecated: true
+      operationId: getKnowledgeCatalogImport
+      parameters: [{name: importId, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Compatibility response}
+  /api/v1/catalog/imports/{importId}/apply:
+    post:
+      deprecated: true
+      operationId: applyKnowledgeCatalogImport
+      parameters:
+        - {name: importId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': {description: Compatibility response}
   /api/v1/catalog/imports/{importId}/reject:
     post:
+      deprecated: true
       operationId: rejectKnowledgeCatalogImport
       parameters:
         - {name: importId, in: path, required: true, schema: {type: string}}
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
-        '200': {description: Preview rejected without changing active catalog}
+        '200': {description: Compatibility response}
 components:
   schemas:
     CatalogPreviewRequest:
       type: object
-      required: [libraryId, proposal]
+      required: [originType, proposal]
       properties:
+        originType: {type: string, enum: [local_reference, ai_dialogue]}
         libraryId: {type: string}
+        context:
+          type: object
+          description: 学习目标、受众、范围、模型和 Prompt 版本；不保存完整聊天记录。
         proposal:
           type: object
           required: [domains, topics, relations, sources]
@@ -247,12 +323,15 @@ components:
         title: {type: string}
         accessedAt: {type: string, format: date}
         locator: {type: string}
-    CatalogImport:
+    TrainingDomainDraft:
       type: object
-      required: [importId, libraryId, proposalHash, status, proposal, validation, diff, createdAt]
+      required: [draftId, importId, originType, context, proposalHash, status, proposal, validation, diff, createdAt]
       properties:
+        draftId: {type: string, description: 新工具使用的训练领域草案 ID}
         importId: {type: string}
+        originType: {type: string, enum: [local_reference, ai_dialogue]}
         libraryId: {type: string}
+        context: {type: object}
         proposalHash: {type: string}
         status: {type: string, enum: [previewed, invalid, conflict, applied, rejected]}
         proposal: {type: object}
@@ -261,6 +340,17 @@ components:
         createdAt: {type: string, format: date-time}
         appliedAt: {type: [string, 'null'], format: date-time}
         rejectedAt: {type: [string, 'null'], format: date-time}
+    KnowledgeDomain:
+      type: object
+      required: [id, name, description, originType, rootTopicCount, topicCount, activeQuestionCount]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        originType: {type: string, enum: [local_reference, ai_dialogue, legacy]}
+        rootTopicCount: {type: integer, minimum: 0}
+        topicCount: {type: integer, minimum: 0}
+        activeQuestionCount: {type: integer, minimum: 0}
     UpdateTrainingSettings:
       type: object
       required: [questionCount, newBudget, backlogPauseThreshold, overduePauseDays, pendingCandidateTtlHours, reportingTimeZone]

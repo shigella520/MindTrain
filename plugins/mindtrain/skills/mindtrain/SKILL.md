@@ -1,6 +1,6 @@
 ---
 name: mindtrain
-description: Configure a private MindTrain instance and local reference libraries, organize user-approved training domains and knowledge points from local documents, and run persistent conversational training through its Trainer MCP. Use when the user configures MindTrain, selects a local document directory, asks to create or preview a training domain, confirms saving it, starts or continues training, generates reference-grounded questions, answers or rejects a question, asks follow-ups, revises a saved question, ends a session, or inspects learning progress.
+description: Configure a private MindTrain instance, query its knowledge catalog, create user-approved training domains and knowledge points from AI dialogue or local reference libraries, and run persistent conversational training through Trainer MCP. Use when the user configures MindTrain, asks what domains or topics exist, searches the catalog, wants to create or extend a training domain, selects a local document directory, confirms a domain draft, starts or continues training, generates a question, answers or rejects a question, asks follow-ups, revises a saved question, ends a session, or inspects learning progress.
 ---
 
 # MindTrain
@@ -17,11 +17,17 @@ Use the bundled MindTrain bridge as the only application data interface. Do not 
 
 The bridge saves configuration outside the repository with user-only file permissions. Never put the private URL or Token into Skill files, Git configuration, examples, or commits.
 
-## Build a training domain from local references
+## Query or build the knowledge catalog
+
+Read [knowledge-catalog.md](references/knowledge-catalog.md) when the user asks what can be learned, searches for a knowledge point, or wants to create or extend a training domain. Query the current catalog before proposing a domain so stable IDs do not collide and existing domains are extended deliberately.
+
+For a dialogue-created domain, clarify the learning goal, audience, scope, emphasis, and difficulty only as needed. Generate one domain target with any number of root topics. Call `preview_training_domain` with `originType: ai_dialogue`, show the complete tree, diff, conflicts, and the explicit warning when no references are bound. Do not invent Source records for AI output.
+
+## Build from local references
 
 When the user names a local directory as a reference library, read [reference-library.md](references/reference-library.md) and follow its configure, sync, organize, preview, and confirmation workflow. The user chooses what to learn; Codex organizes the selected material into a proposed training domain, topic hierarchy, and relations. Local files, extracted text, absolute paths, and indexes must remain on the Codex host. Core receives only source metadata, hashes, the approved training structure, and generated questions.
 
-Never call `apply_knowledge_catalog_import` until the user has seen the complete training-domain preview and explicitly confirmed saving it once. Reuse the exact `proposalHash` returned by preview. A conflict requires a revised proposal and a new preview; never overwrite an existing topic implicitly. When speaking to the user, say “save and enable the training domain,” not “import/apply a knowledge catalog.”
+Never call `confirm_training_domain` until the user has seen the complete training-domain preview and explicitly confirmed saving it once. Reuse the exact `proposalHash` returned by preview. A conflict requires a revised proposal and a new preview; never overwrite an existing topic implicitly. When speaking to the user, say “保存并启用训练领域”, not “import/apply a knowledge catalog.”
 
 ## Run training
 

@@ -98,6 +98,58 @@ class CatalogImportIntegrationTest {
             .query(Integer.class).single()).isEqualTo(importCount);
     }
 
+    @Test
+    void createsAiDialogueDomainAndQueriesMultipleRootsSearchAndDetails() throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        String domainId = "kubernetes-" + suffix;
+        String previewBody = """
+            {"originType":"ai_dialogue","context":{"goal":"Learn Kubernetes for backend work"},"proposal":{
+              "domains":[{"id":"%1$s","name":"Kubernetes","description":"Backend-oriented Kubernetes","sortOrder":2}],
+              "sources":[],
+              "topics":[
+                {"id":"workloads-%2$s","domainId":"%1$s","name":"Workloads","description":"Deploying applications","kind":"group","importance":5,"sortOrder":1,"keywords":["deployment","pod"],"sourceRefs":[]},
+                {"id":"networking-%2$s","domainId":"%1$s","name":"Networking","description":"Service discovery and traffic","kind":"group","importance":4,"sortOrder":2,"keywords":["service","dns"],"sourceRefs":[]},
+                {"id":"deployment-%2$s","domainId":"%1$s","parentId":"workloads-%2$s","name":"Deployment","description":"Declarative rollout controller","kind":"leaf","importance":5,"sortOrder":1,"keywords":["rollout"],"sourceRefs":[]}
+              ],
+              "relations":[]
+            }}
+            """.formatted(domainId, suffix);
+        JsonNode preview = objectMapper.readTree(mvc.perform(post("/api/v1/catalog/drafts/preview")
+                .header("Idempotency-Key", "ai-preview-" + suffix)
+                .contentType(MediaType.APPLICATION_JSON).content(previewBody))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.originType").value("ai_dialogue"))
+            .andExpect(jsonPath("$.draftId").isNotEmpty())
+            .andExpect(jsonPath("$.libraryId").doesNotExist())
+            .andExpect(jsonPath("$.validation.warnings[0]").value("AI dialogue draft has no bound reference sources"))
+            .andReturn().getResponse().getContentAsString());
+
+        mvc.perform(post("/api/v1/catalog/drafts/{id}/confirm", preview.path("importId").asText())
+                .header("Idempotency-Key", "ai-confirm-" + suffix)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"proposalHash\":\"" + preview.path("proposalHash").asText() + "\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("applied"));
+
+        mvc.perform(get("/api/v1/catalog/domains").param("q", "backend-oriented"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(domainId))
+            .andExpect(jsonPath("$[0].rootTopicCount").value(2))
+            .andExpect(jsonPath("$[0].topicCount").value(3));
+        mvc.perform(get("/api/v1/catalog/domains/{id}/tree", domainId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.roots.length()").value(2))
+            .andExpect(jsonPath("$.roots[0].name").value("Workloads"))
+            .andExpect(jsonPath("$.roots[0].children[0].name").value("Deployment"));
+        mvc.perform(get("/api/v1/catalog/topics/search").param("q", "rollout").param("domainId", domainId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.total").value(1))
+            .andExpect(jsonPath("$.items[0].ancestorPath[0]").value("Workloads"));
+        mvc.perform(get("/api/v1/catalog/topics/{id}", "deployment-" + suffix))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.domainName").value("Kubernetes"))
+            .andExpect(jsonPath("$.keywords[0]").value("rollout"));
+    }
+
     private String proposal(String suffix) {
         return """
             {"libraryId":"notes","proposal":{

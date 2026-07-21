@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PutMapping;
 
@@ -122,19 +123,19 @@ public class CoreApiController {
             () -> applicationSettings.update(request));
     }
 
-    @PostMapping("/catalog/imports/preview")
+    @PostMapping({"/catalog/drafts/preview", "/catalog/imports/preview"})
     public CatalogService.ImportResponse previewCatalog(@RequestHeader("Idempotency-Key") String key,
                                                          @RequestBody CatalogService.PreviewRequest request) {
         return idempotency.execute("preview-catalog-import", key, CatalogService.ImportResponse.class,
             () -> catalog.preview(request));
     }
 
-    @GetMapping("/catalog/imports/{id}")
+    @GetMapping({"/catalog/drafts/{id}", "/catalog/imports/{id}"})
     public CatalogService.ImportResponse getCatalogImport(@PathVariable String id) {
         return catalog.get(id);
     }
 
-    @PostMapping("/catalog/imports/{id}/apply")
+    @PostMapping({"/catalog/drafts/{id}/confirm", "/catalog/imports/{id}/apply"})
     public CatalogService.ImportResponse applyCatalog(@PathVariable String id,
                                                        @RequestHeader("Idempotency-Key") String key,
                                                        @RequestBody CatalogService.ApplyRequest request) {
@@ -142,11 +143,36 @@ public class CoreApiController {
             () -> catalog.apply(id, request.proposalHash()));
     }
 
-    @PostMapping("/catalog/imports/{id}/reject")
+    @PostMapping({"/catalog/drafts/{id}/discard", "/catalog/imports/{id}/reject"})
     public CatalogService.ImportResponse rejectCatalog(@PathVariable String id,
                                                         @RequestHeader("Idempotency-Key") String key) {
         return idempotency.execute("reject-catalog-import:" + id, key, CatalogService.ImportResponse.class,
             () -> catalog.reject(id));
+    }
+
+    @GetMapping("/catalog/domains")
+    public java.util.List<CatalogService.DomainSummary> knowledgeDomains(
+        @RequestParam(name = "q", required = false) String query) {
+        return catalog.domains(query);
+    }
+
+    @GetMapping("/catalog/domains/{domainId}/tree")
+    public CatalogService.TopicTreeResponse knowledgeDomainTree(@PathVariable String domainId) {
+        return catalog.tree(domainId);
+    }
+
+    @GetMapping("/catalog/topics/search")
+    public CatalogService.TopicSearchResponse searchKnowledgeTopics(
+        @RequestParam("q") String query,
+        @RequestParam(name = "domainId", required = false) String domainId,
+        @RequestParam(name = "limit", defaultValue = "20") int limit,
+        @RequestParam(name = "cursor", required = false) String cursor) {
+        return catalog.search(query, domainId, limit, cursor);
+    }
+
+    @GetMapping("/catalog/topics/{topicId}")
+    public CatalogService.TopicDetail knowledgeTopic(@PathVariable String topicId) {
+        return catalog.topic(topicId);
     }
 
     public record CandidateRequest(String sessionId, String topicId, JsonNode question,

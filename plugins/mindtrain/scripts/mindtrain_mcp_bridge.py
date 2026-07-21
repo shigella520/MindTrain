@@ -46,6 +46,14 @@ REMOTE_TOOL_NAMES = {
     "finish_training_session",
     "get_learning_report",
     "get_scheduler_backlog",
+    "list_knowledge_domains",
+    "get_knowledge_catalog_tree",
+    "search_knowledge_topics",
+    "get_knowledge_topic",
+    "preview_training_domain",
+    "get_training_domain_draft",
+    "confirm_training_domain",
+    "discard_training_domain_draft",
     "preview_knowledge_catalog_import",
     "get_knowledge_catalog_import",
     "apply_knowledge_catalog_import",
@@ -187,8 +195,70 @@ def tool_definitions():
         tool("get_learning_report", "Get learning, backlog and content overview metrics.", schema({})),
         tool("get_scheduler_backlog", "Get due backlog and current new-item allowance.", schema({})),
         tool(
+            "list_knowledge_domains",
+            "List the authenticated user's training domains and catalog coverage.",
+            schema({"query": string_property("Optional domain name or description filter")}),
+        ),
+        tool(
+            "get_knowledge_catalog_tree",
+            "Get all root knowledge points and descendants for one domain.",
+            schema({"domainId": string_property("Knowledge domain ID")}, ("domainId",)),
+        ),
+        tool(
+            "search_knowledge_topics",
+            "Search knowledge points and return their domain and ancestor path.",
+            schema(
+                {
+                    "query": string_property("Topic name, description or keyword query"),
+                    "domainId": string_property("Optional domain filter"),
+                    "limit": integer_property("Optional page size from 1 to 100"),
+                    "cursor": string_property("Optional cursor returned by a prior search"),
+                },
+                ("query",),
+            ),
+        ),
+        tool(
+            "get_knowledge_topic",
+            "Get one knowledge point with children, relations, sources and coverage.",
+            schema({"topicId": string_property("Knowledge point ID")}, ("topicId",)),
+        ),
+        tool(
+            "preview_training_domain",
+            "Validate and save an immutable training-domain draft from local references or AI dialogue.",
+            schema(
+                {
+                    "originType": string_property("local_reference or ai_dialogue"),
+                    "libraryId": string_property("Required only for local_reference; never send an absolute path"),
+                    "context": object_property("Learning goal, audience, scope, model and prompt version"),
+                    "proposal": object_property("Exactly one domain target with topics, relations and sources"),
+                },
+                ("originType", "proposal"),
+            ),
+        ),
+        tool(
+            "get_training_domain_draft",
+            "Get a training-domain draft, validation, warnings and persistence diff.",
+            schema({"draftId": string_property("Training-domain draft ID")}, ("draftId",)),
+        ),
+        tool(
+            "confirm_training_domain",
+            "Save and enable a complete draft after explicit user confirmation.",
+            schema(
+                {
+                    "draftId": string_property("Training-domain draft ID"),
+                    "proposalHash": string_property("Exact hash returned by preview"),
+                },
+                ("draftId", "proposalHash"),
+            ),
+        ),
+        tool(
+            "discard_training_domain_draft",
+            "Discard a draft without changing active catalog data.",
+            schema({"draftId": string_property("Training-domain draft ID")}, ("draftId",)),
+        ),
+        tool(
             "preview_knowledge_catalog_import",
-            "Preview a training domain and knowledge-point structure organized from the user's selected references without changing active data.",
+            "Compatibility alias for preview_training_domain for local-reference clients.",
             schema(
                 {
                     "libraryId": string_property("Local reference library ID; no absolute path"),

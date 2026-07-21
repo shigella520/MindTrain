@@ -1,4 +1,4 @@
 interface:
   display_name: "MindTrain"
-  short_description: "Build training domains from your private references"
-  default_prompt: "Use $mindtrain to organize a training domain from my local references, preview it, and save it after I confirm."
+  short_description: "Build and search private training knowledge catalogs"
+  default_prompt: "Use $mindtrain to show my knowledge domains or create a new training domain after I confirm its topic tree."

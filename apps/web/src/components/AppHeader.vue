@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { BookOpenCheck, LayoutDashboard, Menu, Settings, ShieldCheck, X } from '@lucide/vue'
+import { BookOpenCheck, FolderTree, LayoutDashboard, Menu, Settings, ShieldCheck, X } from '@lucide/vue'
 import { useRoute } from 'vue-router'
 import GithubIcon from './GithubIcon.vue'
 import { useConfigStore } from '../stores/config'
@@ -35,6 +35,7 @@ onBeforeUnmount(() => {
     <nav class="primary-nav" aria-label="主导航">
       <RouterLink to="/"><LayoutDashboard :size="17" />看板</RouterLink>
       <RouterLink to="/train"><BookOpenCheck :size="17" />训练</RouterLink>
+      <RouterLink to="/catalog"><FolderTree :size="17" />知识目录</RouterLink>
       <RouterLink to="/admin"><ShieldCheck :size="17" />管理</RouterLink>
     </nav>
     <div class="topbar-meta">
@@ -62,6 +63,7 @@ onBeforeUnmount(() => {
   <nav id="mobile-navigation" class="mobile-nav-drawer" :class="{ open: menuOpen }" aria-label="移动端主导航" :aria-hidden="!menuOpen" :inert="!menuOpen">
     <RouterLink to="/" @click="closeMenu"><LayoutDashboard :size="18" />看板</RouterLink>
     <RouterLink to="/train" @click="closeMenu"><BookOpenCheck :size="18" />训练</RouterLink>
+    <RouterLink to="/catalog" @click="closeMenu"><FolderTree :size="18" />知识目录</RouterLink>
     <RouterLink to="/admin" @click="closeMenu"><ShieldCheck :size="18" />管理</RouterLink>
     <RouterLink to="/settings" @click="closeMenu"><Settings :size="18" />实例设置</RouterLink>
   </nav>

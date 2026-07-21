@@ -153,14 +153,14 @@ onMounted(() => {
       </section>
 
       <section id="content" class="admin-panel">
-        <div class="panel-head"><div><p class="card-kicker">CONTENT</p><h2>内容治理</h2></div><span class="coming-soon">查询 API 待补充</span></div>
+        <div class="panel-head"><div><p class="card-kicker">CONTENT</p><h2>内容治理</h2></div><RouterLink class="state-badge" to="/catalog">打开知识目录</RouterLink></div>
         <div class="table-shell">
           <table>
             <thead><tr><th>资产类型</th><th>数量</th><th>当前边界</th><th>状态</th></tr></thead>
             <tbody>
               <tr><td>可复习题</td><td>{{ dashboard.overview.activeQuestions }}</td><td>可跨会话调度</td><td><span class="table-status success">普通题</span></td></tr>
               <tr><td>待答 AI 题</td><td>{{ dashboard.overview.pendingGeneratedQuestions }}</td><td>拒绝时物理删除，回答后转普通题</td><td><span class="table-status warning">临时</span></td></tr>
-              <tr><td>来源缺失</td><td>—</td><td>等待内容查询 API</td><td><span class="table-status">Planned</span></td></tr>
+              <tr><td>知识目录</td><td>—</td><td>领域、知识点树、搜索和来源详情</td><td><span class="table-status success">可查询</span></td></tr>
             </tbody>
           </table>
         </div>

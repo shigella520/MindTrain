@@ -35,6 +35,8 @@ class PublicDashboardSecurityIntegrationTest {
 
         mvc.perform(get("/api/v1/settings/training"))
             .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/catalog/domains"))
+            .andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/imports/missing"))
             .andExpect(status().isUnauthorized());
         mvc.perform(post("/api/v1/questions/java.concurrency.volatile.001/revisions")
