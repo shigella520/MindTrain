@@ -24,13 +24,3 @@ mindtrain:
     bootstrap-display-name: ${MINDTRAIN_BOOTSTRAP_DISPLAY_NAME:Local Admin}
     bootstrap-token: ${MINDTRAIN_BOOTSTRAP_TOKEN:change-me}
     public-dashboard-enabled: ${MINDTRAIN_PUBLIC_DASHBOARD_ENABLED:false}
-  scheduler:
-    review-budget: ${MINDTRAIN_REVIEW_BUDGET:8}
-    new-budget: ${MINDTRAIN_NEW_BUDGET:2}
-    backlog-pause-threshold: ${MINDTRAIN_BACKLOG_PAUSE_THRESHOLD:20}
-    overdue-pause-days: ${MINDTRAIN_OVERDUE_PAUSE_DAYS:3}
-  reporting:
-    time-zone: ${MINDTRAIN_REPORTING_TIME_ZONE:Asia/Shanghai}
-  training:
-    pending-candidate-ttl-hours: ${MINDTRAIN_PENDING_CANDIDATE_TTL_HOURS:24}
-    cleanup-interval-ms: ${MINDTRAIN_CANDIDATE_CLEANUP_INTERVAL_MS:3600000}

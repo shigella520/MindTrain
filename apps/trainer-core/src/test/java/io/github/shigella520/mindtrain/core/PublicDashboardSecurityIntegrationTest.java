@@ -30,7 +30,10 @@ class PublicDashboardSecurityIntegrationTest {
         mvc.perform(post("/api/v1/sessions")
                 .header("Idempotency-Key", "anonymous-session")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"questionCount\":10}"))
+                .content("{}"))
+            .andExpect(status().isUnauthorized());
+
+        mvc.perform(get("/api/v1/settings/training"))
             .andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/imports/missing"))
             .andExpect(status().isUnauthorized());

@@ -1,6 +1,6 @@
 package io.github.shigella520.mindtrain.core.scheduling;
 
-import io.github.shigella520.mindtrain.core.config.MindTrainProperties;
+import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class WeightedSchedulerProvider implements SchedulerProvider {
     private final JdbcClient jdbc;
-    private final MindTrainProperties properties;
+    private final ApplicationSettingsService applicationSettings;
 
-    public WeightedSchedulerProvider(JdbcClient jdbc, MindTrainProperties properties) {
+    public WeightedSchedulerProvider(JdbcClient jdbc, ApplicationSettingsService applicationSettings) {
         this.jdbc = jdbc;
-        this.properties = properties;
+        this.applicationSettings = applicationSettings;
     }
 
     @Override
@@ -39,8 +39,9 @@ public class WeightedSchedulerProvider implements SchedulerProvider {
         Object oldestValue = row.get("oldest_due");
         OffsetDateTime oldest = oldestValue instanceof OffsetDateTime value ? value
             : oldestValue instanceof Timestamp timestamp ? timestamp.toInstant().atOffset(java.time.ZoneOffset.UTC) : null;
-        boolean paused = dueCount > properties.scheduler().backlogPauseThreshold()
-            || (oldest != null && oldest.isBefore(now.minusDays(properties.scheduler().overduePauseDays())));
-        return new Backlog(dueCount, oldest, paused ? 0 : properties.scheduler().newBudget(), paused);
+        var settings = applicationSettings.get();
+        boolean paused = dueCount > settings.backlogPauseThreshold()
+            || (oldest != null && oldest.isBefore(now.minusDays(settings.overduePauseDays())));
+        return new Backlog(dueCount, oldest, paused ? 0 : settings.newBudget(), paused);
     }
 }

@@ -18,11 +18,6 @@ paths:
             schema:
               type: object
               properties:
-                questionCount:
-                  type: integer
-                  minimum: 1
-                  maximum: 100
-                  description: Defaults to the configured review budget plus new-item budget.
                 domainId: {type: string, default: java-backend}
                 schedulerProvider:
                   type: string
@@ -143,6 +138,34 @@ paths:
       description: 默认要求 Bearer Token；仅当实例显式开启公开看板时允许匿名读取调度积压。
       responses:
         '200': {description: Due backlog and new-item allowance}
+  /api/v1/settings/training:
+    get:
+      operationId: getTrainingSettings
+      description: 读取数据库中的应用级训练配置；需要 Bearer Token。
+      responses:
+        '200':
+          description: 当前训练配置，reviewBudget 等于 questionCount 减 newBudget。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TrainingSettings'}
+    put:
+      operationId: updateTrainingSettings
+      description: 更新应用级训练配置；新建 Session 随即使用新配置，已有 Session 保持创建时的 targetCount。
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTrainingSettings'
+      responses:
+        '200':
+          description: 配置已保存
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TrainingSettings'}
+        '400': {description: 配置值或时区无效}
   /api/v1/imports/prototype:
     post:
       operationId: importPrototype
@@ -159,6 +182,25 @@ paths:
         '200': {description: Import report}
 components:
   schemas:
+    UpdateTrainingSettings:
+      type: object
+      required: [questionCount, newBudget, backlogPauseThreshold, overduePauseDays, pendingCandidateTtlHours, reportingTimeZone]
+      properties:
+        questionCount: {type: integer, minimum: 1, maximum: 100}
+        newBudget: {type: integer, minimum: 0, description: 必须小于或等于 questionCount}
+        backlogPauseThreshold: {type: integer, minimum: 0, maximum: 10000}
+        overduePauseDays: {type: integer, minimum: 1, maximum: 365}
+        pendingCandidateTtlHours: {type: integer, minimum: 1, maximum: 8760}
+        reportingTimeZone: {type: string, example: Asia/Shanghai}
+    TrainingSettings:
+      allOf:
+        - $ref: '#/components/schemas/UpdateTrainingSettings'
+        - type: object
+          required: [reviewBudget, updatedAt]
+          properties:
+            reviewBudget: {type: integer, minimum: 0, description: questionCount - newBudget}
+            updatedAt: {type: string, format: date-time}
+            updatedBy: {type: [string, 'null']}
     GenerationProfile:
       type: object
       required: [questionType, difficulty, knowledgePoint]

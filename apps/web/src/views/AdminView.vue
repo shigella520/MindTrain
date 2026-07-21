@@ -1,12 +1,76 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { BookCopy, CircleGauge, Database, FileQuestion, ServerCog, Tags } from '@lucide/vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { BookCopy, CircleGauge, Database, FileQuestion, Save, ServerCog, SlidersHorizontal, Tags } from '@lucide/vue'
 import { useConfigStore } from '../stores/config'
 import { useDashboardStore } from '../stores/dashboard'
+import { coreApi, CoreApiError } from '../services/core'
 
 const config = useConfigStore()
 const dashboard = useDashboardStore()
-onMounted(() => { dashboard.refresh() })
+const settingsForm = reactive({
+  questionCount: 10,
+  newBudget: 2,
+  backlogPauseThreshold: 20,
+  overduePauseDays: 3,
+  pendingCandidateTtlHours: 24,
+  reportingTimeZone: 'Asia/Shanghai',
+})
+const settingsState = ref<'idle' | 'loading' | 'saving'>('idle')
+const settingsMessage = ref('')
+const settingsError = ref(false)
+const reviewBudget = computed(() => Math.max(0, settingsForm.questionCount - settingsForm.newBudget))
+
+async function loadTrainingSettings() {
+  if (!config.configured) return
+  settingsState.value = 'loading'
+  settingsMessage.value = ''
+  try {
+    const settings = await coreApi.trainingSettings()
+    Object.assign(settingsForm, {
+      questionCount: settings.questionCount,
+      newBudget: settings.newBudget,
+      backlogPauseThreshold: settings.backlogPauseThreshold,
+      overduePauseDays: settings.overduePauseDays,
+      pendingCandidateTtlHours: settings.pendingCandidateTtlHours,
+      reportingTimeZone: settings.reportingTimeZone,
+    })
+    settingsError.value = false
+  } catch (cause) {
+    settingsError.value = true
+    settingsMessage.value = cause instanceof CoreApiError ? cause.message : '无法读取训练配置'
+  } finally {
+    settingsState.value = 'idle'
+  }
+}
+
+async function saveTrainingSettings() {
+  settingsState.value = 'saving'
+  settingsMessage.value = ''
+  try {
+    const settings = await coreApi.updateTrainingSettings({ ...settingsForm })
+    Object.assign(settingsForm, {
+      questionCount: settings.questionCount,
+      newBudget: settings.newBudget,
+      backlogPauseThreshold: settings.backlogPauseThreshold,
+      overduePauseDays: settings.overduePauseDays,
+      pendingCandidateTtlHours: settings.pendingCandidateTtlHours,
+      reportingTimeZone: settings.reportingTimeZone,
+    })
+    settingsError.value = false
+    settingsMessage.value = `已保存：每轮 ${settings.questionCount} 题，其中复习 ${settings.reviewBudget} 题、新题 ${settings.newBudget} 题。`
+    await dashboard.refresh()
+  } catch (cause) {
+    settingsError.value = true
+    settingsMessage.value = cause instanceof CoreApiError ? cause.message : '保存训练配置失败'
+  } finally {
+    settingsState.value = 'idle'
+  }
+}
+
+onMounted(() => {
+  dashboard.refresh()
+  loadTrainingSettings()
+})
 </script>
 
 <template>
@@ -15,6 +79,7 @@ onMounted(() => { dashboard.refresh() })
       <div><p class="eyebrow">MINDTRAIN ADMIN</p><h2>管理模块</h2></div>
       <nav>
         <a class="active" href="#overview"><CircleGauge :size="18" />概览</a>
+        <a href="#training-settings"><SlidersHorizontal :size="18" />训练配置</a>
         <a href="#content"><BookCopy :size="18" />知识内容</a>
         <a href="#topics"><Tags :size="18" />知识点</a>
         <a href="#service"><ServerCog :size="18" />实例状态</a>
@@ -31,6 +96,60 @@ onMounted(() => { dashboard.refresh() })
           <article><CircleGauge :size="22" /><span>累计作答</span><strong>{{ dashboard.overview.attempts }}</strong></article>
           <article><Database :size="22" /><span>完成会话</span><strong>{{ dashboard.overview.completedSessions }}</strong></article>
         </div>
+      </section>
+
+      <section id="training-settings" class="admin-panel">
+        <div class="panel-head">
+          <div><p class="card-kicker">TRAINING POLICY</p><h2>训练配置</h2></div>
+          <span class="state-badge">数据库配置</span>
+        </div>
+        <p class="panel-description">新建 Session 统一使用这里的题量设置。复习题数量由总题数减去新题数自动计算。</p>
+        <form class="admin-settings-form" @submit.prevent="saveTrainingSettings">
+          <div class="settings-field-grid">
+            <label>
+              <span>每轮总题数</span>
+              <input v-model.number="settingsForm.questionCount" type="number" min="1" max="100" required />
+              <em>所有 Codex 和 Web Session 共用</em>
+            </label>
+            <label>
+              <span>新题计划数</span>
+              <input v-model.number="settingsForm.newBudget" type="number" min="0" :max="settingsForm.questionCount" required />
+              <em>必须小于或等于每轮总题数</em>
+            </label>
+            <label>
+              <span>复习题计划数</span>
+              <input :value="reviewBudget" type="number" disabled />
+              <em>{{ settingsForm.questionCount }} − {{ settingsForm.newBudget }} = {{ reviewBudget }}</em>
+            </label>
+            <label>
+              <span>积压暂停阈值</span>
+              <input v-model.number="settingsForm.backlogPauseThreshold" type="number" min="0" max="10000" required />
+              <em>到期题超过该数量时暂停新题</em>
+            </label>
+            <label>
+              <span>严重逾期天数</span>
+              <input v-model.number="settingsForm.overduePauseDays" type="number" min="1" max="365" required />
+              <em>最老到期题超过该天数时暂停新题</em>
+            </label>
+            <label>
+              <span>AI 临时题有效期（小时）</span>
+              <input v-model.number="settingsForm.pendingCandidateTtlHours" type="number" min="1" max="8760" required />
+              <em>过期且未作答的临时题会被物理清理</em>
+            </label>
+            <label class="wide-field">
+              <span>报表时区</span>
+              <input v-model.trim="settingsForm.reportingTimeZone" type="text" placeholder="Asia/Shanghai" required />
+              <em>使用 IANA 时区名称，决定“今日训练”的统计边界</em>
+            </label>
+          </div>
+          <div class="admin-settings-actions">
+            <span v-if="settingsMessage" :class="settingsError ? 'settings-error' : 'settings-success'">{{ settingsMessage }}</span>
+            <span v-else></span>
+            <button class="button primary" type="submit" :disabled="settingsState !== 'idle'">
+              <Save :size="17" />{{ settingsState === 'saving' ? '保存中…' : '保存配置' }}
+            </button>
+          </div>
+        </form>
       </section>
 
       <section id="content" class="admin-panel">
