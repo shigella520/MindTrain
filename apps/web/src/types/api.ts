@@ -34,6 +34,18 @@ export interface Backlog {
   newItemsPaused: boolean
 }
 
+export interface TrainingSettings {
+  questionCount: number
+  newBudget: number
+  reviewBudget: number
+  backlogPauseThreshold: number
+  overduePauseDays: number
+  pendingCandidateTtlHours: number
+  reportingTimeZone: string
+  updatedAt: string
+  updatedBy: string | null
+}
+
 export interface Session {
   id: string
   status: string

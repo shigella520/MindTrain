@@ -82,7 +82,6 @@ def tool_definitions():
             "Create a MindTrain training session.",
             schema(
                 {
-                    "questionCount": integer_property("Number of main questions; defaults to the Core scheduler daily target"),
                     "domainId": string_property("Knowledge domain; defaults to java-backend"),
                     "schedulerProvider": string_property("Scheduler provider ID; use weighted for 加权调度 in the MVP"),
                 }

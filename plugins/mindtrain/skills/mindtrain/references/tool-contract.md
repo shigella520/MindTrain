@@ -7,7 +7,7 @@
 
 ## Training tools
 
-- `create_training_session`: accepts optional `questionCount`, `domainId`, and `schedulerProvider`.
+- `create_training_session`: accepts optional `domainId` and `schedulerProvider`. Core uses the application-configured `questionCount`.
 - `get_next_assignment`: accepts `sessionId`; returns `assignment`, `generation_required`, `no_available_items`, or `session_complete`. A generation request includes a mandatory `generationProfile` with the target question type, difficulty, and knowledge point.
 - `submit_choice_answer`: accepts `assignmentId` and the user's unmodified `answer` text.
 - `reject_generated_question`: accepts the pending generated `assignmentId`; physically deletes the unanswered Assignment, QuestionVersion, and Question, and restores main-question new-item allowance.

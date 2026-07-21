@@ -13,8 +13,3 @@ mindtrain:
     bootstrap-display-name: Test User
     bootstrap-token: test-token
     public-dashboard-enabled: false
-  scheduler:
-    review-budget: 8
-    new-budget: 2
-    backlog-pause-threshold: 20
-    overdue-pause-days: 3

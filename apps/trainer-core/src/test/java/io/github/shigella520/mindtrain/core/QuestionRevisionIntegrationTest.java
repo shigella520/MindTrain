@@ -143,7 +143,7 @@ class QuestionRevisionIntegrationTest {
         return json(mvc.perform(post("/api/v1/sessions")
                 .header("Idempotency-Key", "revision-session")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"questionCount\":1}"))
+                .content("{}"))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("id").asText();
     }
 

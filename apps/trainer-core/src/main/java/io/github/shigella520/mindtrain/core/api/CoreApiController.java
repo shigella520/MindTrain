@@ -1,6 +1,9 @@
 package io.github.shigella520.mindtrain.core.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService;
+import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.TrainingSettings;
+import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.UpdateTrainingSettingsRequest;
 import io.github.shigella520.mindtrain.core.importer.PrototypeImportService;
 import io.github.shigella520.mindtrain.core.question.QuestionService;
 import io.github.shigella520.mindtrain.core.scheduling.SchedulerProvider;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -25,19 +29,22 @@ public class CoreApiController {
     private final QuestionService questions;
     private final PrototypeImportService imports;
     private final IdempotencyService idempotency;
+    private final ApplicationSettingsService applicationSettings;
 
     public CoreApiController(TrainingService training, QuestionService questions,
-                             PrototypeImportService imports, IdempotencyService idempotency) {
+                             PrototypeImportService imports, IdempotencyService idempotency,
+                             ApplicationSettingsService applicationSettings) {
         this.training = training;
         this.questions = questions;
         this.imports = imports;
         this.idempotency = idempotency;
+        this.applicationSettings = applicationSettings;
     }
 
     @PostMapping("/sessions")
     public TrainingService.SessionResponse createSession(
         @RequestHeader("Idempotency-Key") String key, @RequestBody(required = false) CreateSessionRequest request) {
-        CreateSessionRequest body = request == null ? new CreateSessionRequest(null, null, null) : request;
+        CreateSessionRequest body = request == null ? new CreateSessionRequest(null, null) : request;
         return idempotency.execute("create-session", key, TrainingService.SessionResponse.class,
             () -> training.createSession(body));
     }
@@ -100,6 +107,18 @@ public class CoreApiController {
     @GetMapping("/schedulers/backlog")
     public SchedulerProvider.Backlog backlog() {
         return training.backlog();
+    }
+
+    @GetMapping("/settings/training")
+    public TrainingSettings trainingSettings() {
+        return applicationSettings.get();
+    }
+
+    @PutMapping("/settings/training")
+    public TrainingSettings updateTrainingSettings(@RequestHeader("Idempotency-Key") String key,
+                                                    @RequestBody UpdateTrainingSettingsRequest request) {
+        return idempotency.execute("update-training-settings", key, TrainingSettings.class,
+            () -> applicationSettings.update(request));
     }
 
     @PostMapping("/imports/prototype")

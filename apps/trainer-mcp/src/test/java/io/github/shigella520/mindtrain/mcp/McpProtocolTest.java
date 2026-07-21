@@ -50,7 +50,7 @@ class McpProtocolTest {
             {"id":"session-test","status":"active","targetCount":10}
             """));
         mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
-                {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_training_session","arguments":{"questionCount":10}}}
+                {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_training_session","arguments":{}}}
                 """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.result.isError").value(false))

@@ -21,7 +21,6 @@ public class TrainerTools {
     public ArrayNode definitions() {
         ArrayNode tools = objectMapper.createArrayNode();
         tools.add(tool("create_training_session", "Create a MindTrain training session.", schema(Map.of(
-            "questionCount", integer("Number of main questions; defaults to the Core scheduler daily target"),
             "domainId", string("Knowledge domain; defaults to java-backend"),
             "schedulerProvider", string("Scheduler provider ID; use weighted for 加权调度 in the MVP")
         ), List.of())));

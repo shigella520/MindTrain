@@ -6,7 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.shigella520.mindtrain.core.api.ApiException;
-import io.github.shigella520.mindtrain.core.config.MindTrainProperties;
+import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService;
+import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.TrainingSettings;
 import io.github.shigella520.mindtrain.core.identity.UserContext;
 import io.github.shigella520.mindtrain.core.question.QuestionService;
 import io.github.shigella520.mindtrain.core.question.QuestionService.QuestionRecord;
@@ -42,25 +43,23 @@ public class TrainingService {
     private final ObjectMapper objectMapper;
     private final QuestionService questions;
     private final SchedulerProvider scheduler;
-    private final MindTrainProperties properties;
+    private final ApplicationSettingsService applicationSettings;
 
     public TrainingService(JdbcClient jdbc, ObjectMapper objectMapper, QuestionService questions,
-                           SchedulerProvider scheduler, MindTrainProperties properties) {
+                           SchedulerProvider scheduler, ApplicationSettingsService applicationSettings) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.questions = questions;
         this.scheduler = scheduler;
-        this.properties = properties;
+        this.applicationSettings = applicationSettings;
     }
 
     @Transactional
     public SessionResponse createSession(CreateSessionRequest request) {
         String userId = UserContext.requireUserId();
         String id = "session-" + UUID.randomUUID();
-        int target = request.questionCount() == null
-            ? properties.scheduler().reviewBudget() + properties.scheduler().newBudget()
-            : request.questionCount();
-        if (target < 1 || target > 100) throw new IllegalArgumentException("questionCount must be between 1 and 100");
+        TrainingSettings settings = applicationSettings.get();
+        int target = settings.questionCount();
         String domain = blankDefault(request.domainId(), "java-backend");
         String provider = blankDefault(request.schedulerProvider(), scheduler.id());
         if (!scheduler.id().equals(provider)) {
@@ -101,11 +100,12 @@ public class TrainingService {
         int scheduledReviews = jdbc.sql("""
                 SELECT COUNT(*) FROM assignment WHERE session_id = :sessionId AND source_kind = 'review'
                 """).param("sessionId", sessionId).query(Integer.class).single();
-        Optional<QuestionChoice> due = scheduledReviews < properties.scheduler().reviewBudget() || backlog.newItemsPaused()
+        TrainingSettings settings = applicationSettings.get();
+        Optional<QuestionChoice> due = scheduledReviews < settings.reviewBudget() || backlog.newItemsPaused()
             ? selectDueQuestion(userId, now) : Optional.empty();
         if (due.isPresent()) return createAssignment(session, due.get());
 
-        int newAllowance = Math.min(properties.scheduler().newBudget(), backlog.newItemAllowance());
+        int newAllowance = Math.min(settings.newBudget(), backlog.newItemAllowance());
         boolean shortageFill = !backlog.newItemsPaused() && session.completedMain() < session.targetCount();
         if (session.introducedNewCount() < newAllowance || shortageFill) {
             Optional<QuestionChoice> unseen = selectUnseenQuestion(userId, sessionId);
@@ -232,7 +232,8 @@ public class TrainingService {
     public JsonNode overview() {
         String userId = UserContext.requireUserId();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        ZoneId reportingZone = ZoneId.of(properties.reporting().timeZone());
+        TrainingSettings settings = applicationSettings.get();
+        ZoneId reportingZone = ZoneId.of(settings.reportingTimeZone());
         LocalDate reportingDate = now.atZoneSameInstant(reportingZone).toLocalDate();
         OffsetDateTime dayStart = reportingDate.atStartOfDay(reportingZone).toOffsetDateTime();
         OffsetDateTime dayEnd = reportingDate.plusDays(1).atStartOfDay(reportingZone).toOffsetDateTime();
@@ -253,8 +254,8 @@ public class TrainingService {
                 """)
             .param("userId", userId).param("dayStart", dayStart).param("dayEnd", dayEnd)
             .query(Integer.class).single();
-        int reviewBudget = properties.scheduler().reviewBudget();
-        int newBudget = properties.scheduler().newBudget();
+        int reviewBudget = settings.reviewBudget();
+        int newBudget = settings.newBudget();
         int sessions = jdbc.sql("SELECT COUNT(*) FROM training_session WHERE user_id = :userId AND status = 'completed'")
             .param("userId", userId).query(Integer.class).single();
         int activeQuestions = jdbc.sql("SELECT COUNT(*) FROM question WHERE status = 'active'").query(Integer.class).single();
@@ -290,11 +291,11 @@ public class TrainingService {
         return scheduler.backlog(UserContext.requireUserId(), OffsetDateTime.now(ZoneOffset.UTC));
     }
 
-    @Scheduled(fixedDelayString = "${mindtrain.training.cleanup-interval-ms:3600000}")
+    @Scheduled(fixedDelay = 3600000)
     @Transactional
     public void cleanupExpiredPendingCandidates() {
         OffsetDateTime cutoff = OffsetDateTime.now(ZoneOffset.UTC)
-            .minusHours(properties.training().pendingCandidateTtlHours());
+            .minusHours(applicationSettings.get().pendingCandidateTtlHours());
         List<CandidateAssignment> expired = jdbc.sql("""
                 SELECT a.id AS assignment_id, a.session_id, a.question_id, a.attempt_type, a.source_kind,
                        a.status AS assignment_status, s.user_id, q.status AS question_status,
@@ -693,7 +694,7 @@ public class TrainingService {
         return value == null || value.isBlank() ? fallback : value;
     }
 
-    public record CreateSessionRequest(Integer questionCount, String domainId, String schedulerProvider) {}
+    public record CreateSessionRequest(String domainId, String schedulerProvider) {}
     public record SubmitAttemptRequest(String answer) {}
     public record InteractionRequest(String assignmentId, String eventType, String content, String model, String promptVersion) {}
     public record SessionResponse(String id, String status, int targetCount, int completedMainQuestions,

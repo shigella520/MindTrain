@@ -34,7 +34,7 @@ Codex + MindTrain Plugin         MindTrain Web
 - 安全出题：正式出题接口只返回题干和选项，提交答案前不返回正确答案、解释或可能泄露答案组合的提示。
 - 精确判分：单选和多选都按选项集合完全相等判分，结果只为 `0` 或 `100`。
 - 持久学习记录：保存 Session、Assignment、Attempt、Interaction、Mistake 和题目级复习状态。
-- 默认抗遗忘调度：每次默认训练 10 道主问题，通常安排 8 道复习题和 2 道新题；积压过高时暂停引入新题。
+- 默认抗遗忘调度：数据库默认配置每轮 10 道主问题和 2 道新题，复习题数自动计算为 8；积压过高时暂停引入新题。
 - AI 临时题：题库不足时由 Codex 生成并在展示前入库；未作答时可拒绝并物理删除，作答后自动进入普通调度。
 - 可复习题版本修订：用户确认题目存在问题后，教练可提交局部修订；Core 创建不可变的新版本，历史作答继续引用旧版本。
 - 幂等与审计：写接口支持 `Idempotency-Key`，答题、交互和审核历史采用追加式保存。
@@ -54,7 +54,7 @@ Codex + MindTrain Plugin         MindTrain Web
 | MindTrain Skill | 可用 | 领域无关、无状态、面向 Codex 的训练工作流 |
 | 加权调度 | 可用 | 默认调度方式；复习/新题配额、积压控制、薄弱项优先 |
 | Java 原型迁移 | 可用 | 可复习题默认导入，私人数据必须显式选择 |
-| MindTrain Web | 可用 | Vue 3 Dashboard、Web 答题、管理概览与实例设置 |
+| MindTrain Web | 可用 | Vue 3 Dashboard、Web 答题、训练配置管理与实例设置 |
 | Anki / FSRS Provider | 规划中 | Anki 作为可选调度插件和可重建投影 |
 
 ## 安装（Docker Compose）
@@ -89,7 +89,7 @@ docker compose up -d --build
 | --- | --- | --- |
 | Training Core | `http://127.0.0.1:8080` | 权威数据、训练、调度与报告 API |
 | Trainer MCP | `http://127.0.0.1:8787/mcp` | Codex 和其他 MCP 客户端入口 |
-| MindTrain Web | `http://127.0.0.1:4173` | 学习看板、Web 训练与管理概览 |
+| MindTrain Web | `http://127.0.0.1:4173` | 学习看板、Web 训练、训练配置与管理概览 |
 | PostgreSQL | 不对宿主机开放 | 保存题库、会话、学习历史和调度状态 |
 
 健康检查：
@@ -247,7 +247,7 @@ Core 精确判分                     追加 Interaction
 默认的加权调度（稳定 provider ID 为 `weighted`）以可控的每日训练容量为优先：
 
 - 每个 Session 默认包含 10 道主问题。
-- 正常状态计划安排 8 道复习题和 2 道新题。
+- 默认数据库配置为每轮 10 题、新题 2 题，复习题自动计算为 8 题；可在 Web 管理页调整。
 - 到期复习题不足时，继续使用未学习题或 AI 生成题补足 Session 目标。
 - Due Backlog 超过 20，或最老题目逾期超过 3 天时，暂停引入新题。
 - Learning、Relearning、严重逾期、薄弱和高错误率题目优先。
@@ -300,6 +300,8 @@ Training Core 首期 REST API：
 | `POST /api/v1/questions/{id}/revisions` | 为已作答普通题创建不可变新版本 |
 | `GET /api/v1/reports/overview` | 获取学习概览 |
 | `GET /api/v1/schedulers/backlog` | 获取到期积压 |
+| `GET /api/v1/settings/training` | 读取数据库训练配置 |
+| `PUT /api/v1/settings/training` | 更新数据库训练配置 |
 | `POST /api/v1/imports/prototype` | 创建原型导入任务 |
 | `GET /api/v1/imports/{id}` | 查询导入结果 |
 
@@ -351,14 +353,18 @@ Web 看板查询两个只读接口：
 
 公开概览会暴露聚合学习数据及薄弱知识点名称。私人实例应保持默认值 `false`，不要为了省去 Web 配置而开启。
 
-Core 还支持下列调度配置：
+训练策略不再通过环境变量维护。首次升级时 Flyway 创建默认数据库配置，可在 Web 的“管理 → 训练配置”中修改：
 
-| 变量名 | 默认值 | 说明 |
+| 配置 | 默认值 | 说明 |
 | --- | --- | --- |
-| `MINDTRAIN_REVIEW_BUDGET` | `8` | 单次会话最大复习题数量 |
-| `MINDTRAIN_NEW_BUDGET` | `2` | 单次会话最大新题数量 |
-| `MINDTRAIN_BACKLOG_PAUSE_THRESHOLD` | `20` | 暂停新题的到期积压阈值 |
-| `MINDTRAIN_OVERDUE_PAUSE_DAYS` | `3` | 暂停新题的最老逾期天数阈值 |
+| 每轮总题数 `questionCount` | `10` | 新建 Session 的主问题目标 |
+| 新题计划数 `newBudget` | `2` | 复习题计划数自动计算为 `questionCount - newBudget` |
+| 积压暂停阈值 | `20` | 到期题超过该数量时暂停新题 |
+| 严重逾期天数 | `3` | 最老到期题超过该天数时暂停新题 |
+| AI 临时题有效期 | `24` 小时 | 超时未作答题自动物理清理 |
+| 报表时区 | `Asia/Shanghai` | 决定“今日训练”的统计边界 |
+
+数据库连接、端口、Bootstrap Token 和公开看板安全开关仍通过环境变量配置；这些启动与安全参数不会写入业务数据库。
 
 ## 项目结构
 

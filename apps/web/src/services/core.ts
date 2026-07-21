@@ -1,6 +1,6 @@
 import { useConfigStore } from '../stores/config'
 import { DEFAULT_SCHEDULER_PROVIDER_ID } from '../domain/schedulers'
-import type { Attempt, Backlog, NextAssignment, Overview, RejectedGeneratedQuestion, Session } from '../types/api'
+import type { Attempt, Backlog, NextAssignment, Overview, RejectedGeneratedQuestion, Session, TrainingSettings } from '../types/api'
 
 export class CoreApiError extends Error {
   constructor(
@@ -42,9 +42,8 @@ function post<T>(path: string, body?: unknown, prefix = 'web'): Promise<T> {
 export const coreApi = {
   overview: () => request<Overview>('/reports/overview'),
   backlog: () => request<Backlog>('/schedulers/backlog'),
-  createSession: (questionCount?: number, domainId = 'java-backend') =>
+  createSession: (domainId = 'java-backend') =>
     post<Session>('/sessions', {
-      ...(questionCount === undefined ? {} : { questionCount }),
       domainId,
       schedulerProvider: DEFAULT_SCHEDULER_PROVIDER_ID,
     }, 'session'),
@@ -56,4 +55,11 @@ export const coreApi = {
     post<RejectedGeneratedQuestion>(`/assignments/${encodeURIComponent(assignmentId)}/reject`, undefined, 'reject'),
   finishSession: (sessionId: string) =>
     post<Session>(`/sessions/${encodeURIComponent(sessionId)}/finish`, undefined, 'finish'),
+  trainingSettings: () => request<TrainingSettings>('/settings/training'),
+  updateTrainingSettings: (settings: Omit<TrainingSettings, 'reviewBudget' | 'updatedAt' | 'updatedBy'>) =>
+    request<TrainingSettings>('/settings/training', {
+      method: 'PUT',
+      headers: { 'Idempotency-Key': idempotencyKey('training-settings') },
+      body: JSON.stringify(settings),
+    }),
 }

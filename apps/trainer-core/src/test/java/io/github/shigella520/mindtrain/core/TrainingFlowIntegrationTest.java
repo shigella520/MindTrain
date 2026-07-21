@@ -311,7 +311,7 @@ class TrainingFlowIntegrationTest {
         JsonNode response = json(mvc.perform(post("/api/v1/sessions")
                 .header("Idempotency-Key", key)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"questionCount\":10}"))
+                .content("{}"))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         return response.path("id").asText();
     }
