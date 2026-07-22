@@ -191,8 +191,8 @@
     <rect class="entity-head-purple" y="28" width="236" height="14"/>
     <text class="entity-name" x="14" y="20">Question</text><text class="entity-cn" x="14" y="35">题目聚合根</text>
     <text class="pk" x="14" y="62">PK</text><text class="field" x="42" y="62">id</text>
-    <text class="field" x="14" y="82">currentVersion</text>
-    <text class="field" x="14" y="102">sessionEligibleId</text>
+    <text class="field" x="14" y="82">userId · domainId</text>
+    <text class="field" x="14" y="102">currentVersion · sessionEligibleId</text>
     <text class="status" x="14" y="124">status: candidate | active</text>
     <text class="entity-cn" x="14" y="142">不保留 rejected 状态</text>
   </g>
@@ -335,7 +335,7 @@
     <rect class="entity-head-blue" width="276" height="42" rx="15"/>
     <rect class="entity-head-blue" y="28" width="276" height="14"/>
     <text class="entity-name" x="14" y="20">SchedulerProvider</text><text class="entity-cn" x="14" y="35">调度端口 / 当前 weighted 实现</text>
-    <text class="field" x="14" y="64">backlog(user, now)</text>
+    <text class="field" x="14" y="64">backlog(user, domain, now)</text>
     <text class="field" x="14" y="84">dueCount · oldestDueAt</text>
     <text class="field" x="14" y="104">newItemAllowance · paused</text>
     <text class="entity-cn" x="14" y="128">读取 Settings + ReviewState 决定容量</text>

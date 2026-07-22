@@ -119,7 +119,7 @@ class QuestionRevisionIntegrationTest {
 
     private void insertActiveQuestion(String questionId) throws Exception {
         JsonNode question = question(questionId);
-        TestFixtures.insertTopicAndActiveQuestion(jdbc, objectMapper, "java-backend",
+        TestFixtures.insertTopicAndActiveQuestion(jdbc, objectMapper, "test-domain",
             "java.concurrency.volatile", "volatile", 5, question);
     }
 

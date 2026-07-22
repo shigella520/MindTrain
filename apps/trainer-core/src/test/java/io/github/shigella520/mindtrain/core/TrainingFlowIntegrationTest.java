@@ -287,7 +287,7 @@ class TrainingFlowIntegrationTest {
 
     private void insertFixture() throws Exception {
         JsonNode question = candidate("java.concurrency.atomics", "java.concurrency.atomics.active");
-        TestFixtures.insertTopicAndActiveQuestion(jdbc, objectMapper, "java-backend",
+        TestFixtures.insertTopicAndActiveQuestion(jdbc, objectMapper, "test-domain",
             "java.concurrency.atomics", "Atomic 原子类", 5, question);
     }
 

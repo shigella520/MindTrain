@@ -60,7 +60,7 @@ public class TrainingService {
         String id = "session-" + UUID.randomUUID();
         TrainingSettings settings = applicationSettings.get();
         int target = settings.questionCount();
-        String domain = blankDefault(request.domainId(), "java-backend");
+        DomainSelection domain = resolveDomain(userId, request.domainId());
         String provider = blankDefault(request.schedulerProvider(), scheduler.id());
         if (!scheduler.id().equals(provider)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "scheduler_not_supported",
@@ -72,9 +72,9 @@ public class TrainingService {
                   completed_main, follow_up_count, introduced_new_count, started_at)
                 VALUES (:id, :userId, :domain, :provider, 'active', :target, 0, 0, 0, :startedAt)
                 """)
-            .param("id", id).param("userId", userId).param("domain", domain).param("provider", provider)
+            .param("id", id).param("userId", userId).param("domain", domain.id()).param("provider", provider)
             .param("target", target).param("startedAt", now).update();
-        return new SessionResponse(id, "active", target, 0, 0, provider, now, null);
+        return new SessionResponse(id, domain.id(), domain.name(), "active", target, 0, 0, provider, now, null);
     }
 
     @Transactional
@@ -85,34 +85,42 @@ public class TrainingService {
             throw new ApiException(HttpStatus.CONFLICT, "session_not_active", "Session is not active");
         }
         Optional<AssignmentRow> pending = jdbc.sql("""
-                SELECT id, question_id, question_version, attempt_type, parent_attempt_id, source_kind, created_at
-                FROM assignment WHERE session_id = :sessionId AND status = 'pending'
-                ORDER BY created_at LIMIT 1
+                SELECT a.id, a.question_id, a.question_version, a.attempt_type, a.parent_attempt_id,
+                       a.source_kind, a.created_at, q.domain_id
+                FROM assignment a JOIN question q ON q.id=a.question_id
+                WHERE a.session_id = :sessionId AND a.status = 'pending'
+                ORDER BY a.created_at LIMIT 1
                 """)
             .param("sessionId", sessionId).query(this::mapAssignment).optional();
-        if (pending.isPresent()) return assignmentResponse(pending.get());
+        if (pending.isPresent()) {
+            if (!session.domainId().equals(pending.get().domainId())) {
+                throw new ApiException(HttpStatus.CONFLICT, "session_domain_invalid",
+                    "Pending assignment belongs to a different training domain");
+            }
+            return assignmentResponse(pending.get());
+        }
         if (session.completedMain() >= session.targetCount()) {
             return new NextAssignmentResponse("session_complete", null, null, null, null, null);
         }
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        SchedulerProvider.Backlog backlog = scheduler.backlog(userId, now);
+        SchedulerProvider.Backlog backlog = scheduler.backlog(userId, session.domainId(), now);
         int scheduledReviews = jdbc.sql("""
                 SELECT COUNT(*) FROM assignment WHERE session_id = :sessionId AND source_kind = 'review'
                 """).param("sessionId", sessionId).query(Integer.class).single();
         TrainingSettings settings = applicationSettings.get();
         Optional<QuestionChoice> due = scheduledReviews < settings.reviewBudget() || backlog.newItemsPaused()
-            ? selectDueQuestion(userId, now) : Optional.empty();
+            ? selectDueQuestion(userId, session.domainId(), now) : Optional.empty();
         if (due.isPresent()) return createAssignment(session, due.get());
 
         int newAllowance = Math.min(settings.newBudget(), backlog.newItemAllowance());
         boolean shortageFill = !backlog.newItemsPaused() && session.completedMain() < session.targetCount();
         if (session.introducedNewCount() < newAllowance || shortageFill) {
-            Optional<QuestionChoice> unseen = selectUnseenQuestion(userId, sessionId);
+            Optional<QuestionChoice> unseen = selectUnseenQuestion(userId, session.domainId(), sessionId);
             if (unseen.isPresent()) return createAssignment(session, unseen.get());
 
-            String topicId = selectGenerationTopic(userId);
-            QuestionService.TopicContext generationContext = questions.topicContext(topicId);
+            String topicId = selectGenerationTopic(userId, session.domainId());
+            QuestionService.TopicContext generationContext = questions.topicContext(topicId, session.domainId());
             QuestionService.GenerationProfile generationProfile =
                 questions.generationProfile(userId, sessionId, generationContext);
             return new NextAssignmentResponse("generation_required", null, null,
@@ -132,16 +140,23 @@ public class TrainingService {
         String userId = UserContext.requireUserId();
         AssignmentWithOwner assignment = jdbc.sql("""
                 SELECT a.id, a.session_id, a.question_id, a.question_version, a.attempt_type, a.parent_attempt_id,
-                       a.source_kind, a.status, s.user_id
+                       a.source_kind, a.status, s.user_id, s.domain_id AS session_domain_id,
+                       q.domain_id AS question_domain_id
                 FROM assignment a JOIN training_session s ON s.id = a.session_id
+                JOIN question q ON q.id=a.question_id
                 WHERE a.id = :id
                 """)
             .param("id", assignmentId)
             .query((rs, rowNum) -> new AssignmentWithOwner(rs.getString("id"), rs.getString("session_id"),
                 rs.getString("question_id"), rs.getInt("question_version"), rs.getString("attempt_type"),
-                rs.getString("parent_attempt_id"), rs.getString("source_kind"), rs.getString("status"), rs.getString("user_id")))
+                rs.getString("parent_attempt_id"), rs.getString("source_kind"), rs.getString("status"), rs.getString("user_id"),
+                rs.getString("session_domain_id"), rs.getString("question_domain_id")))
             .optional().orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "assignment_not_found", "Assignment was not found"));
         if (!userId.equals(assignment.userId())) throw new ApiException(HttpStatus.NOT_FOUND, "assignment_not_found", "Assignment was not found");
+        if (!assignment.sessionDomainId().equals(assignment.questionDomainId())) {
+            throw new ApiException(HttpStatus.CONFLICT, "session_domain_invalid",
+                "Assignment question belongs to a different training domain");
+        }
         if (!"pending".equals(assignment.status())) throw new ApiException(HttpStatus.CONFLICT, "assignment_already_answered", "Assignment is already answered");
 
         QuestionRecord question = questions.get(assignment.questionId(), assignment.questionVersion());
@@ -225,8 +240,9 @@ public class TrainingService {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         jdbc.sql("UPDATE training_session SET status = 'completed', ended_at = :endedAt, summary_json = :summary WHERE id = :id")
             .param("endedAt", now).param("summary", stringify(summary)).param("id", sessionId).update();
-        return new SessionResponse(session.id(), "completed", session.targetCount(), session.completedMain(),
-            session.followUpCount(), session.schedulerProvider(), session.startedAt(), now);
+        return new SessionResponse(session.id(), session.domainId(), session.domainName(), "completed",
+            session.targetCount(), session.completedMain(), session.followUpCount(), session.schedulerProvider(),
+            session.startedAt(), now);
     }
 
     public JsonNode overview() {
@@ -237,7 +253,7 @@ public class TrainingService {
         LocalDate reportingDate = now.atZoneSameInstant(reportingZone).toLocalDate();
         OffsetDateTime dayStart = reportingDate.atStartOfDay(reportingZone).toOffsetDateTime();
         OffsetDateTime dayEnd = reportingDate.plusDays(1).atStartOfDay(reportingZone).toOffsetDateTime();
-        SchedulerProvider.Backlog backlog = scheduler.backlog(userId, now);
+        SchedulerProvider.Backlog backlog = scheduler.backlog(userId, null, now);
         Map<String, Object> stats = jdbc.sql("""
                 SELECT COUNT(*) AS attempts,
                        COALESCE(SUM(CASE WHEN correct THEN 1 ELSE 0 END), 0) AS correct
@@ -258,8 +274,10 @@ public class TrainingService {
         int newBudget = settings.newBudget();
         int sessions = jdbc.sql("SELECT COUNT(*) FROM training_session WHERE user_id = :userId AND status = 'completed'")
             .param("userId", userId).query(Integer.class).single();
-        int activeQuestions = jdbc.sql("SELECT COUNT(*) FROM question WHERE status = 'active'").query(Integer.class).single();
-        int candidates = jdbc.sql("SELECT COUNT(*) FROM question WHERE status = 'candidate'").query(Integer.class).single();
+        int activeQuestions = jdbc.sql("SELECT COUNT(*) FROM question WHERE user_id=:userId AND status='active'")
+            .param("userId", userId).query(Integer.class).single();
+        int candidates = jdbc.sql("SELECT COUNT(*) FROM question WHERE user_id=:userId AND status='candidate'")
+            .param("userId", userId).query(Integer.class).single();
         List<Map<String, Object>> weakTopics = jdbc.sql("""
                 SELECT tm.topic_id, t.name, tm.mastery_score, tm.correct_count, tm.wrong_count
                 FROM topic_mastery tm LEFT JOIN topic t ON t.id = tm.topic_id
@@ -287,8 +305,10 @@ public class TrainingService {
         return response;
     }
 
-    public SchedulerProvider.Backlog backlog() {
-        return scheduler.backlog(UserContext.requireUserId(), OffsetDateTime.now(ZoneOffset.UTC));
+    public SchedulerProvider.Backlog backlog(String domainId) {
+        String userId = UserContext.requireUserId();
+        if (domainId != null && !domainId.isBlank()) requireDomain(userId, domainId);
+        return scheduler.backlog(userId, blankNull(domainId), OffsetDateTime.now(ZoneOffset.UTC));
     }
 
     @Scheduled(fixedDelay = 3600000)
@@ -324,7 +344,8 @@ public class TrainingService {
             jdbc.sql("UPDATE training_session SET introduced_new_count = introduced_new_count + 1 WHERE id = :id")
                 .param("id", session.id()).update();
         }
-        return assignmentResponse(new AssignmentRow(id, choice.questionId(), choice.version(), "main", null, choice.sourceKind(), now));
+        return assignmentResponse(new AssignmentRow(id, choice.questionId(), choice.version(), "main", null,
+            choice.sourceKind(), now, session.domainId()));
     }
 
     private NextAssignmentResponse assignmentResponse(AssignmentRow assignment) {
@@ -335,25 +356,27 @@ public class TrainingService {
         return new NextAssignmentResponse("assignment", presentation, null, null, null, null);
     }
 
-    private String selectGenerationTopic(String userId) {
+    private String selectGenerationTopic(String userId, String domainId) {
         return jdbc.sql("""
-                SELECT t.id FROM topic t
+                SELECT t.id FROM topic t JOIN knowledge_domain d ON d.id=t.domain_id
                 LEFT JOIN topic_mastery tm ON tm.topic_id = t.id AND tm.user_id = :userId
-                WHERE t.kind = 'leaf'
+                WHERE d.user_id=:userId AND t.domain_id=:domainId AND t.kind = 'leaf'
                 ORDER BY COALESCE(tm.mastery_score, 50) ASC,
                          CASE WHEN tm.topic_id IS NULL THEN 0 ELSE 1 END,
                          t.importance DESC, t.id LIMIT 1
                 """)
-            .param("userId", userId).query(String.class).optional()
-            .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "no_topics", "Import a knowledge taxonomy before training"));
+            .param("userId", userId).param("domainId", domainId).query(String.class).optional()
+            .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "training_domain_empty",
+                "The selected training domain has no leaf knowledge points"));
     }
 
-    private Optional<QuestionChoice> selectDueQuestion(String userId, OffsetDateTime now) {
+    private Optional<QuestionChoice> selectDueQuestion(String userId, String domainId, OffsetDateTime now) {
         List<ScheduledQuestion> choices = jdbc.sql("""
                 SELECT q.id, q.current_version, q.status, rs.correct_count, rs.wrong_count, rs.next_review_at
                 FROM review_state rs JOIN question q ON q.id = rs.question_id
                 WHERE rs.user_id = :userId AND rs.next_review_at <= :now AND q.status = 'active'
-                """).param("userId", userId).param("now", now)
+                  AND q.user_id=:userId AND q.domain_id=:domainId
+                """).param("userId", userId).param("domainId", domainId).param("now", now)
             .query((rs, rowNum) -> new ScheduledQuestion(rs.getString("id"), rs.getInt("current_version"),
                 rs.getString("status"), rs.getInt("correct_count"), rs.getInt("wrong_count"),
                 rs.getObject("next_review_at", OffsetDateTime.class))).list();
@@ -361,13 +384,14 @@ public class TrainingService {
             .map(choice -> new QuestionChoice(choice.id(), choice.version(), "review"));
     }
 
-    private Optional<QuestionChoice> selectUnseenQuestion(String userId, String sessionId) {
+    private Optional<QuestionChoice> selectUnseenQuestion(String userId, String domainId, String sessionId) {
         List<ScheduledQuestion> choices = jdbc.sql("""
                 SELECT q.id, q.current_version, q.status
                 FROM question q LEFT JOIN review_state rs ON rs.question_id = q.id AND rs.user_id = :userId
                 WHERE rs.question_id IS NULL
+                  AND q.user_id=:userId AND q.domain_id=:domainId
                   AND (q.status = 'active' OR q.session_eligible_id = :sessionId)
-                """).param("userId", userId).param("sessionId", sessionId)
+                """).param("userId", userId).param("domainId", domainId).param("sessionId", sessionId)
             .query((rs, rowNum) -> new ScheduledQuestion(rs.getString("id"), rs.getInt("current_version"),
                 rs.getString("status"), 0, 0, null)).list();
         return choices.stream().max(Comparator.comparingDouble(choice -> weightedScore(userId, choice,
@@ -646,28 +670,80 @@ public class TrainingService {
         return summary;
     }
 
+    private DomainSelection resolveDomain(String userId, String requestedDomainId) {
+        if (requestedDomainId != null && !requestedDomainId.isBlank()) {
+            DomainSelection selected = requireDomain(userId, requestedDomainId.trim());
+            requireDomainTopics(userId, selected.id());
+            return selected;
+        }
+        List<DomainSelection> domains = jdbc.sql("""
+                SELECT id,name FROM knowledge_domain WHERE user_id=:userId ORDER BY sort_order,name,id
+                """).param("userId", userId)
+            .query((rs, rowNum) -> new DomainSelection(rs.getString("id"), rs.getString("name"))).list();
+        if (domains.isEmpty()) {
+            throw new ApiException(HttpStatus.CONFLICT, "no_training_domains",
+                "Create and confirm a training domain before starting training");
+        }
+        if (domains.size() > 1) {
+            throw new ApiException(HttpStatus.CONFLICT, "training_domain_selection_required",
+                "Multiple training domains are available; select one explicitly");
+        }
+        DomainSelection selected = domains.get(0);
+        requireDomainTopics(userId, selected.id());
+        return selected;
+    }
+
+    private DomainSelection requireDomain(String userId, String domainId) {
+        return jdbc.sql("SELECT id,name FROM knowledge_domain WHERE user_id=:userId AND id=:domainId")
+            .param("userId", userId).param("domainId", domainId)
+            .query((rs, rowNum) -> new DomainSelection(rs.getString("id"), rs.getString("name")))
+            .optional().orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
+                "training_domain_not_found", "Training domain was not found"));
+    }
+
+    private void requireDomainTopics(String userId, String domainId) {
+        int leafTopics = jdbc.sql("""
+                SELECT COUNT(*) FROM topic t JOIN knowledge_domain d ON d.id=t.domain_id
+                WHERE d.user_id=:userId AND t.domain_id=:domainId AND t.kind='leaf'
+                """).param("userId", userId).param("domainId", domainId).query(Integer.class).single();
+        if (leafTopics == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "training_domain_empty",
+                "The selected training domain has no leaf knowledge points");
+        }
+    }
+
     private SessionRow session(String id, String userId) {
-        return jdbc.sql("""
-                SELECT id, status, target_count, completed_main, follow_up_count, introduced_new_count,
-                       scheduler_provider, started_at, ended_at
-                FROM training_session WHERE id = :id AND user_id = :userId
+        SessionRow result = jdbc.sql("""
+                SELECT s.id, s.domain_id, d.name AS domain_name, s.status, s.target_count,
+                       s.completed_main, s.follow_up_count, s.introduced_new_count,
+                       s.scheduler_provider, s.started_at, s.ended_at
+                FROM training_session s LEFT JOIN knowledge_domain d
+                  ON d.user_id=s.user_id AND d.id=s.domain_id
+                WHERE s.id = :id AND s.user_id = :userId
                 """).param("id", id).param("userId", userId)
-            .query((rs, rowNum) -> new SessionRow(rs.getString("id"), rs.getString("status"), rs.getInt("target_count"),
+            .query((rs, rowNum) -> new SessionRow(rs.getString("id"), rs.getString("domain_id"),
+                rs.getString("domain_name"), rs.getString("status"), rs.getInt("target_count"),
                 rs.getInt("completed_main"), rs.getInt("follow_up_count"), rs.getInt("introduced_new_count"),
                 rs.getString("scheduler_provider"), rs.getObject("started_at", OffsetDateTime.class),
                 rs.getObject("ended_at", OffsetDateTime.class)))
             .optional().orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "session_not_found", "Session was not found"));
+        if (result.domainName() == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "session_domain_invalid",
+                "The training session references a missing training domain; start a new session");
+        }
+        return result;
     }
 
     private AssignmentRow mapAssignment(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new AssignmentRow(rs.getString("id"), rs.getString("question_id"), rs.getInt("question_version"),
             rs.getString("attempt_type"), rs.getString("parent_attempt_id"), rs.getString("source_kind"),
-            rs.getObject("created_at", OffsetDateTime.class));
+            rs.getObject("created_at", OffsetDateTime.class), rs.getString("domain_id"));
     }
 
     private SessionResponse toResponse(SessionRow session) {
-        return new SessionResponse(session.id(), session.status(), session.targetCount(), session.completedMain(),
-            session.followUpCount(), session.schedulerProvider(), session.startedAt(), session.endedAt());
+        return new SessionResponse(session.id(), session.domainId(), session.domainName(), session.status(),
+            session.targetCount(), session.completedMain(), session.followUpCount(), session.schedulerProvider(),
+            session.startedAt(), session.endedAt());
     }
 
     private int number(Object value) {
@@ -694,11 +770,16 @@ public class TrainingService {
         return value == null || value.isBlank() ? fallback : value;
     }
 
+    private String blankNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
     public record CreateSessionRequest(String domainId, String schedulerProvider) {}
     public record SubmitAttemptRequest(String answer) {}
     public record InteractionRequest(String assignmentId, String eventType, String content, String model, String promptVersion) {}
-    public record SessionResponse(String id, String status, int targetCount, int completedMainQuestions,
-                                  int followUpCount, String schedulerProvider, OffsetDateTime startedAt, OffsetDateTime endedAt) {}
+    public record SessionResponse(String id, String domainId, String domainName, String status, int targetCount,
+                                  int completedMainQuestions, int followUpCount, String schedulerProvider,
+                                  OffsetDateTime startedAt, OffsetDateTime endedAt) {}
     public record AssignmentPresentation(String assignmentId, String attemptType, String parentAttemptId,
                                          String sourceKind, JsonNode question, String answerPrompt) {}
     public record NextAssignmentResponse(String status, AssignmentPresentation assignment, String message,
@@ -713,12 +794,14 @@ public class TrainingService {
     public record RejectedCandidateResponse(String assignmentId, String questionId, String sessionId,
                                             boolean rejected, boolean physicallyDeleted,
                                             boolean newItemAllowanceRestored) {}
-    private record SessionRow(String id, String status, int targetCount, int completedMain, int followUpCount,
-                              int introducedNewCount, String schedulerProvider, OffsetDateTime startedAt, OffsetDateTime endedAt) {}
+    private record SessionRow(String id, String domainId, String domainName, String status, int targetCount,
+                              int completedMain, int followUpCount, int introducedNewCount,
+                              String schedulerProvider, OffsetDateTime startedAt, OffsetDateTime endedAt) {}
     private record AssignmentRow(String id, String questionId, int version, String attemptType,
-                                 String parentAttemptId, String sourceKind, OffsetDateTime createdAt) {}
+                                 String parentAttemptId, String sourceKind, OffsetDateTime createdAt, String domainId) {}
     private record AssignmentWithOwner(String id, String sessionId, String questionId, int questionVersion,
-                                       String attemptType, String parentAttemptId, String sourceKind, String status, String userId) {}
+                                       String attemptType, String parentAttemptId, String sourceKind, String status,
+                                       String userId, String sessionDomainId, String questionDomainId) {}
     private record CandidateAssignment(String assignmentId, String sessionId, String questionId,
                                        String attemptType, String sourceKind, String assignmentStatus,
                                        String userId, String questionStatus, String sessionEligibleId,
@@ -726,4 +809,5 @@ public class TrainingService {
     private record QuestionChoice(String questionId, int version, String sourceKind) {}
     private record ScheduledQuestion(String id, int version, String status, int correctCount,
                                      int wrongCount, OffsetDateTime nextReviewAt) {}
+    private record DomainSelection(String id, String name) {}
 }

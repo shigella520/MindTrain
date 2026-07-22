@@ -8,7 +8,7 @@ public interface SchedulerProvider {
 
     String id();
     String displayName();
-    Backlog backlog(String userId, OffsetDateTime now);
+    Backlog backlog(String userId, String domainId, OffsetDateTime now);
 
     record Backlog(int dueCount, OffsetDateTime oldestDueAt, int newItemAllowance, boolean newItemsPaused) {}
 }

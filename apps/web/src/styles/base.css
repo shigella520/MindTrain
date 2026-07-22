@@ -135,6 +135,10 @@ button { border: 0; }
 .centered-card, .training-intro { display: flex; flex-direction: column; align-items: center; min-height: 430px; justify-content: center; text-align: center; }
 .centered-card h1, .training-intro h1, .question-card h1, .result-card h1, .settings-card h1 { margin: 10px 0; font-size: clamp(30px,4.5vw,48px); letter-spacing: -.05em; }
 .centered-card p, .training-intro > p, .settings-head p { max-width: 620px; color: var(--mindtrain-muted); line-height: 1.75; }
+.training-domain-picker { width: min(420px,100%); display: grid; gap: 8px; margin: 16px 0 4px; text-align: left; }
+.training-domain-picker span { color: var(--mindtrain-muted); font-size: 13px; font-weight: 700; }
+.training-domain-picker select { width: 100%; border: 1px solid var(--mindtrain-line); border-radius: 16px; background: rgba(255,255,255,.82); color: var(--mindtrain-text); padding: 13px 42px 13px 16px; font: inherit; }
+.training-domain-current { margin: 12px 0 0; padding: 8px 14px; border-radius: 999px; background: rgba(10,132,255,.08); color: var(--mindtrain-accent) !important; font-weight: 700; }
 .intro-icon, .completion-orb { display: grid; place-items: center; width: 76px; height: 76px; margin-bottom: 20px; border-radius: 24px; color: white; background: linear-gradient(135deg,var(--mindtrain-accent),#7785ff); box-shadow: 0 20px 40px rgba(10,132,255,.22); }
 .training-rules { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 18px 0 28px; }
 .training-rules span, .question-meta span { padding: 8px 11px; border-radius: 999px; background: rgba(23,23,23,.045); color: var(--mindtrain-muted); font-size: 11px; font-weight: 700; }
