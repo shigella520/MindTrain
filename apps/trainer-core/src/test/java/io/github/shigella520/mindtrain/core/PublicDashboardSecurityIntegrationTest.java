@@ -3,6 +3,7 @@ package io.github.shigella520.mindtrain.core;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,9 @@ class PublicDashboardSecurityIntegrationTest {
     @Test
     void onlyDashboardReadsAreAnonymous() throws Exception {
         mvc.perform(get("/api/v1/reports/overview"))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.knowledgeDomainCount").isNumber())
+            .andExpect(jsonPath("$.knowledgeTopicCount").isNumber());
         mvc.perform(get("/api/v1/schedulers/backlog"))
             .andExpect(status().isOk());
 

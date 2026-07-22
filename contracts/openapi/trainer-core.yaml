@@ -133,7 +133,7 @@ paths:
       description: 默认要求 Bearer Token；仅当实例显式开启公开看板时允许匿名读取聚合统计。
       responses:
         '200':
-          description: 学习与内容概览；包含按 reportingTimeZone 统计的今日主问题数、每日目标和调度配额。
+          description: 学习与内容概览；包含按 reportingTimeZone 统计的今日主问题数、每日目标、调度配额，以及不泄露目录详情的领域与知识点聚合数量。
   /api/v1/schedulers/backlog:
     get:
       operationId: getSchedulerBacklog
