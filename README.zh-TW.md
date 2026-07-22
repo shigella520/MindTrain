@@ -233,7 +233,7 @@ docker compose up -d --remove-orphans
 docker compose ps
 ```
 
-`latest` 對應 `main` 的穩定構建，`dev` 用於測試任意功能分支，不建議長期作為正式例項的固定升級通道。Training Core 啟動時會由 Flyway 自動遷移資料庫；如果遷移失敗，應保留日誌並恢復舊版本，不要手工修改 Flyway 歷史表。
+`latest` 指向最新正式 Release；`1.0.0` 等精確標籤內容不可變，生產部署建議優先固定精確版本。`dev` 用於測試任意功能分支，不建議長期作為正式例項的固定升級通道。Training Core 啟動時會由 Flyway 自動遷移資料庫；如果遷移失敗，應保留日誌並恢復舊版本，不要手工修改 Flyway 歷史表。
 
 ### 3. 升級 Codex Plugin
 

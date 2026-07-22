@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -21,12 +22,13 @@ SPEC.loader.exec_module(BRIDGE)
 
 
 class MindTrainPluginTest(unittest.TestCase):
-    def test_release_versions_and_minimum_plugin_version_stay_aligned(self):
+    def test_release_versions_align_and_compatibility_floor_is_valid(self):
         namespace = {"m": "http://maven.apache.org/POM/4.0.0"}
         project_version = ET.parse(ROOT / "pom.xml").getroot().findtext("m:version", namespaces=namespace)
         manifest_version = json.loads(
             (ROOT / "plugins/mindtrain/.codex-plugin/plugin.json").read_text()
         )["version"]
+        web_version = json.loads((ROOT / "apps/web/package.json").read_text())["version"]
         openapi_version = yaml.safe_load(
             (ROOT / "contracts/openapi/trainer-core.yaml").read_text()
         )["info"]["version"]
@@ -36,8 +38,13 @@ class MindTrainPluginTest(unittest.TestCase):
 
         expected = ".".join(str(part) for part in BRIDGE.normalized_version(manifest_version))
         self.assertEqual(expected, project_version.removesuffix("-SNAPSHOT"))
+        self.assertEqual(expected, web_version)
         self.assertEqual(expected, openapi_version)
-        self.assertIn(f'MINIMUM_PLUGIN_VERSION = "{expected}"', compatibility_source)
+        minimum_match = re.search(r'MINIMUM_PLUGIN_VERSION = "([^"]+)"', compatibility_source)
+        self.assertIsNotNone(minimum_match)
+        minimum_version = BRIDGE.normalized_version(minimum_match.group(1))
+        self.assertIsNotNone(minimum_version)
+        self.assertLessEqual(minimum_version, BRIDGE.normalized_version(expected))
 
     def test_marketplace_plugin_and_mcp_manifests_are_consistent(self):
         marketplace = json.loads((ROOT / ".agents/plugins/marketplace.json").read_text())
