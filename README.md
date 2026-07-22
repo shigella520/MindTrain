@@ -269,6 +269,7 @@ Training round size, new-question budget, backlog limits, temporary-question lif
 | Deploy to a server, configure a reverse proxy, back up, or upgrade | [Deployment and operations](doc/部署与运维.md) |
 | Install, switch branches, update, or troubleshoot the Codex Plugin | [Codex Plugin deployment](doc/CodexPlugin部署.md) |
 | Develop locally, run tests, build images, or understand CI | [Development guide](doc/开发指南.md) |
+| Maintain versions or publish a formal release | [Version and release policy](doc/版本与发布规范.md) |
 | Understand the Dashboard, Web training, and visual design | [Web design](doc/Web设计.md) |
 | Create and query domains and topic trees | [Knowledge Catalog](doc/知识目录.md) |
 | Read the REST API | [Training Core OpenAPI](contracts/openapi/trainer-core.yaml) |
