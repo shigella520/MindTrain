@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
 
@@ -20,6 +21,24 @@ SPEC.loader.exec_module(BRIDGE)
 
 
 class MindTrainPluginTest(unittest.TestCase):
+    def test_release_versions_and_minimum_plugin_version_stay_aligned(self):
+        namespace = {"m": "http://maven.apache.org/POM/4.0.0"}
+        project_version = ET.parse(ROOT / "pom.xml").getroot().findtext("m:version", namespaces=namespace)
+        manifest_version = json.loads(
+            (ROOT / "plugins/mindtrain/.codex-plugin/plugin.json").read_text()
+        )["version"]
+        openapi_version = yaml.safe_load(
+            (ROOT / "contracts/openapi/trainer-core.yaml").read_text()
+        )["info"]["version"]
+        compatibility_source = (
+            ROOT / "apps/trainer-mcp/src/main/java/io/github/shigella520/mindtrain/mcp/McpCompatibility.java"
+        ).read_text()
+
+        expected = ".".join(str(part) for part in BRIDGE.normalized_version(manifest_version))
+        self.assertEqual(expected, project_version.removesuffix("-SNAPSHOT"))
+        self.assertEqual(expected, openapi_version)
+        self.assertIn(f'MINIMUM_PLUGIN_VERSION = "{expected}"', compatibility_source)
+
     def test_marketplace_plugin_and_mcp_manifests_are_consistent(self):
         marketplace = json.loads((ROOT / ".agents/plugins/marketplace.json").read_text())
         plugin = json.loads((ROOT / "plugins/mindtrain/.codex-plugin/plugin.json").read_text())
@@ -97,19 +116,74 @@ class MindTrainPluginTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "mindtrain" / "plugin.json"
             with patch.dict(os.environ, {"MINDTRAIN_PLUGIN_CONFIG": str(path)}):
-                with patch.object(BRIDGE, "verify_config"):
+                compatibility = {
+                    "status": "compatible", "pluginVersion": BRIDGE.PLUGIN_VERSION,
+                    "serverVersion": "0.2.0-SNAPSHOT", "contractVersion": 1,
+                    "minimumPluginVersion": "0.2.0", "versionMatch": True,
+                }
+                with patch.object(BRIDGE, "verify_config", return_value=compatibility):
                     result = BRIDGE.call_tool(
                         "configure_mindtrain_instance",
                         {"url": "https://train.example.com/mcp", "token": "secret-token"},
                     )
+                    status = BRIDGE.configuration_status()
 
                 self.assertFalse(result["isError"])
+                self.assertEqual("compatible", result["structuredContent"]["compatibility"]["status"])
                 self.assertEqual("secret-token", BRIDGE.load_config()["token"])
-                status = BRIDGE.configuration_status()
                 self.assertTrue(status["configured"])
+                self.assertEqual("compatible", status["compatibility"]["status"])
                 self.assertNotIn("token", status)
                 if os.name != "nt":
                     self.assertEqual(stat.S_IRUSR | stat.S_IWUSR, stat.S_IMODE(path.stat().st_mode))
+
+    def test_plugin_and_server_compatibility_is_checked_both_ways(self):
+        compatible = {
+            "serverInfo": {"name": "mindtrain-trainer-mcp", "version": "0.2.1"},
+            "_meta": {"mindtrainCompatibility": {
+                "contractVersion": BRIDGE.CONTRACT_VERSION,
+                "minimumPluginVersion": "0.2.0",
+            }},
+        }
+        with patch.object(BRIDGE, "remote_request", return_value=compatible) as request:
+            result = BRIDGE.verify_config({"url": "https://train.example.com/mcp", "token": "secret"})
+        self.assertEqual("compatible_version_difference", result["status"])
+        self.assertIn("warning", result)
+        self.assertEqual(BRIDGE.PLUGIN_VERSION, request.call_args.args[2]["clientInfo"]["version"])
+
+        incompatible = {
+            **compatible,
+            "_meta": {"mindtrainCompatibility": {
+                "contractVersion": BRIDGE.CONTRACT_VERSION + 1,
+                "minimumPluginVersion": "0.2.0",
+            }},
+        }
+        with patch.object(BRIDGE, "remote_request", return_value=incompatible):
+            with self.assertRaisesRegex(ValueError, "契约版本"):
+                BRIDGE.verify_config({"url": "https://train.example.com/mcp", "token": "secret"})
+
+    def test_remote_calls_send_plugin_and_contract_versions(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def read(self):
+                return b'{"jsonrpc":"2.0","id":1,"result":{}}'
+
+        captured = {}
+
+        def open_request(request, timeout):
+            captured["headers"] = dict(request.header_items())
+            return Response()
+
+        with patch.object(BRIDGE, "urlopen", side_effect=open_request):
+            BRIDGE.remote_request({"url": "https://train.example.com/mcp", "token": "secret"}, "ping")
+
+        self.assertEqual(BRIDGE.PLUGIN_VERSION, captured["headers"]["X-mindtrain-plugin-version"])
+        self.assertEqual(str(BRIDGE.CONTRACT_VERSION), captured["headers"]["X-mindtrain-contract-version"])
 
     def test_local_reference_library_indexes_searches_and_stays_private(self):
         with tempfile.TemporaryDirectory() as directory:

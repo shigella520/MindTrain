@@ -238,6 +238,8 @@ codex plugin add mindtrain@mindtrain
 
 更新后新建一个 Codex 任务，使新版 Skill 和 MCP bridge 重新加载。现有实例地址和 Token 保存在 Plugin 之外，不会因升级而丢失。
 
+MindTrain 会在任务开始及远程工具调用时自动校验 Plugin、Trainer MCP 和接口契约版本。版本不同但兼容时会提醒同步升级；不兼容时会停止训练并明确指出需要升级 Plugin、服务端或两者。看到版本提示后不要绕过校验，升级 Plugin 后务必新建 Codex 任务。
+
 升级完成后确认 Core、MCP 和 Web 均为 `healthy`，再开始训练。备份恢复、版本回退和故障排查见[部署与运维](doc/部署与运维.md)，Plugin 细节见[Codex Plugin 部署](doc/CodexPlugin部署.md)。
 
 ## 常用操作
