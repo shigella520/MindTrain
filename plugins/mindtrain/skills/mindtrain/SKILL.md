@@ -13,7 +13,7 @@ Use the bundled MindTrain bridge as the only application data interface. Do not 
 2. When `configured` is false, explain that MindTrain needs the private Trainer MCP URL and the deployment's single-user Bootstrap Token.
 3. Ask for the full HTTPS MCP URL. Ask for the Token only when the user is willing to provide it in the current private conversation; otherwise direct them to run `python3 scripts/mindtrain_mcp_bridge.py --configure` from the installed plugin directory.
 4. Call `configure_mindtrain_instance` with the URL and Token. Never repeat, display, summarize, or persist the Token anywhere except through that configuration tool.
-5. Continue only after configuration validation succeeds. If validation fails, report the sanitized error and let the user retry.
+5. Inspect the returned `compatibility`. Continue only when its status is `compatible` or `compatible_version_difference`. For a compatible version difference, briefly recommend synchronizing Plugin and server versions without blocking the requested work. For `incompatible_or_unavailable` or a version/contract error, stop remote operations, show the sanitized upgrade guidance, and do not retry training tools until the user updates the indicated component and opens a new task.
 
 The bridge saves configuration outside the repository with user-only file permissions. Never put the private URL or Token into Skill files, Git configuration, examples, or commits.
 
@@ -69,6 +69,7 @@ For a deeper training question, generate another four-option question on the sam
 
 ## Recover safely
 
+- On a Plugin/server version or contract mismatch, do not bypass the check. Ask the user to upgrade or reinstall the MindTrain Plugin, upgrade the deployed services when indicated, and open a new Codex task so the updated Plugin is loaded.
 - On `configuration_required`, return to the first-use configuration flow.
 - On `no_training_domains`, guide the user through creating and confirming a training domain.
 - On `training_domain_selection_required`, list the available domains and ask the user to choose one.

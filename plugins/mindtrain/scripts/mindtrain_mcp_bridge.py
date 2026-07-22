@@ -59,6 +59,25 @@ REMOTE_TOOL_NAMES = {
     "apply_knowledge_catalog_import",
     "reject_knowledge_catalog_import",
 }
+CONTRACT_VERSION = 1
+
+
+def plugin_version():
+    manifest = Path(__file__).resolve().parents[1] / ".codex-plugin" / "plugin.json"
+    try:
+        return json.loads(manifest.read_text(encoding="utf-8"))["version"]
+    except (OSError, KeyError, TypeError, json.JSONDecodeError):
+        return "0.0.0"
+
+
+PLUGIN_VERSION = plugin_version()
+
+
+def normalized_version(value):
+    match = re.match(r"^(\d+)\.(\d+)\.(\d+)", value or "")
+    if not match:
+        return None
+    return tuple(int(part) for part in match.groups())
 
 
 def string_property(description):
@@ -760,6 +779,8 @@ def remote_request(config, method, params=None, timeout=15):
             "Authorization": "Bearer " + config["token"],
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "X-MindTrain-Plugin-Version": PLUGIN_VERSION,
+            "X-MindTrain-Contract-Version": str(CONTRACT_VERSION),
         },
     )
     try:
@@ -784,10 +805,45 @@ def verify_config(config):
     result = remote_request(
         config,
         "initialize",
-        {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "mindtrain-plugin", "version": "0.1.0"}},
+        {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "mindtrain-plugin", "version": PLUGIN_VERSION}},
     )
-    if result.get("serverInfo", {}).get("name") != "mindtrain-trainer-mcp":
+    server_info = result.get("serverInfo", {})
+    if server_info.get("name") != "mindtrain-trainer-mcp":
         raise ValueError("The configured URL is not a MindTrain Trainer MCP server")
+    metadata = result.get("_meta", {}).get("mindtrainCompatibility")
+    if not isinstance(metadata, dict):
+        raise ValueError(
+            "MindTrain 服务端未提供版本兼容信息。请升级服务端后重试；不要继续使用可能不兼容的 Plugin。"
+        )
+    server_contract = metadata.get("contractVersion")
+    if server_contract != CONTRACT_VERSION:
+        raise ValueError(
+            "MindTrain Plugin 契约版本 {} 与服务端契约版本 {} 不兼容。请同步升级 Plugin 与服务端，并开启新任务。"
+            .format(CONTRACT_VERSION, server_contract)
+        )
+    minimum_plugin = str(metadata.get("minimumPluginVersion", ""))
+    current = normalized_version(PLUGIN_VERSION)
+    minimum = normalized_version(minimum_plugin)
+    if current is None or minimum is None or current < minimum:
+        raise ValueError(
+            "MindTrain Plugin 版本 {} 低于服务端要求的最低版本 {}。请更新或重新安装 Plugin，并开启新任务。"
+            .format(PLUGIN_VERSION, minimum_plugin or "unknown")
+        )
+    server_version = str(server_info.get("version", "unknown"))
+    version_match = normalized_version(server_version) == current
+    compatibility = {
+        "status": "compatible" if version_match else "compatible_version_difference",
+        "pluginVersion": PLUGIN_VERSION,
+        "serverVersion": server_version,
+        "contractVersion": CONTRACT_VERSION,
+        "minimumPluginVersion": minimum_plugin,
+        "versionMatch": version_match,
+    }
+    if not version_match:
+        compatibility["warning"] = (
+            "Plugin 与服务端组件版本不同，但当前契约兼容。建议同步升级，避免后续版本失配。"
+        )
+    return compatibility
 
 
 def content_result(value, is_error=False):
@@ -806,7 +862,12 @@ def configuration_status():
         return {"configured": False, "configPath": str(path), "error": str(error)}
     if config is None:
         return {"configured": False, "configPath": str(path)}
-    return {"configured": True, "url": config["url"], "configPath": str(path)}
+    result = {"configured": True, "url": config["url"], "configPath": str(path)}
+    try:
+        result["compatibility"] = verify_config(config)
+    except ValueError as error:
+        result["compatibility"] = {"status": "incompatible_or_unavailable", "error": str(error)}
+    return result
 
 
 def call_tool(name, arguments):
@@ -819,9 +880,10 @@ def call_tool(name, arguments):
             if not token or token.isspace() or "\n" in token or "\r" in token:
                 raise ValueError("A non-empty single-line MindTrain token is required")
             candidate = {"url": url, "token": token}
-            verify_config(candidate)
+            compatibility = verify_config(candidate)
             path = save_config(url, token)
-            return content_result({"configured": True, "url": url, "configPath": str(path)})
+            return content_result({"configured": True, "url": url, "configPath": str(path),
+                                   "compatibility": compatibility})
         except (OSError, ValueError) as error:
             return content_result({"configured": False, "error": str(error)}, True)
     if name in REFERENCE_TOOL_NAMES:
@@ -841,6 +903,7 @@ def call_tool(name, arguments):
                 },
                 True,
             )
+        verify_config(config)
         return remote_request(config, "tools/call", {"name": name, "arguments": arguments})
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return content_result({"error": str(error)}, True)
@@ -852,7 +915,7 @@ def handle_request(request):
         return {
             "protocolVersion": request.get("params", {}).get("protocolVersion", "2025-03-26"),
             "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "mindtrain-plugin-bridge", "version": "0.1.0"},
+            "serverInfo": {"name": "mindtrain-plugin-bridge", "version": PLUGIN_VERSION},
             "instructions": "Check MindTrain configuration before training. Never expose the saved token.",
         }
     if method == "ping":

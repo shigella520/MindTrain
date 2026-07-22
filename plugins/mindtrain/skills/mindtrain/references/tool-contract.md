@@ -4,6 +4,7 @@
 
 - `get_mindtrain_configuration`: reports whether a private instance is configured without returning its Token.
 - `configure_mindtrain_instance`: validates and saves a full MCP URL and single-user Bootstrap Token.
+- `get_mindtrain_configuration`: also performs a live Plugin/server compatibility check. `compatible_version_difference` is advisory; `incompatible_or_unavailable` blocks remote training until the reported component is upgraded.
 
 ## Training tools
 

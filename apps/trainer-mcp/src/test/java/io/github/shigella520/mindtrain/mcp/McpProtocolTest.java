@@ -37,7 +37,10 @@ class McpProtocolTest {
                 """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.result.protocolVersion").value("2025-03-26"))
-            .andExpect(jsonPath("$.result.capabilities.tools").exists());
+            .andExpect(jsonPath("$.result.capabilities.tools").exists())
+            .andExpect(jsonPath("$.result.serverInfo.version").value("0.2.0-SNAPSHOT"))
+            .andExpect(jsonPath("$.result._meta.mindtrainCompatibility.contractVersion").value(1))
+            .andExpect(jsonPath("$.result._meta.mindtrainCompatibility.minimumPluginVersion").value("0.2.0"));
 
         mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
                 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
@@ -178,7 +181,34 @@ class McpProtocolTest {
             .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void rejectsOutdatedOrUnidentifiedPluginBeforeCallingTools() throws Exception {
+        mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+                {"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+                  "clientInfo":{"name":"mindtrain-plugin","version":"0.1.0"}
+                }}
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.error.code").value(-32010))
+            .andExpect(jsonPath("$.error.message").value(org.hamcrest.Matchers.containsString("更新或重新安装")));
+
+        mvc.perform(post("/mcp")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer test-mcp-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{
+                  "name":"create_training_session","arguments":{}
+                }}
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.error.code").value(-32010))
+            .andExpect(jsonPath("$.error.message").value(org.hamcrest.Matchers.containsString("未提供兼容性信息")));
+    }
+
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticatedPost() {
-        return post("/mcp").header(HttpHeaders.AUTHORIZATION, "Bearer test-mcp-token");
+        return post("/mcp")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer test-mcp-token")
+            .header(McpCompatibility.PLUGIN_VERSION_HEADER, "0.2.0+codex.test")
+            .header(McpCompatibility.CONTRACT_VERSION_HEADER, "1");
     }
 }
