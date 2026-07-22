@@ -7,9 +7,10 @@ const props = defineProps<{
   node: KnowledgeTopicNode
   selectedId?: string
   matchedIds: Set<string> | null
+  expandAll: boolean
 }>()
 const emit = defineEmits<{ select: [topicId: string] }>()
-const expanded = ref(props.node.parentId === null)
+const expanded = ref(false)
 
 function containsMatch(node: KnowledgeTopicNode): boolean {
   return props.matchedIds === null || props.matchedIds.has(node.id) || node.children.some(containsMatch)
@@ -17,7 +18,8 @@ function containsMatch(node: KnowledgeTopicNode): boolean {
 
 const visible = computed(() => containsMatch(props.node))
 const forceExpanded = computed(() => props.matchedIds !== null && props.node.children.some(containsMatch))
-watch(forceExpanded, value => { if (value) expanded.value = true }, { immediate: true })
+const effectivelyExpanded = computed(() => expanded.value || forceExpanded.value)
+watch(() => props.expandAll, value => { expanded.value = value })
 </script>
 
 <template>
@@ -26,8 +28,8 @@ watch(forceExpanded, value => { if (value) expanded.value = true }, { immediate:
       <button
         class="tree-toggle"
         type="button"
-        :class="{ expanded: expanded || forceExpanded, hidden: !node.children.length }"
-        :aria-label="`${expanded ? '收起' : '展开'} ${node.name}`"
+        :class="{ expanded: effectivelyExpanded, hidden: !node.children.length }"
+        :aria-label="`${effectivelyExpanded ? '收起' : '展开'} ${node.name}`"
         @click="expanded = !expanded"
       ><ChevronRight :size="15" /></button>
       <button class="tree-topic" type="button" @click="emit('select', node.id)">
@@ -36,13 +38,14 @@ watch(forceExpanded, value => { if (value) expanded.value = true }, { immediate:
         <FileQuestion v-if="node.activeQuestionCount" :size="14" />
       </button>
     </div>
-    <ul v-if="node.children.length && (expanded || forceExpanded)">
+    <ul v-if="node.children.length && effectivelyExpanded">
       <KnowledgeTreeNode
         v-for="child in node.children"
         :key="child.id"
         :node="child"
         :selected-id="selectedId"
         :matched-ids="matchedIds"
+        :expand-all="expandAll"
         @select="emit('select', $event)"
       />
     </ul>

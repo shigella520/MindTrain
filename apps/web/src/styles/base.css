@@ -245,8 +245,12 @@ th { color: var(--mindtrain-muted); font-size: 11px; letter-spacing: .05em; text
 .catalog-detail { border-left: 1px solid var(--mindtrain-line); background: rgba(255,255,255,.62); }
 .catalog-panel-title { display: flex; align-items: center; gap: 9px; min-height: 30px; }
 .catalog-panel-title svg { color: var(--mindtrain-accent); }
-.catalog-panel-title strong { font-size: 15px; }
-.catalog-panel-title span { display: grid; min-width: 24px; height: 24px; margin-left: auto; place-items: center; border-radius: 999px; color: var(--mindtrain-muted); background: rgba(23,23,23,.055); font-size: 11px; font-weight: 800; }
+.catalog-panel-title > strong { min-width: 0; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.catalog-panel-title .catalog-count { display: grid; min-width: 24px; height: 24px; padding: 0 7px; place-items: center; border-radius: 999px; color: var(--mindtrain-muted); background: rgba(23,23,23,.055); font-size: 11px; font-weight: 800; }
+.catalog-panel-title > .catalog-count { margin-left: auto; }
+.catalog-tree-controls { display: flex; flex-shrink: 0; align-items: center; gap: 8px; margin-left: auto; }
+.catalog-tree-controls button { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border: 1px solid rgba(23,23,23,.08); border-radius: 999px; color: var(--mindtrain-muted); background: rgba(255,255,255,.72); font-size: 11px; font-weight: 750; cursor: pointer; }
+.catalog-tree-controls button:hover { color: var(--mindtrain-accent); border-color: rgba(10,132,255,.22); background: rgba(10,132,255,.06); }
 .catalog-search { display: flex; align-items: center; gap: 8px; height: 42px; margin: 18px 0; padding: 0 12px; border: 1px solid rgba(23,23,23,.08); border-radius: 13px; color: var(--mindtrain-muted); background: rgba(255,255,255,.82); }
 .catalog-search:focus-within { border-color: rgba(10,132,255,.4); box-shadow: 0 0 0 3px rgba(10,132,255,.07); }
 .catalog-search input { width: 100%; border: 0; outline: 0; color: var(--mindtrain-text); background: transparent; font-size: 12px; }
