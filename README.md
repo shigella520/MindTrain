@@ -1,24 +1,24 @@
 <p align="center">
-  <img src="assets/brand/mindtrain-icon.png" width="128" alt="MindTrain icon" />
+  <img src="assets/brand/mindtrain-icon.png" width="128" alt="MindTrain 图标" />
 </p>
 
 <h1 align="center">MindTrain</h1>
 
 <p align="center">
-  <strong>English</strong> ·
-  <a href="README.zh-CN.md">简体中文</a> ·
+  <a href="README.en.md">English</a> ·
+  <strong>简体中文</strong> ·
   <a href="README.zh-TW.md">繁體中文</a>
 </p>
 
 <p align="center">
-  <strong>Your private AI knowledge gym: ask, practice, and review—turning one conversation into long-term memory.</strong>
+  <strong>你的私人 AI 知识训练场：边问、边练、边复习，把一次对话变成长期记忆。</strong>
 </p>
 
 <p align="center">
-  <a href="https://mindtrain.jianyutan.com/">Live Demo</a> ·
-  <a href="#get-started-in-5-minutes">Quick Start</a> ·
+  <a href="https://mindtrain.jianyutan.com/">在线演示</a> ·
+  <a href="#5-分钟开始使用">快速开始</a> ·
   <a href="doc/CodexPlugin部署.md">Codex Plugin</a> ·
-  <a href="doc/部署与运维.md">Deployment</a>
+  <a href="doc/部署与运维.md">部署与运维</a>
 </p>
 
 <p align="center">
@@ -28,66 +28,66 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 3.5" /></a>
 </p>
 
-MindTrain is an open-source knowledge-training platform for Codex and other AI clients. Learn through a natural conversation: ask follow-up questions, challenge an answer, or request a hint at any time. MindTrain handles the question bank, deterministic grading, learning history, and spaced-review scheduling behind the scenes.
+MindTrain 是一个面向 Codex 和其他 AI 客户端的开源知识训练平台。你可以像普通聊天一样随时追问、质疑和索要提示；MindTrain 在后台负责题库、精确判分、学习记录和抗遗忘调度。
 
-- **Stay in the conversation:** ask about an unfamiliar concept without accidentally submitting the current question.
-- **Own your data:** self-host a single-user instance with your question bank and learning history stored in PostgreSQL.
-- **Close the learning loop:** review old questions, generate new ones on demand, record mistakes, and control daily new-question and review backlogs.
-- **Initialize a knowledge catalog:** plan domains and topics through an AI conversation, or organize a knowledge tree from a local reference directory. Nothing is saved until you preview and confirm it.
+- **对话不中断**：遇到不懂的概念直接问，当前题目不会被误判为已作答。
+- **数据归自己**：单用户私有部署，题库和学习历史保存在自己的 PostgreSQL 中。
+- **真正形成闭环**：复习旧题、按需生成新题、记录错误，并控制每天的新题与到期积压。
+- **知识目录初始化**：既可通过 AI 对话规划领域与知识点，也可指定本地资料目录整理知识树；完整预览并确认后才保存。
 
-MindTrain Core is domain-independent. Each private instance manages its own training domains, knowledge trees, and questions.
+MindTrain 核心不绑定具体知识领域；每个私有实例可以独立管理自己的领域、知识点和题库。
 
-## Preview
+## 使用预览
 
-### How it works
+### 如何工作
 
-![MindTrain architecture](doc/architecture-overview.svg)
+![MindTrain 内部架构](doc/architecture-overview.svg)
 
-- Training Core is the source of truth for questions, sessions, attempts, review state, and configuration.
-- Trainer MCP calls Core APIs and never accesses the database directly.
-- The Skill orchestrates teaching and tools but stores no authoritative application data.
-- A temporary AI-generated question is validated and persisted before display. It can be rejected and physically deleted before answering; once answered, it becomes a regular review question.
+- Training Core 是题目、会话、作答、复习状态和配置的权威数据源。
+- Trainer MCP 只调用 Core API，不直接访问数据库。
+- Skill 负责教学和工具编排，不保存业务数据。
+- AI 临时题会先校验并入库再展示；作答前可拒绝并物理删除，作答后转为普通复习题。
 
-See the [architecture overview](doc/概要设计.md) for design decisions and data boundaries.
+设计决策和数据边界见[概要设计](doc/概要设计.md)。
 
-### Training flow
+### 训练流程
 
-![MindTrain training flow](doc/training-flow.svg)
+![MindTrain 训练流程](doc/training-flow.svg)
 
-A training round is more than revealing an answer. The scheduler first selects due and new questions according to the configured budget. You may ask unlimited follow-up questions before submitting. Core grades only after you explicitly submit an option set and then appends the learning record. If the question bank is insufficient, Core returns a structured generation request; Codex generates a candidate and Core validates and stores it before display.
+一次训练并不是简单的“显示答案”：调度器先根据到期状态和新题额度选题；用户可以在提交前无限追问；只有明确提交选项后，Core 才会精确判分并追加学习记录。题库不足时，Core 会返回结构化生成要求，由 Codex 生成、Core 校验入库后再展示。
 
-Round size, review and new-question budgets, backlog pause rules, and temporary-question lifetime are database-backed settings available from the Web admin page.
+每轮题量、复习与新题配额、积压暂停规则和 AI 临时题有效期均由数据库配置控制，可在 Web 管理页调整。
 
-### Train, ask, and review in Codex
+### 在 Codex 中训练、追问和复习
 
-![Conversational MindTrain training in Codex](doc/preview-codex-training.png)
+![MindTrain Codex 对话式训练示例](doc/preview-codex-training.png)
 
-Live demo: [https://mindtrain.jianyutan.com/](https://mindtrain.jianyutan.com/) (public sample statistics are available; training requires your own private instance)
+在线演示：[https://mindtrain.jianyutan.com/](https://mindtrain.jianyutan.com/)（可公开查看示例统计；训练需要连接自己的私有实例）
 
-## Why MindTrain
+## 为什么使用 MindTrain
 
-| Capability | What you get |
+| 能力 | 你得到什么 |
 | --- | --- |
-| Conversational AI coach | Ask about a concept, request a hint, or challenge an answer without leaving the current question |
-| Deterministic grading | Single- and multiple-choice answers use exact option-set equality instead of model judgment |
-| Spaced-review scheduling | Balance due reviews and new questions; automatically pause new material when the backlog is too large |
-| AI-generated questions | When coverage is insufficient, Codex generates and validates a question for a selected topic, type, and difficulty |
-| Local reference library | Index MD, TXT, PDF, DOCX, and PPTX while keeping source files and the index on your machine |
-| Knowledge catalog | Browse and search multiple domains and topic trees from Codex or Web, including coverage and mastery data |
-| Private data | Core is the only source of truth; the Skill is stateless and runtime data is not stored in the repository |
-| Web + Codex | Use Web for dashboards, review, and configuration; use Codex for the full AI-coach experience |
+| 对话式 AI 教练 | 在同一题中追问概念、索要提示、质疑答案，再继续作答 |
+| 确定性判分 | 单选和多选按选项集合精确判分，不让模型“凭感觉”决定分数 |
+| 抗遗忘调度 | 默认平衡复习题和新题；积压过高时自动暂停新题 |
+| AI 补题 | 题库不足时由 Codex 按指定知识点、题型和难度生成并校验新题 |
+| 本地资料库 | 支持 MD、TXT、PDF、DOCX、PPTX；原文和索引只留在本机 |
+| 知识目录 | Codex 与 Web 均可查询多个领域、知识点树、关键词、题目覆盖和掌握度 |
+| 私有数据 | Core 是唯一权威数据源；Skill 无状态，仓库不承载运行数据 |
+| Web + Codex | Web 用于看板、旧题复习和配置；Codex 用于完整的 AI 教练体验 |
 
-Available today: Training Core, Trainer MCP, MindTrain Web, Codex Plugin, and weighted scheduling. Anki / FSRS Provider is planned.
+当前可用：Training Core、Trainer MCP、MindTrain Web、Codex Plugin 和加权调度。Anki / FSRS Provider 尚在规划中。
 
-## Get started in 5 minutes
+## 5 分钟开始使用
 
-### Prerequisites
+### 前置条件
 
 - Git
-- Docker and Docker Compose
-- Codex CLI or Codex App for the AI-coach experience
+- Docker 与 Docker Compose
+- Codex CLI 或 Codex App（使用 AI 教练时需要）
 
-### 1. Install and start MindTrain
+### 1. 安装并启动 MindTrain
 
 ```bash
 git clone https://github.com/shigella520/MindTrain.git
@@ -95,114 +95,114 @@ cd MindTrain/deploy/core-only
 cp .env.example .env
 ```
 
-Edit `.env` and replace at least these two values:
+编辑 `.env`，至少替换下面两项：
 
 ```dotenv
-POSTGRES_PASSWORD=replace-with-a-random-database-password
-MINDTRAIN_BOOTSTRAP_TOKEN=replace-with-a-long-random-token
+POSTGRES_PASSWORD=请替换为随机数据库密码
+MINDTRAIN_BOOTSTRAP_TOKEN=请替换为随机长令牌
 ```
 
-You can generate a random value with `openssl rand -hex 32`. `MINDTRAIN_BOOTSTRAP_TOKEN` protects both Codex → Trainer MCP and Trainer MCP → Core. Never commit or publish it.
+可以使用 `openssl rand -hex 32` 生成随机值。`MINDTRAIN_BOOTSTRAP_TOKEN` 同时保护 Codex → Trainer MCP 和 Trainer MCP → Core，请勿提交或公开。
 
 ```bash
 docker compose up -d --build
 docker compose ps
 ```
 
-After all four containers become healthy, open:
+等待四个容器健康后访问：
 
-- Web: [http://127.0.0.1:4173](http://127.0.0.1:4173)
-- Core health: [http://127.0.0.1:8080/actuator/health](http://127.0.0.1:8080/actuator/health)
-- MCP health: [http://127.0.0.1:8787/actuator/health](http://127.0.0.1:8787/actuator/health)
+- Web：[http://127.0.0.1:4173](http://127.0.0.1:4173)
+- Core 健康检查：[http://127.0.0.1:8080/actuator/health](http://127.0.0.1:8080/actuator/health)
+- MCP 健康检查：[http://127.0.0.1:8787/actuator/health](http://127.0.0.1:8787/actuator/health)
 
-PostgreSQL is not exposed to the host. Core, MCP, and Web listen on `127.0.0.1` by default.
+PostgreSQL 不对宿主机开放；Core、MCP 和 Web 默认只监听 `127.0.0.1`。
 
-### 2. Configure the Codex Plugin
+### 2. 配置 Codex Plugin
 
-Install the MindTrain Plugin:
+先安装 MindTrain Plugin：
 
 ```bash
 codex plugin marketplace add shigella520/MindTrain --ref main
 codex plugin add mindtrain@mindtrain
 ```
 
-Create a new Codex task and enter:
+安装完成后新建一个 Codex 任务，输入：
 
 ```text
-$mindtrain configure my MindTrain instance
+$mindtrain 配置我的 MindTrain 实例
 ```
 
-Provide the following when prompted:
+按提示提供：
 
-1. MCP URL. Use `http://127.0.0.1:8787/mcp` locally, or your own HTTPS URL for a remote instance.
-2. The `MINDTRAIN_BOOTSTRAP_TOKEN` from `.env`.
+1. MCP 地址。本机部署使用 `http://127.0.0.1:8787/mcp`；云端部署使用自己的 HTTPS 地址。
+2. `.env` 中的 `MINDTRAIN_BOOTSTRAP_TOKEN`。
 
-Configuration stays in your local user configuration directory and is never written to this repository. See [Codex Plugin deployment](doc/CodexPlugin部署.md) for installation, upgrades, and troubleshooting.
+配置只保存在本机用户配置目录，不进入项目仓库。完整安装、升级和故障排查见 [Codex Plugin 部署](doc/CodexPlugin部署.md)。
 
-### 3. Create a training domain
+### 3. 创建训练领域
 
-Before the first training session, tell MindTrain what you want to learn. A private instance can contain multiple training domains, and each domain can contain multiple root topic trees.
+第一次训练前，先告诉 MindTrain 你想学习什么。一个私有实例可以管理多个训练领域，每个领域可以包含多棵知识点树。
 
-The simplest path is to let Codex plan a domain from your learning goal:
+最简单的方式是让 Codex 根据学习目标规划领域：
 
 ```text
-Use $mindtrain to create a training domain for [my learning goal]. Show me the complete topic tree first and save it only after I confirm.
+使用 $mindtrain，根据【我的学习目标】创建一个训练领域。请先展示完整知识点树，等我确认后再保存。
 ```
 
-Replace `[my learning goal]` with a concrete goal, for example: “Prepare for a Kubernetes operations interview, focusing on Pods, Deployments, Services, and troubleshooting.” If the goal is missing, MindTrain asks about the subject, scope, and desired depth before producing the tree.
+使用前请把 `【我的学习目标】` 替换为具体内容，例如“准备 Kubernetes 运维面试，重点掌握 Pod、Deployment、Service 和故障排查”。如果没有提供具体目标，MindTrain 会先询问学习主题、范围和期望深度，再生成知识点树。
 
-If you already have learning material, point MindTrain at a local directory:
+如果已有自己的学习资料，也可以指定本地目录：
 
 ```text
-$mindtrain use /path/to/notes to create a backend-notes reference library,
-organize training domains and topics, preview them, and save only after I confirm
+$mindtrain 使用 /path/to/notes 创建 backend-notes 资料库，
+为我整理训练领域和知识点，预览确认后保存
 ```
 
-In both flows, Codex first displays the complete domain information and topic tree. MindTrain writes it atomically to Core only after explicit confirmation. For local references, the Plugin creates a private parsing environment and full-text index in its local cache. Core never receives the original files, absolute paths, or local index. The initial PDF implementation extracts text only and does not perform OCR.
+无论使用哪种方式，Codex 都会先展示完整的领域信息和知识点树；只有你明确确认后，MindTrain 才会原子写入 Core。通过本地资料创建时，Plugin 会在本机缓存目录建立私有解析环境和全文索引，Core 不接收文件原文、绝对路径或本地索引。PDF 首期只抽取文本，不做 OCR。
 
-After creation, use the Web **Knowledge Catalog** to browse topic trees, search topics, and inspect question coverage and mastery. See [Knowledge Catalog](doc/知识目录.md) for details.
+创建完成后，可以在 Web 的“知识目录”中浏览知识树、搜索知识点并查看题目覆盖和掌握度。详细说明见[知识目录](doc/知识目录.md)。
 
-### 4. Start your first training session
+### 4. 开始第一次训练
 
-Create a new task and enter:
+新建一个任务并输入：
 
 ```text
-$mindtrain start training
+$mindtrain 开始训练
 ```
 
-If your instance has one training domain, MindTrain selects it automatically. If it has multiple domains, Codex or Web requires you to choose one, for example: `$mindtrain start training in ai-agent`. A session draws questions from exactly one selected domain and never mixes domains randomly.
+只有一个训练领域时会自动使用；存在多个领域时，Codex 或 Web 会要求你选择本次训练的领域，例如 `$mindtrain 开始 ai-agent 训练`。一次训练 Session 只会从所选领域出题，不会在多个领域之间随机混合。
 
-During any question, you can say:
+你可以在任何一道题中直接问：
 
 ```text
-What exactly does this concept mean?
-Why is B incorrect?
-Give me a hint without revealing the answer.
-This question does not fit the topic. Give me another one.
+这个概念具体是什么？
+为什么 B 不对？
+先给我一个提示，不要公布答案。
+这道题不适合当前主题，换一道。
 ```
 
-An Attempt is created only when you explicitly submit an option set. Follow-up questions do not consume the current question.
+只有明确提交选项时才会产生 Attempt；普通追问不会消耗题目。
 
-## Private cloud deployment
+## 云端私有部署
 
-MindTrain targets private, single-user deployments. We recommend exposing only Web and Trainer MCP through a reverse proxy:
+MindTrain 面向单用户私有部署。推荐只通过反向代理公开 Web 和 Trainer MCP：
 
 ```text
 https://mindtrain.example.com/     -> http://127.0.0.1:4173/
 https://mindtrain.example.com/mcp -> http://127.0.0.1:8787/mcp
 ```
 
-A remotely exposed MCP endpoint must use HTTPS and a Bearer Token. Never expose PostgreSQL; Core does not need a public port either.
+云端 MCP 必须使用 HTTPS 和 Bearer Token。不要公开 PostgreSQL，也没有必要把 Core 端口暴露到公网。
 
-See [Deployment and operations](doc/部署与运维.md) for Nginx, Caddy, Cloudflare Tunnel, health checks, backup and restore, upgrades, and full configuration.
+Nginx/Caddy/Cloudflare Tunnel、健康检查、备份恢复、升级和完整配置说明见[部署与运维](doc/部署与运维.md)。
 
-## Upgrade MindTrain
+## 升级 MindTrain
 
-Upgrade the server and Codex Plugin separately. Back up PostgreSQL first: training domains, questions, attempts, and application settings live in the database and must not depend on container storage.
+升级分为服务端和 Codex Plugin 两部分。升级前先备份 PostgreSQL；训练领域、题库、作答记录和应用配置都保存在数据库中，不应依赖容器本身保存。
 
-### 1. Back up the database
+### 1. 备份数据库
 
-From `deploy/core-only`:
+在 `deploy/core-only` 目录执行：
 
 ```bash
 mkdir -p ../../backup
@@ -211,11 +211,11 @@ docker compose exec -T postgres \
   > ../../backup/mindtrain.dump
 ```
 
-Also store `.env` in a password manager or another controlled location. Do not commit it.
+同时把 `.env` 备份到密码管理器或其他受控位置，不要提交到 Git。
 
-### 2. Upgrade the server
+### 2. 升级服务端
 
-For a source-based deployment:
+使用仓库源码部署时：
 
 ```bash
 cd MindTrain
@@ -225,7 +225,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-If your Compose file uses `ghcr.io/shigella520/mindtrain-*:latest` images:
+如果自己的 Compose 使用 `ghcr.io/shigella520/mindtrain-*:latest` 镜像，则执行：
 
 ```bash
 docker compose pull
@@ -233,63 +233,63 @@ docker compose up -d --remove-orphans
 docker compose ps
 ```
 
-`latest` points to the newest formal Release; an exact tag such as `1.0.0` is immutable and preferred for production. `dev` is for testing any feature branch and should not be the long-term upgrade channel for a production instance. Flyway migrates the database when Training Core starts. If migration fails, preserve the logs and roll back to the previous version; do not edit the Flyway history table manually.
+`latest` 指向最新正式 Release；`1.0.0` 等精确标签内容不可变，生产部署建议优先固定精确版本。`dev` 用于测试任意功能分支，不建议长期作为正式实例的固定升级通道。Training Core 启动时会由 Flyway 自动迁移数据库；如果迁移失败，应保留日志并恢复旧版本，不要手工修改 Flyway 历史表。
 
-### 3. Upgrade the Codex Plugin
+### 3. 升级 Codex Plugin
 
 ```bash
 codex plugin marketplace upgrade mindtrain
 codex plugin add mindtrain@mindtrain
 ```
 
-After upgrading, create a new Codex task so the new Skill and MCP bridge are loaded. Your instance URL and token are stored outside the Plugin and are not lost during an upgrade.
+更新后新建一个 Codex 任务，使新版 Skill 和 MCP bridge 重新加载。现有实例地址和 Token 保存在 Plugin 之外，不会因升级而丢失。
 
-MindTrain validates Plugin, Trainer MCP, and API contract versions when a task starts and during remote tool calls. A compatible mismatch produces an upgrade reminder; an incompatible mismatch stops training and identifies whether the Plugin, server, or both must be upgraded. Do not bypass this check. Always create a new Codex task after upgrading the Plugin.
+MindTrain 会在任务开始及远程工具调用时自动校验 Plugin、Trainer MCP 和接口契约版本。版本不同但兼容时会提醒同步升级；不兼容时会停止训练并明确指出需要升级 Plugin、服务端或两者。看到版本提示后不要绕过校验，升级 Plugin 后务必新建 Codex 任务。
 
-After the upgrade, verify that Core, MCP, and Web are all `healthy` before training. See [Deployment and operations](doc/部署与运维.md) for backup, restore, rollback, and troubleshooting, and [Codex Plugin deployment](doc/CodexPlugin部署.md) for Plugin details.
+升级完成后确认 Core、MCP 和 Web 均为 `healthy`，再开始训练。备份恢复、版本回退和故障排查见[部署与运维](doc/部署与运维.md)，Plugin 细节见[Codex Plugin 部署](doc/CodexPlugin部署.md)。
 
-## Common operations
+## 常用操作
 
 ```bash
-# Inspect status and logs
+# 查看状态和日志
 cd deploy/core-only
 docker compose ps
 docker compose logs -f trainer-core trainer-mcp web
 
-# Stop services without deleting data
+# 停止服务但保留数据
 docker compose down
 ```
 
-Training round size, new-question budget, backlog limits, temporary-question lifetime, and reporting time zone can be changed from **Admin → Training Settings** without restarting services.
+训练题量、新题额度、积压阈值、临时题有效期和报表时区可在 Web 的“管理 → 训练配置”中修改，不需要重启服务。
 
-## Documentation
+## 文档导航
 
-| Goal | Read |
+| 想做什么 | 阅读 |
 | --- | --- |
-| Deploy to a server, configure a reverse proxy, back up, or upgrade | [Deployment and operations](doc/部署与运维.md) |
-| Install, switch branches, update, or troubleshoot the Codex Plugin | [Codex Plugin deployment](doc/CodexPlugin部署.md) |
-| Develop locally, run tests, build images, or understand CI | [Development guide](doc/开发指南.md) |
-| Maintain versions or publish a formal release | [Version and release policy](doc/版本与发布规范.md) |
-| Understand the Dashboard, Web training, and visual design | [Web design](doc/Web设计.md) |
-| Create and query domains and topic trees | [Knowledge Catalog](doc/知识目录.md) |
-| Read the REST API | [Training Core OpenAPI](contracts/openapi/trainer-core.yaml) |
-| Read product goals, architecture, and repository boundaries | [Product requirements](doc/目标需求.md) · [Architecture](doc/概要设计.md) · [Repository structure](doc/仓库目录规划.md) |
-| Read the Skill workflow | [MindTrain Plugin Skill](plugins/mindtrain/skills/mindtrain/SKILL.md) |
+| 部署到服务器、配置反向代理、备份或升级 | [部署与运维](doc/部署与运维.md) |
+| 安装、切换分支、更新或排查 Codex Plugin | [Codex Plugin 部署](doc/CodexPlugin部署.md) |
+| 本地开发、运行测试、构建镜像或了解 CI | [开发指南](doc/开发指南.md) |
+| 维护版本号或发布正式 Release | [版本与发布规范](doc/版本与发布规范.md) |
+| 了解 Dashboard、Web 训练和视觉设计 | [Web 设计](doc/Web设计.md) |
+| 创建、查询领域与知识点树 | [知识目录](doc/知识目录.md) |
+| 查看 REST API | [Training Core OpenAPI](contracts/openapi/trainer-core.yaml) |
+| 查看产品目标、架构与仓库边界 | [目标需求](doc/目标需求.md) · [概要设计](doc/概要设计.md) · [仓库目录规划](doc/仓库目录规划.md) |
+| 查看 Skill 工作流 | [MindTrain Plugin Skill](plugins/mindtrain/skills/mindtrain/SKILL.md) |
 
-## Roadmap
+## 路线图
 
-- Expand domain-independent Knowledge Packs and content-management capabilities.
-- Improve Web question governance, recent sessions, and training insights.
-- Add Anki Bridge and an FSRS Scheduler Provider.
-- Add backup and restore, import and export, and multi-user support.
+- 扩充领域无关 Knowledge Pack 和内容管理能力。
+- 完善 Web 题库治理、近期会话和训练洞察。
+- 接入 Anki Bridge 与 FSRS Scheduler Provider。
+- 增加备份恢复、导入导出和多用户能力。
 
-Issues are welcome for usage feedback, question-quality reports, and suggestions for new knowledge domains.
+欢迎通过 Issue 提交使用反馈、题目质量问题和新的知识领域建议。
 
-## License
+## 许可证
 
-MindTrain is open source under the [MIT License](LICENSE). You may use, modify, distribute, and commercialize it while retaining the original copyright notice and license text.
+MindTrain 使用 [MIT License](LICENSE) 开源，可自由使用、修改、分发和商用，但需保留原始版权声明和许可证文本。
 
-## Friends
+## 友情链接
 
 <p align="center">
   <a href="https://linux.do" target="_blank">
