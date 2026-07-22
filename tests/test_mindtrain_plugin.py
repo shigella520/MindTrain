@@ -50,7 +50,8 @@ class MindTrainPluginTest(unittest.TestCase):
         self.assertEqual("mindtrain", yaml.safe_load(frontmatter)["name"])
 
     def test_bridge_exposes_configuration_and_training_tools(self):
-        names = {definition["name"] for definition in BRIDGE.tool_definitions()}
+        definitions = BRIDGE.tool_definitions()
+        names = {definition["name"] for definition in definitions}
         self.assertIn("configure_mindtrain_instance", names)
         self.assertIn("get_mindtrain_configuration", names)
         self.assertEqual(BRIDGE.REMOTE_TOOL_NAMES, names - {
@@ -65,6 +66,9 @@ class MindTrainPluginTest(unittest.TestCase):
         self.assertIn("preview_training_domain", names)
         self.assertIn("confirm_training_domain", names)
         self.assertIn("sync_reference_library", names)
+        session_tool = next(item for item in definitions if item["name"] == "create_training_session")
+        self.assertNotIn("java-backend", json.dumps(session_tool))
+        self.assertIn("multiple domains", json.dumps(session_tool))
 
     def test_skill_documents_dialogue_and_local_catalog_workflows(self):
         skill_root = ROOT / "plugins/mindtrain/skills/mindtrain"

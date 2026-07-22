@@ -16,6 +16,14 @@ final class TestFixtures {
         int topicExists = jdbc.sql("SELECT COUNT(*) FROM topic WHERE id = :id")
             .param("id", topicId).query(Integer.class).single();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        int domainExists = jdbc.sql("SELECT COUNT(*) FROM knowledge_domain WHERE user_id='test-user' AND id=:id")
+            .param("id", domainId).query(Integer.class).single();
+        if (domainExists == 0) {
+            jdbc.sql("""
+                    INSERT INTO knowledge_domain(id,user_id,name,content_json,created_at,origin_type,sort_order,updated_at)
+                    VALUES (:id,'test-user',:id,'{}',:createdAt,'legacy',0,:createdAt)
+                    """).param("id", domainId).param("createdAt", now).update();
+        }
         if (topicExists == 0) {
             ObjectNode topic = objectMapper.createObjectNode()
                 .put("id", topicId)
@@ -36,10 +44,11 @@ final class TestFixtures {
         String questionId = active.path("id").asText();
         int version = active.path("version").asInt(1);
         jdbc.sql("""
-                INSERT INTO question(id, status, current_version, session_eligible_id, created_at)
-                VALUES (:id, 'active', :version, NULL, :createdAt)
+                INSERT INTO question(id, user_id, domain_id, status, current_version, session_eligible_id, created_at)
+                VALUES (:id, 'test-user', :domainId, 'active', :version, NULL, :createdAt)
                 """)
-            .param("id", questionId).param("version", version).param("createdAt", now).update();
+            .param("id", questionId).param("domainId", domainId).param("version", version)
+            .param("createdAt", now).update();
         jdbc.sql("""
                 INSERT INTO question_version(question_id, version, type, topic_ids_json, content_json, created_at)
                 VALUES (:id, :version, :type, :topicIds, :content, :createdAt)

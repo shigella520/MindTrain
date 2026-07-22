@@ -28,13 +28,17 @@ public class WeightedSchedulerProvider implements SchedulerProvider {
     }
 
     @Override
-    public Backlog backlog(String userId, OffsetDateTime now) {
-        Map<String, Object> row = jdbc.sql("""
+    public Backlog backlog(String userId, String domainId, OffsetDateTime now) {
+        String domainFilter = domainId == null ? "" : " AND q.domain_id = :domainId";
+        var query = jdbc.sql("""
                 SELECT COUNT(*) AS due_count, MIN(next_review_at) AS oldest_due
                 FROM review_state rs JOIN question q ON q.id = rs.question_id
                 WHERE rs.user_id = :userId AND rs.next_review_at <= :now AND q.status = 'active'
-                """)
-            .param("userId", userId).param("now", now).query().singleRow();
+                  AND q.user_id = :userId
+                """ + domainFilter)
+            .param("userId", userId).param("now", now);
+        if (domainId != null) query.param("domainId", domainId);
+        Map<String, Object> row = query.query().singleRow();
         int dueCount = ((Number) row.get("due_count")).intValue();
         Object oldestValue = row.get("oldest_due");
         OffsetDateTime oldest = oldestValue instanceof OffsetDateTime value ? value

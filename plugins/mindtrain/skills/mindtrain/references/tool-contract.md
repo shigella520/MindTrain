@@ -7,7 +7,7 @@
 
 ## Training tools
 
-- `create_training_session`: accepts optional `domainId` and `schedulerProvider`. Core uses the application-configured `questionCount`.
+- `create_training_session`: accepts optional `domainId` and `schedulerProvider`. Core uses the sole domain when exactly one exists, rejects an empty catalog with `no_training_domains`, and requires explicit selection with `training_domain_selection_required` when multiple domains exist. One Session is permanently scoped to one domain.
 - `get_next_assignment`: accepts `sessionId`; returns `assignment`, `generation_required`, `no_available_items`, or `session_complete`. A generation request includes a mandatory `generationProfile` with the target question type, difficulty, and knowledge point.
 - `submit_choice_answer`: accepts `assignmentId` and the user's unmodified `answer` text.
 - `reject_generated_question`: accepts the pending generated `assignmentId`; physically deletes the unanswered Assignment, QuestionVersion, and Question, and restores main-question new-item allowance.
@@ -16,7 +16,7 @@
 - `revise_saved_question`: creates an immutable next active version after explicit user approval. Send `questionId`, `expectedVersion`, changed fields, `reason`, and the source Assignment when available.
 - `finish_training_session`: finishes a session.
 - `get_learning_report`: returns learning and content overview metrics.
-- `get_scheduler_backlog`: returns due backlog and new-item allowance.
+- `get_scheduler_backlog`: returns due backlog and new-item allowance, optionally filtered by `domainId`.
 
 Assignment payloads intentionally exclude `correctOptionIds`, explanations, and sources. Keep the returned assignment ID until an answer succeeds. Use a stable idempotency key when retrying the same write.
 

@@ -18,7 +18,9 @@ paths:
             schema:
               type: object
               properties:
-                domainId: {type: string, default: java-backend}
+                domainId:
+                  type: string
+                  description: 可选；只有一个领域时 Core 自动选择，存在多个领域时必须显式传入。
                 schedulerProvider:
                   type: string
                   enum: [weighted]
@@ -136,6 +138,8 @@ paths:
     get:
       operationId: getSchedulerBacklog
       description: 默认要求 Bearer Token；仅当实例显式开启公开看板时允许匿名读取调度积压。
+      parameters:
+        - {name: domainId, in: query, required: false, schema: {type: string}, description: 可选训练领域过滤；省略时返回全局聚合。}
       responses:
         '200': {description: Due backlog and new-item allowance}
   /api/v1/settings/training:

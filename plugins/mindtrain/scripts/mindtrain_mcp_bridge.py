@@ -113,7 +113,7 @@ def tool_definitions():
             "Create a MindTrain training session.",
             schema(
                 {
-                    "domainId": string_property("Knowledge domain; defaults to java-backend"),
+                    "domainId": string_property("Optional training domain ID; required when multiple domains exist"),
                     "schedulerProvider": string_property("Scheduler provider ID; use weighted for 加权调度 in the MVP"),
                 }
             ),
@@ -193,7 +193,11 @@ def tool_definitions():
             schema({"sessionId": string_property("Session ID")}, ("sessionId",)),
         ),
         tool("get_learning_report", "Get learning, backlog and content overview metrics.", schema({})),
-        tool("get_scheduler_backlog", "Get due backlog and current new-item allowance.", schema({})),
+        tool(
+            "get_scheduler_backlog",
+            "Get due backlog and current new-item allowance.",
+            schema({"domainId": string_property("Optional training domain filter")}),
+        ),
         tool(
             "list_knowledge_domains",
             "List the authenticated user's training domains and catalog coverage.",

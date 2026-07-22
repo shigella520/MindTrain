@@ -23,7 +23,7 @@ public class TrainerTools {
     public ArrayNode definitions() {
         ArrayNode tools = objectMapper.createArrayNode();
         tools.add(tool("create_training_session", "Create a MindTrain training session.", schema(Map.of(
-            "domainId", string("Knowledge domain; defaults to java-backend"),
+            "domainId", string("Optional training domain ID; required when multiple domains exist"),
             "schedulerProvider", string("Scheduler provider ID; use weighted for 加权调度 in the MVP")
         ), List.of())));
         tools.add(tool("get_next_assignment", "Get the next safe-to-display question or a structured generationProfile.",
@@ -65,7 +65,8 @@ public class TrainerTools {
         tools.add(tool("finish_training_session", "Finish a session and persist its summary.",
             schema(Map.of("sessionId", string("Session ID")), List.of("sessionId"))));
         tools.add(tool("get_learning_report", "Get learning, backlog and content overview metrics.", schema(Map.of(), List.of())));
-        tools.add(tool("get_scheduler_backlog", "Get due backlog and current new-item allowance.", schema(Map.of(), List.of())));
+        tools.add(tool("get_scheduler_backlog", "Get due backlog and current new-item allowance.",
+            schema(Map.of("domainId", string("Optional training domain filter")), List.of())));
         tools.add(tool("list_knowledge_domains", "List the authenticated user's training domains and catalog coverage.",
             schema(Map.of("query", string("Optional domain name or description filter")), List.of())));
         tools.add(tool("get_knowledge_catalog_tree", "Get all root knowledge points and descendants for one domain.",
@@ -135,7 +136,8 @@ public class TrainerTools {
             case "finish_training_session" -> core.post("/api/v1/sessions/" + required(arguments, "sessionId") + "/finish",
                 objectMapper.createObjectNode(), key);
             case "get_learning_report" -> core.get("/api/v1/reports/overview");
-            case "get_scheduler_backlog" -> core.get("/api/v1/schedulers/backlog");
+            case "get_scheduler_backlog" -> core.get(
+                "/api/v1/schedulers/backlog" + query(arguments, "domainId", "domainId"));
             case "list_knowledge_domains" -> core.get("/api/v1/catalog/domains" + query(arguments, "query", "q"));
             case "get_knowledge_catalog_tree" -> core.get(
                 "/api/v1/catalog/domains/" + encode(required(arguments, "domainId")) + "/tree");

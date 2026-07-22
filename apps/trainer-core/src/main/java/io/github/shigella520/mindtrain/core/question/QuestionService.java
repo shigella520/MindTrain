@@ -37,13 +37,14 @@ public class QuestionService {
 
     public QuestionRecord get(String questionId, int version) {
         return jdbc.sql("""
-                SELECT q.id, q.status, q.session_eligible_id, qv.version, qv.content_json
+                SELECT q.id, q.user_id, q.domain_id, q.status, q.session_eligible_id, qv.version, qv.content_json
                 FROM question q JOIN question_version qv ON qv.question_id = q.id
-                WHERE q.id = :id AND qv.version = :version
+                WHERE q.id = :id AND q.user_id=:userId AND qv.version = :version
                 """)
-            .param("id", questionId).param("version", version)
+            .param("id", questionId).param("userId", UserContext.requireUserId()).param("version", version)
             .query((rs, rowNum) -> new QuestionRecord(rs.getString("id"), rs.getInt("version"),
-                rs.getString("status"), rs.getString("session_eligible_id"), readTree(rs.getString("content_json"))))
+                rs.getString("user_id"), rs.getString("domain_id"), rs.getString("status"),
+                rs.getString("session_eligible_id"), readTree(rs.getString("content_json"))))
             .optional()
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "question_not_found", "Question was not found"));
     }
@@ -88,19 +89,25 @@ public class QuestionService {
     public CandidateResponse createCandidate(String sessionId, String topicId, JsonNode question,
                                              String attemptType, String parentAttemptId) {
         String userId = UserContext.requireUserId();
-        boolean sessionExists = jdbc.sql("""
-                SELECT COUNT(*) FROM training_session
+        String sessionDomainId = jdbc.sql("""
+                SELECT domain_id FROM training_session
                 WHERE id = :id AND user_id = :userId AND status = 'active'
                 """)
-            .param("id", sessionId).param("userId", userId).query(Integer.class).single() > 0;
-        if (!sessionExists) {
-            throw new ApiException(HttpStatus.CONFLICT, "session_not_active", "Candidate requires an active owning session");
+            .param("id", sessionId).param("userId", userId).query(String.class).optional()
+            .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "session_not_active",
+                "Candidate requires an active owning session"));
+        String requestedTopicDomain = requireTopicDomain(userId, topicId);
+        if (!sessionDomainId.equals(requestedTopicDomain)) {
+            throw new ApiException(HttpStatus.CONFLICT, "candidate_domain_mismatch",
+                "Candidate topic must belong to the session training domain");
         }
         if ("follow_up".equals(attemptType)) {
             validateCandidate(question, topicId);
         } else {
-            validateCandidate(question, topicId, generationProfile(userId, sessionId, topicContext(topicId)));
+            validateCandidate(question, topicId,
+                generationProfile(userId, sessionId, topicContext(topicId, sessionDomainId)));
         }
+        validateQuestionTopics(userId, question.path("topicIds"), sessionDomainId, "candidate_domain_mismatch");
         String id = question.path("id").asText();
         int version = question.path("version").asInt(1);
         int existing = jdbc.sql("SELECT COUNT(*) FROM question WHERE id = :id")
@@ -112,10 +119,11 @@ public class QuestionService {
         ((com.fasterxml.jackson.databind.node.ObjectNode) stored).put("status", "candidate");
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         jdbc.sql("""
-                INSERT INTO question(id, status, current_version, session_eligible_id, created_at)
-                VALUES (:id, 'candidate', :version, :sessionId, :createdAt)
+                INSERT INTO question(id, user_id, domain_id, status, current_version, session_eligible_id, created_at)
+                VALUES (:id, :userId, :domainId, 'candidate', :version, :sessionId, :createdAt)
                 """)
-            .param("id", id).param("version", version).param("sessionId", sessionId).param("createdAt", now).update();
+            .param("id", id).param("userId", userId).param("domainId", sessionDomainId)
+            .param("version", version).param("sessionId", sessionId).param("createdAt", now).update();
         jdbc.sql("""
                 INSERT INTO question_version(question_id, version, type, topic_ids_json, content_json, created_at)
                 VALUES (:id, :version, :type, :topicIds, :content, :createdAt)
@@ -205,6 +213,7 @@ public class QuestionService {
         revised.put("createdAt", now.toString());
         revised.put("reviewedAt", now.toString());
         validateQuestion(revised, null, "revision_invalid");
+        validateQuestionTopics(userId, revised.path("topicIds"), current.domainId(), "question_topics_cross_domain");
 
         int updated = jdbc.sql("""
                 UPDATE question SET current_version = :nextVersion
@@ -326,21 +335,26 @@ public class QuestionService {
 
     private QuestionRecord current(String questionId) {
         return jdbc.sql("""
-                SELECT q.id, q.status, q.session_eligible_id, q.current_version, qv.content_json
+                SELECT q.id, q.user_id, q.domain_id, q.status, q.session_eligible_id,
+                       q.current_version, qv.content_json
                 FROM question q JOIN question_version qv
                   ON qv.question_id = q.id AND qv.version = q.current_version
-                WHERE q.id = :id
+                WHERE q.id = :id AND q.user_id=:userId
                 """)
-            .param("id", questionId)
+            .param("id", questionId).param("userId", UserContext.requireUserId())
             .query((rs, rowNum) -> new QuestionRecord(rs.getString("id"), rs.getInt("current_version"),
-                rs.getString("status"), rs.getString("session_eligible_id"), readTree(rs.getString("content_json"))))
+                rs.getString("user_id"), rs.getString("domain_id"), rs.getString("status"),
+                rs.getString("session_eligible_id"), readTree(rs.getString("content_json"))))
             .optional()
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "question_not_found", "Question was not found"));
     }
 
-    public TopicContext topicContext(String topicId) {
-        return jdbc.sql("SELECT name, content_json FROM topic WHERE id = :id")
-            .param("id", topicId)
+    public TopicContext topicContext(String topicId, String domainId) {
+        return jdbc.sql("""
+                SELECT t.name,t.content_json FROM topic t JOIN knowledge_domain d ON d.id=t.domain_id
+                WHERE t.id=:id AND t.domain_id=:domainId AND d.user_id=:userId
+                """)
+            .param("id", topicId).param("domainId", domainId).param("userId", UserContext.requireUserId())
             .query((rs, rowNum) -> {
                 JsonNode content = readTree(rs.getString("content_json"));
                 JsonNode versions = content.has("applicableVersions")
@@ -349,6 +363,23 @@ public class QuestionService {
                     jsonList(versions), jsonList(content.path("keywords")), jsonList(content.path("sourceRefs")));
             }).optional()
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "topic_not_found", "Topic was not found"));
+    }
+
+    private String requireTopicDomain(String userId, String topicId) {
+        return jdbc.sql("""
+                SELECT t.domain_id FROM topic t JOIN knowledge_domain d ON d.id=t.domain_id
+                WHERE t.id=:topicId AND d.user_id=:userId
+                """).param("topicId", topicId).param("userId", userId).query(String.class).optional()
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "topic_not_found", "Topic was not found"));
+    }
+
+    private void validateQuestionTopics(String userId, JsonNode topicIds, String expectedDomainId, String code) {
+        Set<String> domains = new HashSet<>();
+        for (JsonNode topicId : topicIds) domains.add(requireTopicDomain(userId, topicId.asText()));
+        if (domains.size() != 1 || !domains.contains(expectedDomainId)) {
+            throw new ApiException(HttpStatus.CONFLICT, code,
+                "All question topics must belong to the same training domain as the question");
+        }
     }
 
     public GenerationProfile generationProfile(String userId, String sessionId, TopicContext topic) {
@@ -424,7 +455,8 @@ public class QuestionService {
         throw new ApiException(HttpStatus.BAD_REQUEST, code, message);
     }
 
-    public record QuestionRecord(String id, int version, String status, String sessionEligibleId, JsonNode content) {}
+    public record QuestionRecord(String id, int version, String userId, String domainId, String status,
+                                 String sessionEligibleId, JsonNode content) {}
     public record CandidateResponse(String questionId, int version, String status, String sessionId,
                                     boolean usableInCurrentSession, String assignmentId) {}
     public record RevisionResponse(String revisionId, String questionId, int previousVersion, int version,

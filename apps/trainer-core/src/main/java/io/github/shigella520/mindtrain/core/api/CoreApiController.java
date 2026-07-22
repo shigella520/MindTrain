@@ -107,8 +107,9 @@ public class CoreApiController {
     }
 
     @GetMapping("/schedulers/backlog")
-    public SchedulerProvider.Backlog backlog() {
-        return training.backlog();
+    public SchedulerProvider.Backlog backlog(
+        @RequestParam(name = "domainId", required = false) String domainId) {
+        return training.backlog(domainId);
     }
 
     @GetMapping("/settings/training")

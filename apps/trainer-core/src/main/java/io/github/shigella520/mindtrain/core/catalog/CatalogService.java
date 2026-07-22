@@ -479,8 +479,9 @@ public class CatalogService {
         jdbc.sql("""
                 SELECT q.id,qv.topic_ids_json FROM question q JOIN question_version qv
                   ON qv.question_id=q.id AND qv.version=q.current_version
-                WHERE q.status='active'
-                """).query((rs, rowNum) -> Map.entry(rs.getString("id"), rs.getString("topic_ids_json")))
+                WHERE q.status='active' AND q.user_id=:userId
+                """).param("userId", UserContext.requireUserId())
+            .query((rs, rowNum) -> Map.entry(rs.getString("id"), rs.getString("topic_ids_json")))
             .list().forEach(question -> strings(read(question.getValue())).forEach(topicId ->
                 result.computeIfAbsent(topicId, ignored -> new HashSet<>()).add(question.getKey())));
         return result;

@@ -92,11 +92,19 @@ class McpProtocolTest {
 
         mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
                 {"jsonrpc":"2.0","id":8,"method":"tools/call","params":{
-                  "name":"search_knowledge_topics","arguments":{"query":"volatile","domainId":"java-backend"}
+                  "name":"search_knowledge_topics","arguments":{"query":"volatile","domainId":"test-domain"}
                 }}
                 """))
             .andExpect(status().isOk());
-        verify(coreClient).get(eq("/api/v1/catalog/topics/search?q=volatile&domainId=java-backend"));
+        verify(coreClient).get(eq("/api/v1/catalog/topics/search?q=volatile&domainId=test-domain"));
+
+        mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+                {"jsonrpc":"2.0","id":10,"method":"tools/call","params":{
+                  "name":"get_scheduler_backlog","arguments":{"domainId":"test-domain"}
+                }}
+                """))
+            .andExpect(status().isOk());
+        verify(coreClient).get(eq("/api/v1/schedulers/backlog?domainId=test-domain"));
 
         mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
                 {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{

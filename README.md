@@ -164,6 +164,8 @@ $mindtrain 使用 /path/to/notes 创建 backend-notes 资料库，
 $mindtrain 开始训练
 ```
 
+只有一个训练领域时会自动使用；存在多个领域时，Codex 或 Web 会要求你选择本次训练的领域，例如 `$mindtrain 开始 ai-agent 训练`。一次训练 Session 只会从所选领域出题，不会在多个领域之间随机混合。
+
 你可以在任何一道题中直接问：
 
 ```text

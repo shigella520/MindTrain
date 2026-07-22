@@ -59,6 +59,15 @@ class ApplicationSettingsIntegrationTest {
             .andReturn().getResponse().getContentAsString();
         assertThat(repeated).isEqualTo(first);
 
+        jdbc.sql("""
+                INSERT INTO knowledge_domain(id,user_id,name,content_json,created_at,origin_type,sort_order,updated_at)
+                VALUES ('settings-domain','test-user','Settings Domain','{}',CURRENT_TIMESTAMP,'legacy',0,CURRENT_TIMESTAMP)
+                """).update();
+        jdbc.sql("""
+                INSERT INTO topic(id,domain_id,parent_id,name,kind,importance,content_json,created_at,sort_order,updated_at)
+                VALUES ('settings-topic','settings-domain',NULL,'Settings Topic','leaf',3,'{}',CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP)
+                """).update();
+
         mvc.perform(post("/api/v1/sessions")
                 .header("Idempotency-Key", "settings-session")
                 .contentType(MediaType.APPLICATION_JSON)

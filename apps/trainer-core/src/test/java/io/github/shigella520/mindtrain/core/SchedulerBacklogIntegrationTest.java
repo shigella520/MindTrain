@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +23,23 @@ import org.springframework.test.web.servlet.MockMvc;
 class SchedulerBacklogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcClient jdbc;
+
+    @BeforeEach
+    void ensureTrainingDomain() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        int exists = jdbc.sql("SELECT COUNT(*) FROM knowledge_domain WHERE user_id='test-user' AND id='test-domain'")
+            .query(Integer.class).single();
+        if (exists == 0) {
+            jdbc.sql("""
+                    INSERT INTO knowledge_domain(id,user_id,name,content_json,created_at,origin_type,sort_order,updated_at)
+                    VALUES ('test-domain','test-user','Test Domain','{}',:now,'legacy',0,:now)
+                    """).param("now", now).update();
+            jdbc.sql("""
+                    INSERT INTO topic(id,domain_id,parent_id,name,kind,importance,content_json,created_at,sort_order,updated_at)
+                    VALUES ('test-topic','test-domain',NULL,'Test Topic','leaf',3,'{}',:now,0,:now)
+                    """).param("now", now).update();
+        }
+    }
 
     @Test
     void exposesConfiguredDailyPlanAndUsesItAsTheDefaultSessionTarget() throws Exception {
@@ -52,7 +70,10 @@ class SchedulerBacklogIntegrationTest {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         for (int index = 0; index < 21; index++) {
             String id = "backlog-question-" + index;
-            jdbc.sql("INSERT INTO question(id, status, current_version, created_at) VALUES (:id, 'active', 1, :createdAt)")
+            jdbc.sql("""
+                    INSERT INTO question(id,user_id,domain_id,status,current_version,created_at)
+                    VALUES (:id,'test-user','test-domain','active',1,:createdAt)
+                    """)
                 .param("id", id).param("createdAt", now.minusDays(10)).update();
             jdbc.sql("""
                     INSERT INTO review_state(user_id, question_id, correct_count, wrong_count, consecutive_correct,

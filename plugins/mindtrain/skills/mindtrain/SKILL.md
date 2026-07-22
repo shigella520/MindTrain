@@ -31,14 +31,15 @@ Never call `confirm_training_domain` until the user has seen the complete traini
 
 ## Run training
 
-1. Call `create_training_session`; Core always uses the application-configured `questionCount`. Use provider ID `weighted`, displayed to users as `加权调度`.
-2. Call `get_next_assignment`.
-3. When it returns `assignment`, show only the stem and A-D options. Use exactly: `请回复选项字母，可用逗号分隔。`
-4. Treat a clear option selection as a formal answer and call `submit_choice_answer` once.
-5. Treat concept questions, uncertainty, challenges, and hint requests as interactions. Call `record_interaction`, answer conversationally, and keep the assignment pending.
-6. After successful grading, render: result, correct answer, conclusion, option analysis, mechanism, pitfalls, version notes, related topics, and sources.
-7. Offer exactly: `下一题`, `深入追问`, `结束总结`.
-8. Call `finish_training_session` when the target is complete or the user ends early.
+1. Call `list_knowledge_domains` before starting. Resolve a user-named domain and pass its exact ID. When exactly one domain exists, use it automatically. When none exist, guide the user through domain creation. When multiple exist and the user did not choose one, ask them to choose; never select the first domain silently.
+2. Call `create_training_session` with the resolved `domainId`; Core always uses the application-configured `questionCount`. Use provider ID `weighted`, displayed to users as `加权调度`. One session trains exactly one domain.
+3. Call `get_next_assignment`.
+4. When it returns `assignment`, show only the stem and A-D options. Use exactly: `请回复选项字母，可用逗号分隔。`
+5. Treat a clear option selection as a formal answer and call `submit_choice_answer` once.
+6. Treat concept questions, uncertainty, challenges, and hint requests as interactions. Call `record_interaction`, answer conversationally, and keep the assignment pending.
+7. After successful grading, render: result, correct answer, conclusion, option analysis, mechanism, pitfalls, version notes, related topics, and sources.
+8. Offer exactly: `下一题`, `深入追问`, `结束总结`.
+9. Call `finish_training_session` when the target is complete or the user ends early.
 
 Never infer the correct answer before `submit_choice_answer` returns it. Invalid answer input does not consume the question.
 
@@ -69,6 +70,10 @@ For a deeper training question, generate another four-option question on the sam
 ## Recover safely
 
 - On `configuration_required`, return to the first-use configuration flow.
+- On `no_training_domains`, guide the user through creating and confirming a training domain.
+- On `training_domain_selection_required`, list the available domains and ask the user to choose one.
+- On `training_domain_not_found`, refresh the domain list instead of guessing a replacement.
+- On `session_domain_invalid`, explain that the session's domain no longer exists and start a new session only after the user chooses a valid domain.
 - On `answer_unparseable`, ask for option letters again without revealing answer count.
 - On `no_available_items`, explain the scheduler reason and offer to finish or inspect backlog.
 - On Core or MCP unavailability, retain the current visible question in conversation and retry the tool; do not fabricate persistence success.

@@ -3,7 +3,8 @@ import { computed, ref } from 'vue'
 import { ArrowLeft, ArrowRight, Check, CircleAlert, Code2, LoaderCircle, RotateCcw, Sparkles, X } from '@lucide/vue'
 import { coreApi, CoreApiError } from '../services/core'
 import { useConfigStore } from '../stores/config'
-import type { Assignment, Attempt, Session } from '../types/api'
+import { initialTrainingDomainId } from '../domain/trainingDomains'
+import type { Assignment, Attempt, KnowledgeDomain, Session } from '../types/api'
 
 const config = useConfigStore()
 const showCodexIntro = ref(true)
@@ -13,6 +14,9 @@ const result = ref<Attempt | null>(null)
 const selected = ref<string[]>([])
 const status = ref<'idle' | 'loading' | 'question' | 'result' | 'complete' | 'generation_required' | 'empty'>('idle')
 const error = ref('')
+const domains = ref<KnowledgeDomain[]>([])
+const selectedDomainId = ref('')
+const domainsLoading = ref(false)
 const progress = computed(() => session.value ? Math.round((session.value.completedMainQuestions / session.value.targetCount) * 100) : 0)
 const isMultiple = computed(() => assignment.value?.question.type === 'multiple_choice')
 const canReject = computed(() => assignment.value?.sourceKind === 'candidate'
@@ -21,14 +25,28 @@ const suggestedMcpUrl = `${window.location.origin}/mcp`
 
 async function continueWithWeb() {
   showCodexIntro.value = false
-  if (config.configured) await start()
+  if (config.configured) await loadDomains()
+}
+
+async function loadDomains() {
+  domainsLoading.value = true
+  error.value = ''
+  try {
+    domains.value = await coreApi.knowledgeDomains()
+    selectedDomainId.value = initialTrainingDomainId(domains.value)
+  } catch (cause) {
+    fail(cause)
+  } finally {
+    domainsLoading.value = false
+  }
 }
 
 async function start() {
+  if (!selectedDomainId.value) return
   error.value = ''
   status.value = 'loading'
   try {
-    session.value = await coreApi.createSession()
+    session.value = await coreApi.createSession(selectedDomainId.value)
     await next()
   } catch (cause) {
     fail(cause)
@@ -152,15 +170,35 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
       <RouterLink class="button primary" to="/settings">配置实例</RouterLink>
     </section>
 
+    <section v-else-if="domainsLoading" class="training-card centered-card reveal">
+      <LoaderCircle class="spinning" :size="34" />
+      <h2>正在加载训练领域</h2>
+    </section>
+
+    <section v-else-if="status === 'idle' && !domains.length" class="training-card centered-card reveal">
+      <CircleAlert :size="34" />
+      <h1>还没有可训练的领域</h1>
+      <p>请先通过 Codex 创建并确认一个训练领域，再开始训练。</p>
+      <RouterLink class="button primary" to="/catalog">查看知识目录</RouterLink>
+    </section>
+
     <section v-else-if="status === 'idle'" class="training-card training-intro reveal">
       <div class="intro-icon"><Sparkles :size="30" /></div>
       <p class="eyebrow">DAILY TRAINING</p>
       <h1>准备好开始今天的训练了吗？</h1>
       <p>默认优先安排到期复习，并在积压和实例配置允许时加入新题。</p>
+      <label v-if="domains.length > 1" class="training-domain-picker">
+        <span>选择本次训练领域</span>
+        <select v-model="selectedDomainId">
+          <option value="" disabled>请选择训练领域</option>
+          <option v-for="domain in domains" :key="domain.id" :value="domain.id">{{ domain.name }}</option>
+        </select>
+      </label>
+      <p v-else class="training-domain-current">本次训练：{{ domains[0]?.name }}</p>
       <div class="training-rules">
         <span>精确判分</span><span>动态复习 / 新题配额</span><span>错误次日复习</span>
       </div>
-      <button class="button primary large" type="button" @click="start">开始今日训练 <ArrowRight :size="18" /></button>
+      <button class="button primary large" type="button" :disabled="!selectedDomainId" @click="start">开始今日训练 <ArrowRight :size="18" /></button>
     </section>
 
     <section v-else-if="status === 'loading'" class="training-card centered-card reveal">

@@ -42,7 +42,7 @@ function post<T>(path: string, body?: unknown, prefix = 'web'): Promise<T> {
 export const coreApi = {
   overview: () => request<Overview>('/reports/overview'),
   backlog: () => request<Backlog>('/schedulers/backlog'),
-  createSession: (domainId = 'java-backend') =>
+  createSession: (domainId: string) =>
     post<Session>('/sessions', {
       domainId,
       schedulerProvider: DEFAULT_SCHEDULER_PROVIDER_ID,

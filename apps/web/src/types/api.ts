@@ -48,6 +48,8 @@ export interface TrainingSettings {
 
 export interface Session {
   id: string
+  domainId: string
+  domainName: string
   status: string
   targetCount: number
   completedMainQuestions: number

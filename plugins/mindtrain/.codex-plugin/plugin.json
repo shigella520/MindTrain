@@ -1,6 +1,6 @@
 {
   "name": "mindtrain",
-  "version": "0.1.0+codex.20260721164702",
+  "version": "0.1.0+codex.20260722012245",
   "description": "Build and query private knowledge catalogs, then run conversational spaced-repetition training with MindTrain.",
   "author": {
     "name": "shigella520",
