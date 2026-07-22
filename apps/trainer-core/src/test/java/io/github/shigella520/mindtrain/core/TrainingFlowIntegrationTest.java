@@ -231,7 +231,9 @@ class TrainingFlowIntegrationTest {
             .andExpect(jsonPath("$.schedulerProvider").value("weighted"))
             .andExpect(jsonPath("$.schedulerProviderName").value("加权调度"))
             .andExpect(jsonPath("$.activeQuestions").value(3))
-            .andExpect(jsonPath("$.pendingGeneratedQuestions").value(0));
+            .andExpect(jsonPath("$.pendingGeneratedQuestions").value(0))
+            .andExpect(jsonPath("$.knowledgeDomainCount").value(1))
+            .andExpect(jsonPath("$.knowledgeTopicCount").value(1));
 
         JsonNode abandoned = candidate(topicId, "candidate.abandoned." + UUID.randomUUID(),
             shortageGeneration.path("generationProfile").path("questionType").asText(),

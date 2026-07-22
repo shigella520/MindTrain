@@ -24,6 +24,8 @@ export interface Overview {
   schedulerProviderName?: string
   activeQuestions: number
   pendingGeneratedQuestions: number
+  knowledgeDomainCount: number
+  knowledgeTopicCount: number
   weakTopics: WeakTopic[]
 }
 

@@ -4,6 +4,7 @@ import { BookCopy, CircleGauge, Database, FileQuestion, Save, ServerCog, Sliders
 import { useConfigStore } from '../stores/config'
 import { useDashboardStore } from '../stores/dashboard'
 import { coreApi, CoreApiError } from '../services/core'
+import { knowledgeCatalogSummary } from '../domain/dashboard'
 
 const config = useConfigStore()
 const dashboard = useDashboardStore()
@@ -160,7 +161,7 @@ onMounted(() => {
             <tbody>
               <tr><td>可复习题</td><td>{{ dashboard.overview.activeQuestions }}</td><td>可跨会话调度</td><td><span class="table-status success">普通题</span></td></tr>
               <tr><td>待答 AI 题</td><td>{{ dashboard.overview.pendingGeneratedQuestions }}</td><td>拒绝时物理删除，回答后转普通题</td><td><span class="table-status warning">临时</span></td></tr>
-              <tr><td>知识目录</td><td>—</td><td>领域、知识点树、搜索和来源详情</td><td><span class="table-status success">可查询</span></td></tr>
+              <tr><td>知识目录</td><td>{{ knowledgeCatalogSummary(dashboard.overview.knowledgeDomainCount, dashboard.overview.knowledgeTopicCount) }}</td><td>领域、知识点树、搜索和来源详情</td><td><span class="table-status success">可查询</span></td></tr>
             </tbody>
           </table>
         </div>

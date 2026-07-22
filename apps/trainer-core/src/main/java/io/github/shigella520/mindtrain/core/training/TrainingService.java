@@ -278,6 +278,15 @@ public class TrainingService {
             .param("userId", userId).query(Integer.class).single();
         int candidates = jdbc.sql("SELECT COUNT(*) FROM question WHERE user_id=:userId AND status='candidate'")
             .param("userId", userId).query(Integer.class).single();
+        int domainCount = jdbc.sql("SELECT COUNT(*) FROM knowledge_domain WHERE user_id=:userId")
+            .param("userId", userId).query(Integer.class).single();
+        int topicCount = jdbc.sql("""
+                SELECT COUNT(*) FROM topic t
+                WHERE EXISTS (
+                    SELECT 1 FROM knowledge_domain d
+                    WHERE d.user_id=:userId AND d.id=t.domain_id
+                )
+                """).param("userId", userId).query(Integer.class).single();
         List<Map<String, Object>> weakTopics = jdbc.sql("""
                 SELECT tm.topic_id, t.name, tm.mastery_score, tm.correct_count, tm.wrong_count
                 FROM topic_mastery tm LEFT JOIN topic t ON t.id = tm.topic_id
@@ -301,6 +310,8 @@ public class TrainingService {
         response.put("schedulerProviderName", scheduler.displayName());
         response.put("activeQuestions", activeQuestions);
         response.put("pendingGeneratedQuestions", candidates);
+        response.put("knowledgeDomainCount", domainCount);
+        response.put("knowledgeTopicCount", topicCount);
         response.set("weakTopics", objectMapper.valueToTree(weakTopics));
         return response;
     }

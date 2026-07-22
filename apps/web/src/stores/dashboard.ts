@@ -21,6 +21,8 @@ const EMPTY_OVERVIEW: Overview = {
   schedulerProviderName: schedulerProviderName(DEFAULT_SCHEDULER_PROVIDER_ID),
   activeQuestions: 0,
   pendingGeneratedQuestions: 0,
+  knowledgeDomainCount: 0,
+  knowledgeTopicCount: 0,
   weakTopics: [],
 }
 
