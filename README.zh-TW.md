@@ -269,6 +269,7 @@ docker compose down
 | 部署到伺服器、配置反向代理、備份或升級 | [部署與運維](doc/部署与运维.md) |
 | 安裝、切換分支、更新或排查 Codex Plugin | [Codex Plugin 部署](doc/CodexPlugin部署.md) |
 | 本地開發、執行測試、構建映象或瞭解 CI | [開發指南](doc/开发指南.md) |
+| 維護版本號或釋出正式 Release | [版本與釋出規範](doc/版本与发布规范.md) |
 | 瞭解 Dashboard、Web 訓練和視覺設計 | [Web 設計](doc/Web设计.md) |
 | 建立、查詢領域與知識點樹 | [知識目錄](doc/知识目录.md) |
 | 檢視 REST API | [Training Core OpenAPI](contracts/openapi/trainer-core.yaml) |
