@@ -233,7 +233,7 @@ docker compose up -d --remove-orphans
 docker compose ps
 ```
 
-`latest` is the stable build from `main`; `dev` is for testing any feature branch and should not be the long-term upgrade channel for a production instance. Flyway migrates the database when Training Core starts. If migration fails, preserve the logs and roll back to the previous version; do not edit the Flyway history table manually.
+`latest` points to the newest formal Release; an exact tag such as `1.0.0` is immutable and preferred for production. `dev` is for testing any feature branch and should not be the long-term upgrade channel for a production instance. Flyway migrates the database when Training Core starts. If migration fails, preserve the logs and roll back to the previous version; do not edit the Flyway history table manually.
 
 ### 3. Upgrade the Codex Plugin
 
