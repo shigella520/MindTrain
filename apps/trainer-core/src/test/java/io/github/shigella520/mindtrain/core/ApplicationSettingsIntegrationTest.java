@@ -71,7 +71,7 @@ class ApplicationSettingsIntegrationTest {
         mvc.perform(post("/api/v1/sessions")
                 .header("Idempotency-Key", "settings-session")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"questionCount\":1}"))
+                .content("{\"domainId\":\"settings-domain\",\"questionCount\":1}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.targetCount").value(12));
 
