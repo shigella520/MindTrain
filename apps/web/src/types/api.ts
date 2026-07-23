@@ -1,9 +1,14 @@
-export interface WeakTopic {
+export interface MasteryTopic {
   topic_id: string
   name: string | null
+  domain_id: string
+  domain_name: string
+  topic_path: string
   mastery_score: number
   correct_count: number
   wrong_count: number
+  attempt_count: number
+  last_answered_at: string
 }
 
 export interface Overview {
@@ -11,6 +16,11 @@ export interface Overview {
   correct: number
   accuracy: number
   todayCompletedMainQuestions: number
+  todayCorrectMainQuestions: number
+  todayAccuracy: number
+  todayReviewCompleted: number
+  todayNewItemsIntroduced: number
+  todayCompletedSessions: number
   dailyTarget: number
   reviewBudget: number
   newBudget: number
@@ -20,13 +30,20 @@ export interface Overview {
   oldestDueAt?: string
   newItemAllowance: number
   newItemsPaused: boolean
+  schedulerStatus: 'healthy' | 'due' | 'overdue' | 'paused' | 'completed'
+  newItemsPauseReason?: 'backlog_count' | 'overdue_age' | 'backlog_count_and_overdue_age'
   schedulerProvider?: string
   schedulerProviderName?: string
   activeQuestions: number
+  reviewableQuestionCount: number
+  unseenQuestionCount: number
   pendingGeneratedQuestions: number
   knowledgeDomainCount: number
   knowledgeTopicCount: number
-  weakTopics: WeakTopic[]
+  weakTopics: MasteryTopic[]
+  strongTopics: MasteryTopic[]
+  insufficientEvidenceTopics: MasteryTopic[]
+  insufficientEvidenceTopicCount: number
 }
 
 export interface Backlog {

@@ -67,6 +67,10 @@ For an explanatory follow-up, call `record_interaction` and answer in the curren
 
 For a deeper training question, generate another four-option question on the same topic and call `create_candidate_question` with `attemptType: follow_up` and the graded parent attempt ID. Present the returned follow-up assignment. It must increment only the follow-up count, never the main target. Do not count conversational explanations as attempts.
 
+## Report learning progress
+
+When the user asks for a learning report, call `get_learning_report`. Lead with `todayCompletedMainQuestions` / `dailyTarget`, `todayAccuracy`, `todayReviewCompleted`, `todayNewItemsIntroduced`, the due backlog, and `schedulerStatus`; these are the live daily snapshot. Treat `newBudget` as a per-session policy limit and never present `newItemAllowance` as a daily remaining quota. Then present `weakTopics` as 待加强 and `strongTopics` as 擅长, including their domain, topic path, mastery score, and correct/wrong counts. Report `insufficientEvidenceTopicCount` separately as 数据积累中; never label those topics weak or strong before they meet the server-defined sample threshold.
+
 ## Recover safely
 
 - On a Plugin/server version or contract mismatch, do not bypass the check. Ask the user to upgrade or reinstall the MindTrain Plugin, upgrade the deployed services when indicated, and open a new Codex task so the updated Plugin is loaded.

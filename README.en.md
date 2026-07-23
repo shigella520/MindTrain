@@ -74,6 +74,7 @@ Live demo: [https://mindtrain.jianyutan.com/](https://mindtrain.jianyutan.com/) 
 | AI-generated questions | When coverage is insufficient, Codex generates and validates a question for a selected topic, type, and difficulty |
 | Local reference library | Index MD, TXT, PDF, DOCX, and PPTX while keeping source files and the index on your machine |
 | Knowledge catalog | Browse and search multiple domains and topic trees from Codex or Web, including coverage and mastery data |
+| Mastery highlights | Separate weak, strong, and insufficient-evidence topics using mastery scores and minimum attempt thresholds |
 | Private data | Core is the only source of truth; the Skill is stateless and runtime data is not stored in the repository |
 | Web + Codex | Use Web for dashboards, review, and configuration; use Codex for the full AI-coach experience |
 

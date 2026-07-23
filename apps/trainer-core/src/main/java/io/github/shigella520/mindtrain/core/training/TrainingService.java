@@ -17,14 +17,15 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
@@ -38,6 +39,11 @@ public class TrainingService {
     private static final List<String> OPTION_IDS = List.of("A", "B", "C", "D");
     private static final Pattern COMPACT_OPTIONS = Pattern.compile("^[A-D](?:\\s*[,，/、和及]?\\s*[A-D])*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern MARKED_OPTIONS = Pattern.compile("(?:我?选|选择|答案)\\s*[:：]?\\s*([A-D\\s,，/、和及]+)", Pattern.CASE_INSENSITIVE);
+    private static final int MASTERY_LIST_LIMIT = 5;
+    private static final int WEAK_MASTERY_THRESHOLD = 60;
+    private static final int STRONG_MASTERY_THRESHOLD = 75;
+    private static final int WEAK_MIN_ATTEMPTS = 2;
+    private static final int STRONG_MIN_ATTEMPTS = 3;
 
     private final JdbcClient jdbc;
     private final ObjectMapper objectMapper;
@@ -261,21 +267,47 @@ public class TrainingService {
                 """).param("userId", userId).query().singleRow();
         int attempts = ((Number) stats.get("attempts")).intValue();
         int correct = ((Number) stats.get("correct")).intValue();
-        int todayCompletedMainQuestions = jdbc.sql("""
-                SELECT COUNT(*)
+        Map<String, Object> todayStats = jdbc.sql("""
+                SELECT COUNT(*) AS completed,
+                       COALESCE(SUM(CASE WHEN at.correct THEN 1 ELSE 0 END), 0) AS correct,
+                       COALESCE(SUM(CASE WHEN a.source_kind = 'review' THEN 1 ELSE 0 END), 0) AS reviewed
                 FROM attempt at
                 JOIN assignment a ON a.id = at.assignment_id
                 WHERE at.user_id = :userId AND a.attempt_type = 'main'
                   AND at.answered_at >= :dayStart AND at.answered_at < :dayEnd
                 """)
             .param("userId", userId).param("dayStart", dayStart).param("dayEnd", dayEnd)
+            .query().singleRow();
+        int todayCompletedMainQuestions = number(todayStats.get("completed"));
+        int todayCorrectMainQuestions = number(todayStats.get("correct"));
+        int todayReviewCompleted = number(todayStats.get("reviewed"));
+        int todayNewItemsIntroduced = jdbc.sql("""
+                SELECT COUNT(*)
+                FROM assignment a JOIN training_session s ON s.id=a.session_id
+                WHERE s.user_id=:userId AND a.attempt_type='main'
+                  AND a.source_kind IN ('new','candidate')
+                  AND a.created_at >= :dayStart AND a.created_at < :dayEnd
+                """).param("userId", userId).param("dayStart", dayStart).param("dayEnd", dayEnd)
             .query(Integer.class).single();
         int reviewBudget = settings.reviewBudget();
         int newBudget = settings.newBudget();
+        int dailyTarget = reviewBudget + newBudget;
         int sessions = jdbc.sql("SELECT COUNT(*) FROM training_session WHERE user_id = :userId AND status = 'completed'")
             .param("userId", userId).query(Integer.class).single();
+        int todayCompletedSessions = jdbc.sql("""
+                SELECT COUNT(*) FROM training_session
+                WHERE user_id=:userId AND status='completed'
+                  AND ended_at >= :dayStart AND ended_at < :dayEnd
+                """).param("userId", userId).param("dayStart", dayStart).param("dayEnd", dayEnd)
+            .query(Integer.class).single();
         int activeQuestions = jdbc.sql("SELECT COUNT(*) FROM question WHERE user_id=:userId AND status='active'")
             .param("userId", userId).query(Integer.class).single();
+        int reviewableQuestionCount = jdbc.sql("""
+                SELECT COUNT(*) FROM question q
+                WHERE q.user_id=:userId AND q.status='active'
+                  AND EXISTS (SELECT 1 FROM review_state rs WHERE rs.user_id=:userId AND rs.question_id=q.id)
+                """).param("userId", userId).query(Integer.class).single();
+        int unseenQuestionCount = activeQuestions - reviewableQuestionCount;
         int candidates = jdbc.sql("SELECT COUNT(*) FROM question WHERE user_id=:userId AND status='candidate'")
             .param("userId", userId).query(Integer.class).single();
         int domainCount = jdbc.sql("SELECT COUNT(*) FROM knowledge_domain WHERE user_id=:userId")
@@ -287,17 +319,19 @@ public class TrainingService {
                     WHERE d.user_id=:userId AND d.id=t.domain_id
                 )
                 """).param("userId", userId).query(Integer.class).single();
-        List<Map<String, Object>> weakTopics = jdbc.sql("""
-                SELECT tm.topic_id, t.name, tm.mastery_score, tm.correct_count, tm.wrong_count
-                FROM topic_mastery tm LEFT JOIN topic t ON t.id = tm.topic_id
-                WHERE tm.user_id = :userId ORDER BY tm.mastery_score, tm.wrong_count DESC LIMIT 5
-                """).param("userId", userId).query().listOfRows();
+        MasteryHighlights masteryHighlights = masteryHighlights(userId);
         ObjectNode response = objectMapper.createObjectNode();
         response.put("attempts", attempts);
         response.put("correct", correct);
         response.put("accuracy", attempts == 0 ? 0.0 : (double) correct / attempts);
         response.put("todayCompletedMainQuestions", todayCompletedMainQuestions);
-        response.put("dailyTarget", reviewBudget + newBudget);
+        response.put("todayCorrectMainQuestions", todayCorrectMainQuestions);
+        response.put("todayAccuracy", todayCompletedMainQuestions == 0 ? 0.0
+            : (double) todayCorrectMainQuestions / todayCompletedMainQuestions);
+        response.put("todayReviewCompleted", todayReviewCompleted);
+        response.put("todayNewItemsIntroduced", todayNewItemsIntroduced);
+        response.put("todayCompletedSessions", todayCompletedSessions);
+        response.put("dailyTarget", dailyTarget);
         response.put("reviewBudget", reviewBudget);
         response.put("newBudget", newBudget);
         response.put("reportingTimeZone", reportingZone.getId());
@@ -306,14 +340,123 @@ public class TrainingService {
         if (backlog.oldestDueAt() != null) response.put("oldestDueAt", backlog.oldestDueAt().toString());
         response.put("newItemAllowance", backlog.newItemAllowance());
         response.put("newItemsPaused", backlog.newItemsPaused());
+        response.put("schedulerStatus", schedulerStatus(backlog, todayCompletedMainQuestions, dailyTarget, now));
+        String pauseReason = pauseReason(backlog, settings, now);
+        if (pauseReason != null) response.put("newItemsPauseReason", pauseReason);
         response.put("schedulerProvider", scheduler.id());
         response.put("schedulerProviderName", scheduler.displayName());
         response.put("activeQuestions", activeQuestions);
+        response.put("reviewableQuestionCount", reviewableQuestionCount);
+        response.put("unseenQuestionCount", unseenQuestionCount);
         response.put("pendingGeneratedQuestions", candidates);
         response.put("knowledgeDomainCount", domainCount);
         response.put("knowledgeTopicCount", topicCount);
-        response.set("weakTopics", objectMapper.valueToTree(weakTopics));
+        response.set("weakTopics", objectMapper.valueToTree(masteryHighlights.weakTopics()));
+        response.set("strongTopics", objectMapper.valueToTree(masteryHighlights.strongTopics()));
+        response.set("insufficientEvidenceTopics", objectMapper.valueToTree(masteryHighlights.insufficientEvidenceTopics()));
+        response.put("insufficientEvidenceTopicCount", masteryHighlights.insufficientEvidenceTopicCount());
         return response;
+    }
+
+    private String schedulerStatus(SchedulerProvider.Backlog backlog, int todayCompleted, int dailyTarget,
+                                   OffsetDateTime now) {
+        if (backlog.newItemsPaused()) return "paused";
+        if (todayCompleted >= dailyTarget) return "completed";
+        if (backlog.oldestDueAt() != null && backlog.oldestDueAt().isBefore(now.minusDays(1))) return "overdue";
+        if (backlog.dueCount() > 0) return "due";
+        return "healthy";
+    }
+
+    private String pauseReason(SchedulerProvider.Backlog backlog, TrainingSettings settings, OffsetDateTime now) {
+        if (!backlog.newItemsPaused()) return null;
+        boolean countExceeded = backlog.dueCount() > settings.backlogPauseThreshold();
+        boolean ageExceeded = backlog.oldestDueAt() != null
+            && backlog.oldestDueAt().isBefore(now.minusDays(settings.overduePauseDays()));
+        if (countExceeded && ageExceeded) return "backlog_count_and_overdue_age";
+        if (countExceeded) return "backlog_count";
+        return "overdue_age";
+    }
+
+    private MasteryHighlights masteryHighlights(String userId) {
+        Map<String, TopicPathNode> topicNodes = new HashMap<>();
+        jdbc.sql("""
+                SELECT t.id, t.parent_id, t.name, t.domain_id, d.name AS domain_name
+                FROM topic t JOIN knowledge_domain d ON d.id=t.domain_id
+                WHERE d.user_id=:userId
+                """).param("userId", userId)
+            .query((rs, rowNum) -> new TopicPathNode(rs.getString("id"), rs.getString("parent_id"),
+                rs.getString("name"), rs.getString("domain_id"), rs.getString("domain_name")))
+            .list().forEach(topic -> topicNodes.put(topic.id(), topic));
+
+        List<MasteryInsight> insights = jdbc.sql("""
+                SELECT tm.topic_id, tm.mastery_score, tm.correct_count, tm.wrong_count, tm.last_answered_at
+                FROM topic_mastery tm
+                JOIN topic t ON t.id=tm.topic_id
+                JOIN knowledge_domain d ON d.id=t.domain_id AND d.user_id=:userId
+                WHERE tm.user_id=:userId
+                """).param("userId", userId)
+            .query((rs, rowNum) -> {
+                String topicId = rs.getString("topic_id");
+                TopicPathNode topic = topicNodes.get(topicId);
+                return new MasteryInsight(topicId, topic.name(), topic.domainId(), topic.domainName(),
+                    topicPath(topicId, topicNodes), rs.getInt("mastery_score"), rs.getInt("correct_count"),
+                    rs.getInt("wrong_count"), rs.getObject("last_answered_at", OffsetDateTime.class));
+            }).list();
+
+        List<Map<String, Object>> weakTopics = insights.stream()
+            .filter(topic -> topic.attemptCount() >= WEAK_MIN_ATTEMPTS && topic.masteryScore() < WEAK_MASTERY_THRESHOLD)
+            .sorted(Comparator.comparingInt(MasteryInsight::masteryScore)
+                .thenComparing(Comparator.comparingInt(MasteryInsight::wrongCount).reversed())
+                .thenComparing(Comparator.comparingInt(MasteryInsight::attemptCount).reversed()))
+            .limit(MASTERY_LIST_LIMIT).map(this::masteryReportRow).toList();
+        List<Map<String, Object>> strongTopics = insights.stream()
+            .filter(topic -> topic.attemptCount() >= STRONG_MIN_ATTEMPTS && topic.masteryScore() >= STRONG_MASTERY_THRESHOLD)
+            .sorted(Comparator.comparingInt(MasteryInsight::masteryScore).reversed()
+                .thenComparing(Comparator.comparingInt(MasteryInsight::correctCount).reversed())
+                .thenComparing(Comparator.comparingInt(MasteryInsight::attemptCount).reversed()))
+            .limit(MASTERY_LIST_LIMIT).map(this::masteryReportRow).toList();
+        List<MasteryInsight> insufficientEvidence = insights.stream()
+            .filter(topic -> !isWeak(topic) && !isStrong(topic) && topic.attemptCount() < STRONG_MIN_ATTEMPTS)
+            .sorted(Comparator.comparingInt(MasteryInsight::attemptCount).reversed()
+                .thenComparing(MasteryInsight::lastAnsweredAt, Comparator.reverseOrder()))
+            .toList();
+        return new MasteryHighlights(weakTopics, strongTopics,
+            insufficientEvidence.stream().limit(MASTERY_LIST_LIMIT).map(this::masteryReportRow).toList(),
+            insufficientEvidence.size());
+    }
+
+    private boolean isWeak(MasteryInsight topic) {
+        return topic.attemptCount() >= WEAK_MIN_ATTEMPTS && topic.masteryScore() < WEAK_MASTERY_THRESHOLD;
+    }
+
+    private boolean isStrong(MasteryInsight topic) {
+        return topic.attemptCount() >= STRONG_MIN_ATTEMPTS && topic.masteryScore() >= STRONG_MASTERY_THRESHOLD;
+    }
+
+    private String topicPath(String topicId, Map<String, TopicPathNode> topicNodes) {
+        List<String> names = new ArrayList<>();
+        Set<String> visited = new LinkedHashSet<>();
+        TopicPathNode current = topicNodes.get(topicId);
+        while (current != null && visited.add(current.id())) {
+            names.add(0, current.name());
+            current = current.parentId() == null ? null : topicNodes.get(current.parentId());
+        }
+        return String.join(" / ", names);
+    }
+
+    private Map<String, Object> masteryReportRow(MasteryInsight topic) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("topic_id", topic.topicId());
+        row.put("name", topic.name());
+        row.put("domain_id", topic.domainId());
+        row.put("domain_name", topic.domainName());
+        row.put("topic_path", topic.topicPath());
+        row.put("mastery_score", topic.masteryScore());
+        row.put("correct_count", topic.correctCount());
+        row.put("wrong_count", topic.wrongCount());
+        row.put("attempt_count", topic.attemptCount());
+        row.put("last_answered_at", topic.lastAnsweredAt());
+        return row;
     }
 
     public SchedulerProvider.Backlog backlog(String domainId) {
@@ -821,4 +964,15 @@ public class TrainingService {
     private record ScheduledQuestion(String id, int version, String status, int correctCount,
                                      int wrongCount, OffsetDateTime nextReviewAt) {}
     private record DomainSelection(String id, String name) {}
+    private record TopicPathNode(String id, String parentId, String name, String domainId, String domainName) {}
+    private record MasteryInsight(String topicId, String name, String domainId, String domainName, String topicPath,
+                                  int masteryScore, int correctCount, int wrongCount, OffsetDateTime lastAnsweredAt) {
+        int attemptCount() {
+            return correctCount + wrongCount;
+        }
+    }
+    private record MasteryHighlights(List<Map<String, Object>> weakTopics,
+                                     List<Map<String, Object>> strongTopics,
+                                     List<Map<String, Object>> insufficientEvidenceTopics,
+                                     int insufficientEvidenceTopicCount) {}
 }

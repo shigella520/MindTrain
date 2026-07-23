@@ -64,7 +64,9 @@ public class TrainerTools {
             ), List.of("questionId", "expectedVersion", "changes", "reason"))));
         tools.add(tool("finish_training_session", "Finish a session and persist its summary.",
             schema(Map.of("sessionId", string("Session ID")), List.of("sessionId"))));
-        tools.add(tool("get_learning_report", "Get learning, backlog and content overview metrics.", schema(Map.of(), List.of())));
+        tools.add(tool("get_learning_report",
+            "Get live daily progress, review and new-item counts, scheduler status, content inventory, and mastery classifications.",
+            schema(Map.of(), List.of())));
         tools.add(tool("get_scheduler_backlog", "Get due backlog and current new-item allowance.",
             schema(Map.of("domainId", string("Optional training domain filter")), List.of())));
         tools.add(tool("list_knowledge_domains", "List the authenticated user's training domains and catalog coverage.",
