@@ -16,7 +16,7 @@
 - `create_candidate_question`: saves a complete temporary candidate for the owning session. A main candidate must match the issued `generationProfile`; Core rejects type or difficulty mismatches. Answered candidates become ordinary reusable questions.
 - `revise_saved_question`: creates an immutable next active version after explicit user approval. Send `questionId`, `expectedVersion`, changed fields, `reason`, and the source Assignment when available.
 - `finish_training_session`: finishes a session.
-- `get_learning_report`: returns learning and content overview metrics.
+- `get_learning_report`: returns a live daily snapshot (`todayCompletedMainQuestions`, `todayCorrectMainQuestions`, `todayAccuracy`, `todayReviewCompleted`, `todayNewItemsIntroduced`, `todayCompletedSessions`), backlog and `schedulerStatus`, content inventory (`reviewableQuestionCount`, `unseenQuestionCount`), and three mastery classifications. `newBudget` is a per-session policy limit; do not describe `newItemAllowance` as a daily remaining quota. `weakTopics` requires at least 2 attempts and mastery below 60; `strongTopics` requires at least 3 attempts and mastery at least 75; `insufficientEvidenceTopics` must be described as still accumulating evidence, not as weak or strong.
 - `get_scheduler_backlog`: returns due backlog and new-item allowance, optionally filtered by `domainId`.
 
 Assignment payloads intentionally exclude `correctOptionIds`, explanations, and sources. Keep the returned assignment ID until an answer succeeds. Use a stable idempotency key when retrying the same write.

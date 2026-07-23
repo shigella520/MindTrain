@@ -211,7 +211,11 @@ def tool_definitions():
             "Finish a session and persist its summary.",
             schema({"sessionId": string_property("Session ID")}, ("sessionId",)),
         ),
-        tool("get_learning_report", "Get learning, backlog and content overview metrics.", schema({})),
+        tool(
+            "get_learning_report",
+            "Get live daily progress, review and new-item counts, scheduler status, content inventory, and mastery classifications.",
+            schema({}),
+        ),
         tool(
             "get_scheduler_backlog",
             "Get due backlog and current new-item allowance.",

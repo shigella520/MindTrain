@@ -224,16 +224,28 @@ class TrainingFlowIntegrationTest {
             .andExpect(jsonPath("$.attempts").value(3))
             .andExpect(jsonPath("$.accuracy").value(1.0))
             .andExpect(jsonPath("$.todayCompletedMainQuestions").value(2))
+            .andExpect(jsonPath("$.todayCorrectMainQuestions").value(2))
+            .andExpect(jsonPath("$.todayAccuracy").value(1.0))
+            .andExpect(jsonPath("$.todayReviewCompleted").value(0))
+            .andExpect(jsonPath("$.todayNewItemsIntroduced").value(2))
+            .andExpect(jsonPath("$.todayCompletedSessions").value(0))
             .andExpect(jsonPath("$.dailyTarget").value(10))
             .andExpect(jsonPath("$.reviewBudget").value(8))
             .andExpect(jsonPath("$.newBudget").value(2))
             .andExpect(jsonPath("$.reportingTimeZone").value("Asia/Shanghai"))
             .andExpect(jsonPath("$.schedulerProvider").value("weighted"))
             .andExpect(jsonPath("$.schedulerProviderName").value("加权调度"))
+            .andExpect(jsonPath("$.schedulerStatus").value("healthy"))
             .andExpect(jsonPath("$.activeQuestions").value(3))
+            .andExpect(jsonPath("$.reviewableQuestionCount").value(3))
+            .andExpect(jsonPath("$.unseenQuestionCount").value(0))
             .andExpect(jsonPath("$.pendingGeneratedQuestions").value(0))
             .andExpect(jsonPath("$.knowledgeDomainCount").value(1))
-            .andExpect(jsonPath("$.knowledgeTopicCount").value(1));
+            .andExpect(jsonPath("$.knowledgeTopicCount").value(1))
+            .andExpect(jsonPath("$.weakTopics.length()").value(0))
+            .andExpect(jsonPath("$.strongTopics.length()").value(1))
+            .andExpect(jsonPath("$.strongTopics[0].attempt_count").value(3))
+            .andExpect(jsonPath("$.insufficientEvidenceTopicCount").value(0));
 
         JsonNode abandoned = candidate(topicId, "candidate.abandoned." + UUID.randomUUID(),
             shortageGeneration.path("generationProfile").path("questionType").asText(),

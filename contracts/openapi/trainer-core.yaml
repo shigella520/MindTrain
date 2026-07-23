@@ -133,7 +133,10 @@ paths:
       description: 默认要求 Bearer Token；仅当实例显式开启公开看板时允许匿名读取聚合统计。
       responses:
         '200':
-          description: 学习与内容概览；包含按 reportingTimeZone 统计的今日主问题数、每日目标、调度配额，以及不泄露目录详情的领域与知识点聚合数量。
+          description: 学习与内容概览；包含按 reportingTimeZone 统计的今日主问题数、每日目标、调度配额，以及有最低样本门槛的待加强、擅长和数据积累中知识点。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LearningReport'}
   /api/v1/schedulers/backlog:
     get:
       operationId: getSchedulerBacklog
@@ -296,6 +299,56 @@ paths:
         '200': {description: Compatibility response}
 components:
   schemas:
+    MasteryTopic:
+      type: object
+      required: [topic_id, name, domain_id, domain_name, topic_path, mastery_score, correct_count, wrong_count, attempt_count, last_answered_at]
+      properties:
+        topic_id: {type: string}
+        name: {type: string}
+        domain_id: {type: string}
+        domain_name: {type: string}
+        topic_path: {type: string, description: 不包含领域名称的完整知识点路径}
+        mastery_score: {type: integer, minimum: 0, maximum: 100}
+        correct_count: {type: integer, minimum: 0}
+        wrong_count: {type: integer, minimum: 0}
+        attempt_count: {type: integer, minimum: 1}
+        last_answered_at: {type: string, format: date-time}
+    LearningReport:
+      type: object
+      required: [attempts, correct, accuracy, todayCompletedMainQuestions, todayCorrectMainQuestions, todayAccuracy, todayReviewCompleted, todayNewItemsIntroduced, todayCompletedSessions, dailyTarget, dueCount, newItemsPaused, schedulerStatus, activeQuestions, reviewableQuestionCount, unseenQuestionCount, weakTopics, strongTopics, insufficientEvidenceTopics, insufficientEvidenceTopicCount]
+      properties:
+        attempts: {type: integer, minimum: 0}
+        correct: {type: integer, minimum: 0}
+        accuracy: {type: number, minimum: 0, maximum: 1}
+        todayCompletedMainQuestions: {type: integer, minimum: 0}
+        todayCorrectMainQuestions: {type: integer, minimum: 0}
+        todayAccuracy: {type: number, minimum: 0, maximum: 1}
+        todayReviewCompleted: {type: integer, minimum: 0}
+        todayNewItemsIntroduced: {type: integer, minimum: 0, description: 报表日内创建且未被拒绝的 main new/candidate Assignment 数量}
+        todayCompletedSessions: {type: integer, minimum: 0}
+        dailyTarget: {type: integer, minimum: 1}
+        dueCount: {type: integer, minimum: 0}
+        oldestDueAt: {type: string, format: date-time}
+        newItemsPaused: {type: boolean}
+        schedulerStatus: {type: string, enum: [healthy, due, overdue, paused, completed]}
+        newItemsPauseReason: {type: string, enum: [backlog_count, overdue_age, backlog_count_and_overdue_age]}
+        activeQuestions: {type: integer, minimum: 0}
+        reviewableQuestionCount: {type: integer, minimum: 0}
+        unseenQuestionCount: {type: integer, minimum: 0}
+        weakTopics:
+          type: array
+          description: 最多 5 个；至少作答 2 次且掌握度低于 60。
+          items: {$ref: '#/components/schemas/MasteryTopic'}
+        strongTopics:
+          type: array
+          description: 最多 5 个；至少作答 3 次且掌握度不低于 75。
+          items: {$ref: '#/components/schemas/MasteryTopic'}
+        insufficientEvidenceTopics:
+          type: array
+          description: 最多 5 个尚未达到分类样本门槛的知识点。
+          items: {$ref: '#/components/schemas/MasteryTopic'}
+        insufficientEvidenceTopicCount: {type: integer, minimum: 0}
+      additionalProperties: true
     CatalogPreviewRequest:
       type: object
       required: [originType, proposal]

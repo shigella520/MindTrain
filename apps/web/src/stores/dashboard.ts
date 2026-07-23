@@ -9,6 +9,11 @@ const EMPTY_OVERVIEW: Overview = {
   correct: 0,
   accuracy: 0,
   todayCompletedMainQuestions: 0,
+  todayCorrectMainQuestions: 0,
+  todayAccuracy: 0,
+  todayReviewCompleted: 0,
+  todayNewItemsIntroduced: 0,
+  todayCompletedSessions: 0,
   dailyTarget: 0,
   reviewBudget: 0,
   newBudget: 0,
@@ -17,13 +22,19 @@ const EMPTY_OVERVIEW: Overview = {
   dueCount: 0,
   newItemAllowance: 0,
   newItemsPaused: false,
+  schedulerStatus: 'healthy',
   schedulerProvider: DEFAULT_SCHEDULER_PROVIDER_ID,
   schedulerProviderName: schedulerProviderName(DEFAULT_SCHEDULER_PROVIDER_ID),
   activeQuestions: 0,
+  reviewableQuestionCount: 0,
+  unseenQuestionCount: 0,
   pendingGeneratedQuestions: 0,
   knowledgeDomainCount: 0,
   knowledgeTopicCount: 0,
   weakTopics: [],
+  strongTopics: [],
+  insufficientEvidenceTopics: [],
+  insufficientEvidenceTopicCount: 0,
 }
 
 export const useDashboardStore = defineStore('dashboard', () => {
@@ -38,7 +49,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loading.value = true
     error.value = ''
     try {
-      overview.value = await coreApi.overview()
+      overview.value = { ...EMPTY_OVERVIEW, ...await coreApi.overview() }
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : '无法连接 Training Core'
     } finally {

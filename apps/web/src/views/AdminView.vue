@@ -92,7 +92,7 @@ onMounted(() => {
       <section id="overview" class="admin-panel">
         <div class="panel-head"><div><p class="card-kicker">OVERVIEW</p><h1>内容与训练概览</h1></div><span class="state-badge">Single user</span></div>
         <div class="admin-stat-grid">
-          <article><FileQuestion :size="22" /><span>可复习题</span><strong>{{ dashboard.overview.activeQuestions }}</strong></article>
+          <article><FileQuestion :size="22" /><span>已学习可复习</span><strong>{{ dashboard.overview.reviewableQuestionCount }}</strong></article>
           <article><BookCopy :size="22" /><span>待答 AI 题</span><strong>{{ dashboard.overview.pendingGeneratedQuestions }}</strong></article>
           <article><CircleGauge :size="22" /><span>累计作答</span><strong>{{ dashboard.overview.attempts }}</strong></article>
           <article><Database :size="22" /><span>完成会话</span><strong>{{ dashboard.overview.completedSessions }}</strong></article>
@@ -159,7 +159,9 @@ onMounted(() => {
           <table>
             <thead><tr><th>资产类型</th><th>数量</th><th>当前边界</th><th>状态</th></tr></thead>
             <tbody>
-              <tr><td>可复习题</td><td>{{ dashboard.overview.activeQuestions }}</td><td>可跨会话调度</td><td><span class="table-status success">普通题</span></td></tr>
+              <tr><td>生效题目</td><td>{{ dashboard.overview.activeQuestions }}</td><td>已学习与尚未学习题目的总量</td><td><span class="table-status success">普通题</span></td></tr>
+              <tr><td>已学习可复习</td><td>{{ dashboard.overview.reviewableQuestionCount }}</td><td>已有学习记录，可由 Scheduler 安排复习</td><td><span class="table-status success">已学习</span></td></tr>
+              <tr><td>尚未学习</td><td>{{ dashboard.overview.unseenQuestionCount }}</td><td>尚无作答记录，等待后续引入</td><td><span class="table-status">未学习</span></td></tr>
               <tr><td>待答 AI 题</td><td>{{ dashboard.overview.pendingGeneratedQuestions }}</td><td>拒绝时物理删除，回答后转普通题</td><td><span class="table-status warning">临时</span></td></tr>
               <tr><td>知识目录</td><td>{{ knowledgeCatalogSummary(dashboard.overview.knowledgeDomainCount, dashboard.overview.knowledgeTopicCount) }}</td><td>领域、知识点树、搜索和来源详情</td><td><span class="table-status success">可查询</span></td></tr>
             </tbody>
@@ -168,15 +170,32 @@ onMounted(() => {
       </section>
 
       <section id="topics" class="admin-panel">
-        <div class="panel-head"><div><p class="card-kicker">WEAK TOPICS</p><h2>优先治理知识点</h2></div></div>
-        <div v-if="dashboard.overview.weakTopics.length" class="weak-topic-list">
-          <article v-for="topic in dashboard.overview.weakTopics" :key="topic.topic_id">
-            <div><strong>{{ topic.name || topic.topic_id }}</strong><span>{{ topic.correct_count }} 正确 · {{ topic.wrong_count }} 错误</span></div>
-            <div class="mastery-bar"><i :style="{ width: `${topic.mastery_score}%` }"></i></div>
-            <em>{{ topic.mastery_score }}</em>
-          </article>
+        <div class="panel-head"><div><p class="card-kicker">MASTERY CLASSIFICATION</p><h2>知识掌握分类</h2></div></div>
+        <div class="admin-mastery-grid">
+          <section>
+            <h3>待加强</h3>
+            <div v-if="dashboard.overview.weakTopics.length" class="weak-topic-list">
+              <article v-for="topic in dashboard.overview.weakTopics" :key="topic.topic_id">
+                <div><strong>{{ topic.topic_path }}</strong><span>{{ topic.domain_name }} · {{ topic.correct_count }} 正确 / {{ topic.wrong_count }} 错误</span></div>
+                <div class="mastery-bar"><i :style="{ width: `${topic.mastery_score}%` }"></i></div>
+                <em>{{ topic.mastery_score }}</em>
+              </article>
+            </div>
+            <div v-else class="empty-panel compact"><strong>暂无待加强内容</strong><span>至少作答 2 次后参与判断。</span></div>
+          </section>
+          <section>
+            <h3>擅长</h3>
+            <div v-if="dashboard.overview.strongTopics.length" class="weak-topic-list strong-topic-list">
+              <article v-for="topic in dashboard.overview.strongTopics" :key="topic.topic_id">
+                <div><strong>{{ topic.topic_path }}</strong><span>{{ topic.domain_name }} · {{ topic.correct_count }} 正确 / {{ topic.wrong_count }} 错误</span></div>
+                <div class="mastery-bar"><i :style="{ width: `${topic.mastery_score}%` }"></i></div>
+                <em>{{ topic.mastery_score }}</em>
+              </article>
+            </div>
+            <div v-else class="empty-panel compact"><strong>尚未形成擅长项</strong><span>至少作答 3 次且掌握度达到 75。</span></div>
+          </section>
         </div>
-        <div v-else class="empty-panel"><strong>暂无薄弱知识点</strong><span>完成训练后自动形成聚合掌握度。</span></div>
+        <p v-if="dashboard.overview.insufficientEvidenceTopicCount" class="mastery-evidence-note">另有 {{ dashboard.overview.insufficientEvidenceTopicCount }} 个知识点正在积累样本。</p>
       </section>
 
       <section id="service" class="admin-panel">
@@ -184,7 +203,7 @@ onMounted(() => {
         <div class="service-list">
           <article><span class="service-icon"><ServerCog :size="20" /></span><div><strong>Training Core</strong><em>{{ config.apiBaseUrl }}</em></div><span class="table-status" :class="dashboard.error ? 'danger' : 'success'">{{ dashboard.error ? '不可用' : '已连接' }}</span></article>
           <article><span class="service-icon"><Database :size="20" /></span><div><strong>PostgreSQL</strong><em>当前页面不单独探测数据库</em></div><span class="table-status">由 Core 管理</span></article>
-          <article><span class="service-icon"><CircleGauge :size="20" /></span><div><strong>{{ dashboard.schedulerName }}</strong><em>到期 {{ dashboard.overview.dueCount }} · 新题额度 {{ dashboard.overview.newItemAllowance }}</em></div><span class="table-status" :class="dashboard.error ? 'danger' : 'success'">{{ dashboard.error ? '不可用' : '运行中' }}</span></article>
+          <article><span class="service-icon"><CircleGauge :size="20" /></span><div><strong>{{ dashboard.schedulerName }}</strong><em>到期 {{ dashboard.overview.dueCount }} · 每轮新题上限 {{ dashboard.overview.newBudget }}</em></div><span class="table-status" :class="dashboard.error ? 'danger' : 'success'">{{ dashboard.error ? '不可用' : '运行中' }}</span></article>
         </div>
       </section>
     </div>

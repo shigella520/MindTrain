@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class SchedulerBacklogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcClient jdbc;
@@ -56,6 +56,9 @@ class SchedulerBacklogIntegrationTest {
             .andExpect(jsonPath("$.dailyTarget").value(10))
             .andExpect(jsonPath("$.reviewBudget").value(8))
             .andExpect(jsonPath("$.newBudget").value(2))
+            .andExpect(jsonPath("$.todayReviewCompleted").value(0))
+            .andExpect(jsonPath("$.todayNewItemsIntroduced").value(0))
+            .andExpect(jsonPath("$.schedulerStatus").value("healthy"))
             .andExpect(jsonPath("$.reportingTimeZone").value("Asia/Shanghai"));
     }
 
@@ -88,5 +91,10 @@ class SchedulerBacklogIntegrationTest {
             .andExpect(jsonPath("$.dueCount").value(21))
             .andExpect(jsonPath("$.newItemAllowance").value(0))
             .andExpect(jsonPath("$.newItemsPaused").value(true));
+
+        mvc.perform(get("/api/v1/reports/overview"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.schedulerStatus").value("paused"))
+            .andExpect(jsonPath("$.newItemsPauseReason").value("backlog_count_and_overdue_age"));
     }
 }
