@@ -274,15 +274,20 @@ docker compose down
 | 了解 Dashboard、Web 训练和视觉设计 | [Web 设计](doc/Web设计.md) |
 | 创建、查询领域与知识点树 | [知识目录](doc/知识目录.md) |
 | 查看 REST API | [Training Core OpenAPI](contracts/openapi/trainer-core.yaml) |
-| 查看产品目标、架构与仓库边界 | [目标需求](doc/目标需求.md) · [概要设计](doc/概要设计.md) · [仓库目录规划](doc/仓库目录规划.md) |
+| 查看产品方向、架构与仓库边界 | [产品路线图](doc/产品路线图.md) · [目标需求](doc/目标需求.md) · [概要设计](doc/概要设计.md) · [仓库目录规划](doc/仓库目录规划.md) |
 | 查看 Skill 工作流 | [MindTrain Plugin Skill](plugins/mindtrain/skills/mindtrain/SKILL.md) |
 
 ## 路线图
 
-- 扩充领域无关 Knowledge Pack 和内容管理能力。
-- 完善 Web 题库治理、近期会话和训练洞察。
-- 接入 Anki Bridge 与 FSRS Scheduler Provider。
-- 增加备份恢复、导入导出和多用户能力。
+MindTrain 1.0 已完成私有部署、领域初始化、对话式训练、加权调度和动态学习看板。后续按依赖关系推进：
+
+1. 完善题库治理、复习明细、近期会话和训练趋势。
+2. 增加备份恢复，以及训练内容与个人学习记录的独立导入导出。
+3. 扩展来源治理、内容质量评测和可验证的新题型。
+4. 在 Core 调度契约稳定后接入 FSRS Provider 与可选 Anki Bridge。
+5. 最后扩展多用户、权限和共享领域治理。
+
+详细阶段目标、完成标准和非目标见[产品路线图](doc/产品路线图.md)。
 
 欢迎通过 Issue 提交使用反馈、题目质量问题和新的知识领域建议。
 

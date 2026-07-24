@@ -274,15 +274,20 @@ Training round size, new-question budget, backlog limits, temporary-question lif
 | Understand the Dashboard, Web training, and visual design | [Web design](doc/Web设计.md) |
 | Create and query domains and topic trees | [Knowledge Catalog](doc/知识目录.md) |
 | Read the REST API | [Training Core OpenAPI](contracts/openapi/trainer-core.yaml) |
-| Read product goals, architecture, and repository boundaries | [Product requirements](doc/目标需求.md) · [Architecture](doc/概要设计.md) · [Repository structure](doc/仓库目录规划.md) |
+| Read product direction, architecture, and repository boundaries | [Product roadmap](doc/产品路线图.md) · [Product requirements](doc/目标需求.md) · [Architecture](doc/概要设计.md) · [Repository structure](doc/仓库目录规划.md) |
 | Read the Skill workflow | [MindTrain Plugin Skill](plugins/mindtrain/skills/mindtrain/SKILL.md) |
 
 ## Roadmap
 
-- Expand domain-independent Knowledge Packs and content-management capabilities.
-- Improve Web question governance, recent sessions, and training insights.
-- Add Anki Bridge and an FSRS Scheduler Provider.
-- Add backup and restore, import and export, and multi-user support.
+MindTrain 1.0 established private deployment, domain initialization, conversational training, weighted scheduling, and a live learning dashboard. Development now follows these dependencies:
+
+1. Complete question governance, review details, recent sessions, and learning trends.
+2. Add backup and restore, with separate import and export for training content and private learning records.
+3. Expand source governance, content-quality evaluation, and verifiable question types.
+4. Add an FSRS Provider and optional Anki Bridge after the Core scheduling contract is stable.
+5. Extend the platform to multi-user permissions and shared-domain governance last.
+
+See the [product roadmap](doc/产品路线图.md) for stage outcomes, completion criteria, and explicit non-goals.
 
 Issues are welcome for usage feedback, question-quality reports, and suggestions for new knowledge domains.
 
