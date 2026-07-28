@@ -174,7 +174,6 @@ public class CatalogService {
     public List<DomainSummary> domains(String query) {
         String normalized = lower(query);
         Map<String, Set<String>> questionIds = activeQuestionIds();
-        Map<String, Integer> questionCounts = questionCounts(questionIds);
         List<DomainSummary> result = new ArrayList<>();
         for (DomainRow domain : domainRows()) {
             List<TopicRow> topics = topicRows(domain.id());
@@ -191,7 +190,7 @@ public class CatalogService {
         DomainRow domain = requireDomain(domainId);
         List<TopicRow> topics = topicRows(domainId);
         Map<String, Set<String>> questionIds = activeQuestionIds();
-        Map<String, Integer> questionCounts = questionCounts(questionIds);
+        Map<String, Integer> questionCounts = subtreeQuestionCounts(topics, questionIds);
         Map<String, Integer> mastery = masteryScores();
         Map<String, List<TopicNode>> children = new HashMap<>();
         for (TopicRow topic : topics) {
@@ -215,12 +214,13 @@ public class CatalogService {
         Map<String, DomainRow> domains = new LinkedHashMap<>();
         domainRows().forEach(domain -> domains.put(domain.id(), domain));
         if (!blank(domainId) && !domains.containsKey(domainId)) requireDomain(domainId);
-        Map<String, Integer> questionCounts = questionCounts(activeQuestionIds());
+        Map<String, Set<String>> questionIds = activeQuestionIds();
         Map<String, Integer> mastery = masteryScores();
         List<TopicSearchResult> matches = new ArrayList<>();
         for (DomainRow domain : domains.values()) {
             if (!blank(domainId) && !domain.id().equals(domainId)) continue;
             List<TopicRow> topics = topicRows(domain.id());
+            Map<String, Integer> questionCounts = subtreeQuestionCounts(topics, questionIds);
             Map<String, TopicRow> byId = new HashMap<>();
             topics.forEach(topic -> byId.put(topic.id(), topic));
             for (TopicRow topic : topics) {
@@ -244,7 +244,7 @@ public class CatalogService {
         List<TopicRow> all = topicRows(domain.id());
         Map<String, TopicRow> byId = new HashMap<>();
         all.forEach(item -> byId.put(item.id(), item));
-        Map<String, Integer> questionCounts = questionCounts(activeQuestionIds());
+        Map<String, Integer> questionCounts = subtreeQuestionCounts(all, activeQuestionIds());
         Map<String, Integer> mastery = masteryScores();
         List<TopicNode> children = all.stream().filter(item -> topic.id().equals(item.parentId()))
             .sorted(topicOrder()).map(item -> node(item, questionCounts, mastery, List.of())).toList();
@@ -487,10 +487,31 @@ public class CatalogService {
         return result;
     }
 
-    private Map<String, Integer> questionCounts(Map<String, Set<String>> questionIds) {
+    private Map<String, Integer> subtreeQuestionCounts(List<TopicRow> topics,
+                                                        Map<String, Set<String>> directQuestionIds) {
+        Map<String, List<String>> children = new HashMap<>();
+        topics.forEach(topic -> children.computeIfAbsent(topic.parentId(), ignored -> new ArrayList<>()).add(topic.id()));
+        Map<String, Set<String>> memo = new HashMap<>();
         Map<String, Integer> counts = new HashMap<>();
-        questionIds.forEach((topicId, ids) -> counts.put(topicId, ids.size()));
+        topics.forEach(topic -> counts.put(topic.id(), subtreeQuestionIds(topic.id(), children,
+            directQuestionIds, memo, new HashSet<>()).size()));
         return counts;
+    }
+
+    private Set<String> subtreeQuestionIds(String topicId, Map<String, List<String>> children,
+                                           Map<String, Set<String>> directQuestionIds,
+                                           Map<String, Set<String>> memo, Set<String> visiting) {
+        Set<String> cached = memo.get(topicId);
+        if (cached != null) return cached;
+        if (!visiting.add(topicId)) return Set.of();
+        Set<String> ids = new HashSet<>(directQuestionIds.getOrDefault(topicId, Set.of()));
+        for (String childId : children.getOrDefault(topicId, List.of())) {
+            ids.addAll(subtreeQuestionIds(childId, children, directQuestionIds, memo, visiting));
+        }
+        visiting.remove(topicId);
+        Set<String> result = Set.copyOf(ids);
+        memo.put(topicId, result);
+        return result;
     }
 
     private int domainQuestionCount(List<TopicRow> topics, Map<String, Set<String>> questionIds) {

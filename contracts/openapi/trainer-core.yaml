@@ -407,7 +407,7 @@ components:
         originType: {type: string, enum: [local_reference, ai_dialogue, legacy]}
         rootTopicCount: {type: integer, minimum: 0}
         topicCount: {type: integer, minimum: 0}
-        activeQuestionCount: {type: integer, minimum: 0}
+        activeQuestionCount: {type: integer, minimum: 0, description: 领域内去重后的有效题目总数}
     UpdateTrainingSettings:
       type: object
       required: [questionCount, newBudget, backlogPauseThreshold, overduePauseDays, pendingCandidateTtlHours, reportingTimeZone]

@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -148,6 +151,66 @@ class CatalogImportIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.domainName").value("Kubernetes"))
             .andExpect(jsonPath("$.keywords[0]").value("rollout"));
+    }
+
+    @Test
+    void aggregatesDistinctActiveQuestionsAcrossTopicSubtrees() throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        String domainId = "recursive-domain-" + suffix;
+        String rootId = "recursive-root-" + suffix;
+        String branchId = "recursive-branch-" + suffix;
+        String leafAId = "recursive-leaf-a-" + suffix;
+        String leafBId = "recursive-leaf-b-" + suffix;
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        jdbc.sql("""
+                INSERT INTO knowledge_domain(id,user_id,name,content_json,created_at,origin_type,sort_order,updated_at)
+                VALUES (:id,'test-user','Recursive Domain','{}',:now,'ai_dialogue',0,:now)
+                """).param("id", domainId).param("now", now).update();
+        insertTopic(rootId, domainId, null, "Root", "group", 0, now);
+        insertTopic(branchId, domainId, rootId, "Branch", "group", 0, now);
+        insertTopic(leafAId, domainId, branchId, "Leaf A", "leaf", 0, now);
+        insertTopic(leafBId, domainId, branchId, "Leaf B", "leaf", 1, now);
+        insertQuestion("recursive-question-a-" + suffix, domainId, List.of(leafAId), now);
+        insertQuestion("recursive-question-shared-" + suffix, domainId, List.of(leafAId, leafBId), now);
+        insertQuestion("recursive-question-root-" + suffix, domainId, List.of(rootId), now);
+
+        mvc.perform(get("/api/v1/catalog/domains/{id}/tree", domainId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.domain.activeQuestionCount").value(3))
+            .andExpect(jsonPath("$.roots[0].activeQuestionCount").value(3))
+            .andExpect(jsonPath("$.roots[0].children[0].activeQuestionCount").value(2))
+            .andExpect(jsonPath("$.roots[0].children[0].children[0].activeQuestionCount").value(2))
+            .andExpect(jsonPath("$.roots[0].children[0].children[1].activeQuestionCount").value(1));
+        mvc.perform(get("/api/v1/catalog/topics/search").param("q", "Branch").param("domainId", domainId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].activeQuestionCount").value(2));
+        mvc.perform(get("/api/v1/catalog/topics/{id}", branchId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.activeQuestionCount").value(2))
+            .andExpect(jsonPath("$.children[0].activeQuestionCount").value(2))
+            .andExpect(jsonPath("$.children[1].activeQuestionCount").value(1));
+    }
+
+    private void insertTopic(String id, String domainId, String parentId, String name, String kind,
+                             int sortOrder, OffsetDateTime now) {
+        jdbc.sql("""
+                INSERT INTO topic(id,domain_id,parent_id,name,kind,importance,content_json,sort_order,created_at,updated_at)
+                VALUES (:id,:domainId,:parentId,:name,:kind,3,'{}',:sortOrder,:now,:now)
+                """).param("id", id).param("domainId", domainId).param("parentId", parentId)
+            .param("name", name).param("kind", kind).param("sortOrder", sortOrder).param("now", now).update();
+    }
+
+    private void insertQuestion(String id, String domainId, List<String> topicIds, OffsetDateTime now)
+            throws Exception {
+        jdbc.sql("""
+                INSERT INTO question(id,user_id,domain_id,status,current_version,created_at)
+                VALUES (:id,'test-user',:domainId,'active',1,:now)
+                """).param("id", id).param("domainId", domainId).param("now", now).update();
+        jdbc.sql("""
+                INSERT INTO question_version(question_id,version,type,topic_ids_json,content_json,created_at)
+                VALUES (:id,1,'single_choice',:topicIds,'{}',:now)
+                """).param("id", id).param("topicIds", objectMapper.writeValueAsString(topicIds))
+            .param("now", now).update();
     }
 
     private String proposal(String suffix) {
