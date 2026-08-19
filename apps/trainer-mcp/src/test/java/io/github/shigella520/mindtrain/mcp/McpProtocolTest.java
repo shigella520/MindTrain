@@ -38,7 +38,7 @@ class McpProtocolTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.result.protocolVersion").value("2025-03-26"))
             .andExpect(jsonPath("$.result.capabilities.tools").exists())
-            .andExpect(jsonPath("$.result.serverInfo.version").value("1.0.0"))
+            .andExpect(jsonPath("$.result.serverInfo.version").value("1.0.1"))
             .andExpect(jsonPath("$.result._meta.mindtrainCompatibility.contractVersion").value(1))
             .andExpect(jsonPath("$.result._meta.mindtrainCompatibility.minimumPluginVersion").value("0.2.0"));
 
@@ -208,7 +208,7 @@ class McpProtocolTest {
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticatedPost() {
         return post("/mcp")
             .header(HttpHeaders.AUTHORIZATION, "Bearer test-mcp-token")
-            .header(McpCompatibility.PLUGIN_VERSION_HEADER, "1.0.0")
+            .header(McpCompatibility.PLUGIN_VERSION_HEADER, "1.0.1")
             .header(McpCompatibility.CONTRACT_VERSION_HEADER, "1");
     }
 }
