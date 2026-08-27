@@ -35,9 +35,9 @@ class QuestionBankIntegrationTest {
         TestFixtures.insertTopicAndActiveQuestion(jdbc, objectMapper, domainId, topicId, "Bank topic", 3,
             question(id, topicId));
 
-        mvc.perform(get("/api/v1/questions"))
+        mvc.perform(get("/api/v1/questions").param("domainId", domainId))
             .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
-        mvc.perform(get("/api/v1/questions").param("learningState", "unseen"))
+        mvc.perform(get("/api/v1/questions").param("domainId", domainId).param("learningState", "unseen"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
             .andExpect(jsonPath("$.items[0].id").value(id))
             .andExpect(jsonPath("$.items[0].correctOptionIds").doesNotExist());
