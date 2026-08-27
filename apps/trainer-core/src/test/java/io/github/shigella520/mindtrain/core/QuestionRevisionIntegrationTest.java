@@ -2,6 +2,7 @@ package io.github.shigella520.mindtrain.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -115,6 +116,30 @@ class QuestionRevisionIntegrationTest {
                 .content(objectMapper.writeValueAsString(invalid)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("revision_changes_invalid"));
+
+        String reboundQuestionId = "java.concurrency.rebind." + UUID.randomUUID();
+        insertActiveQuestion(reboundQuestionId);
+        String reboundSessionId = createSession();
+        JsonNode reboundAssignment = json(mvc.perform(post("/api/v1/sessions/{id}/assignments/next", reboundSessionId)
+                .header("Idempotency-Key", "revision-rebind-next"))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("assignment");
+        String reboundAssignmentId = reboundAssignment.path("assignmentId").asText();
+        mvc.perform(get("/api/v1/questions/{id}/revision-context", reboundQuestionId)
+                .param("assignmentId", reboundAssignmentId).param("expectedVersion", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.question.correctOptionIds[0]").value("A"));
+
+        JsonNode reboundRequest = objectMapper.createObjectNode()
+            .put("expectedVersion", 1).put("reason", "修订后重新展示当前待答题")
+            .put("sourceAssignmentId", reboundAssignmentId).put("applyToPendingAssignment", true)
+            .set("changes", objectMapper.createObjectNode().put("title", "修订后题目"));
+        mvc.perform(post("/api/v1/questions/{id}/revisions", reboundQuestionId)
+                .header("Idempotency-Key", "revision-rebind")
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(reboundRequest)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2))
+            .andExpect(jsonPath("$.assignmentRebound").value(true));
+        assertThat(jdbc.sql("SELECT question_version FROM assignment WHERE id=:id")
+            .param("id", reboundAssignmentId).query(Integer.class).single()).isEqualTo(2);
     }
 
     private void insertActiveQuestion(String questionId) throws Exception {

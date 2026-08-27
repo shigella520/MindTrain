@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <strong>Your private AI knowledge gym: ask, practice, and review—turning one conversation into long-term memory.</strong>
+  <strong>A private AI knowledge-training platform that turns what you want to learn into daily practice.</strong>
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 3.5" /></a>
 </p>
 
-MindTrain is an open-source knowledge-training platform for Codex and other AI clients. Learn through a natural conversation: ask follow-up questions, challenge an answer, or request a hint at any time. MindTrain handles the question bank, deterministic grading, learning history, and spaced-review scheduling behind the scenes.
+MindTrain is an open-source knowledge-training platform for Codex and other AI clients. AI creates questions and explanations; MindTrain handles grading, records, and scheduling. Ask follow-up questions, challenge an answer, or request a hint at any time.
 
 - **Stay in the conversation:** ask about an unfamiliar concept without accidentally submitting the current question.
 - **Own your data:** self-host a single-user instance with your question bank and learning history stored in PostgreSQL.
@@ -73,10 +73,11 @@ Live demo: [https://mindtrain.jianyutan.com/](https://mindtrain.jianyutan.com/) 
 | Spaced-review scheduling | Balance due reviews and new questions; automatically pause new material when the backlog is too large |
 | AI-generated questions | When coverage is insufficient, Codex generates and validates a question for a selected topic, type, and difficulty |
 | Local reference library | Index MD, TXT, PDF, DOCX, and PPTX while keeping source files and the index on your machine |
-| Knowledge catalog | Browse and search multiple domains and topic trees from Codex or Web, including coverage and mastery data |
+| Training map | See untrained, accumulating, needs-work, strengthening, and strong topics with due and overdue counts |
+| Read-only question bank | Filter active questions by domain, topic, type, learning state, and latest result without revealing unseen answers |
 | Mastery highlights | Separate weak, strong, and insufficient-evidence topics using mastery scores and minimum attempt thresholds |
 | Private data | Core is the only source of truth; the Skill is stateless and runtime data is not stored in the repository |
-| Web + Codex | Use Web for dashboards, review, and configuration; use Codex for the full AI-coach experience |
+| Web + Codex | Use Web for dashboards, the training map, read-only question bank, review, and settings; use Codex for AI coaching and revisions |
 
 Available today: Training Core, Trainer MCP, MindTrain Web, Codex Plugin, and weighted scheduling. Anki / FSRS Provider is planned.
 

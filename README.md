@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <strong>你的私人 AI 知识训练场：边问、边练、边复习，把一次对话变成长期记忆。</strong>
+  <strong>私有 AI 知识训练平台：把想学的知识，变成每天可以练的题。</strong>
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 3.5" /></a>
 </p>
 
-MindTrain 是一个面向 Codex 和其他 AI 客户端的开源知识训练平台。你可以像普通聊天一样随时追问、质疑和索要提示；MindTrain 在后台负责题库、精确判分、学习记录和抗遗忘调度。
+MindTrain 是一个面向 Codex 和其他 AI 客户端的开源知识训练平台。AI 负责出题和讲解，MindTrain 负责判分、记录和调度。你可以像普通聊天一样随时追问、质疑和索要提示。
 
 - **对话不中断**：遇到不懂的概念直接问，当前题目不会被误判为已作答。
 - **数据归自己**：单用户私有部署，题库和学习历史保存在自己的 PostgreSQL 中。
@@ -73,10 +73,11 @@ MindTrain 核心不绑定具体知识领域；每个私有实例可以独立管�
 | 抗遗忘调度 | 默认平衡复习题和新题；积压过高时自动暂停新题 |
 | AI 补题 | 题库不足时由 Codex 按指定知识点、题型和难度生成并校验新题 |
 | 本地资料库 | 支持 MD、TXT、PDF、DOCX、PPTX；原文和索引只留在本机 |
-| 知识目录 | Codex 与 Web 均可查询多个领域、知识点树、关键词、题目覆盖和掌握度 |
+| 训练地图 | 在知识点树中查看未训练、积累中、待加强、巩固中、已掌握，以及到期与逾期数量 |
+| 只读题库 | 按领域、知识点、题型、学习状态和最近结果浏览生效题目；未作答当前版本不显示答案 |
 | 掌握双榜 | 根据掌握度和最低作答样本区分待加强、擅长与数据积累中的知识点 |
 | 私有数据 | Core 是唯一权威数据源；Skill 无状态，仓库不承载运行数据 |
-| Web + Codex | Web 用于看板、旧题复习和配置；Codex 用于完整的 AI 教练体验 |
+| Web + Codex | Web 用于看板、训练地图、只读题库、旧题复习和配置；Codex 用于完整 AI 教练和题目修订 |
 
 当前可用：Training Core、Trainer MCP、MindTrain Web、Codex Plugin 和加权调度。Anki / FSRS Provider 尚在规划中。
 

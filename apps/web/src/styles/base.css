@@ -261,7 +261,30 @@ th { color: var(--mindtrain-muted); font-size: 11px; letter-spacing: .05em; text
 .settings-feedback { padding: 13px 15px; margin: 22px 0 0; border-radius: 13px; background: #f1f2f3; color: var(--mindtrain-muted); }
 .settings-feedback.success { color: #08785b; background: rgba(19,185,129,.1); }
 .settings-feedback.error { color: #b42318; background: rgba(239,68,68,.08); }
-.catalog-page { display: grid; gap: 22px; }
+.catalog-page, .question-bank-page { display: grid; gap: 22px; }
+.question-filters { display: grid; grid-template-columns: minmax(220px,1.8fr) repeat(5,minmax(110px,1fr)); gap: 10px; padding: 16px; }
+.question-filters .catalog-search { margin: 0; }
+.question-filters select, .question-filters > input { min-width: 0; height: 42px; padding: 0 12px; border: 1px solid rgba(23,23,23,.08); border-radius: 13px; color: var(--mindtrain-text); background: rgba(255,255,255,.78); }
+.question-bank-workspace { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(360px,.95fr); gap: 18px; align-items: start; }
+.question-list, .question-detail { min-height: 520px; }
+.question-list { display: grid; align-content: start; gap: 8px; }
+.question-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 16px; align-items: center; width: 100%; padding: 15px; border: 1px solid transparent; border-radius: 15px; text-align: left; color: var(--mindtrain-text); background: rgba(255,255,255,.52); cursor: pointer; }
+.question-row:hover, .question-row.active { border-color: rgba(10,132,255,.2); background: white; box-shadow: 0 8px 20px rgba(16,19,23,.06); }
+.question-row span { display: grid; gap: 5px; min-width: 0; }
+.question-row strong, .question-row em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.question-row em { color: var(--mindtrain-muted); font-size: 13px; font-style: normal; }
+.question-row small { color: var(--mindtrain-muted); white-space: nowrap; }
+.question-detail h2 { margin: 5px 0 10px; }
+.question-detail > p:not(.card-kicker) { line-height: 1.65; }
+.question-detail-options { display: grid; gap: 8px; padding: 0; list-style: none; }
+.question-detail-options li { display: grid; grid-template-columns: 34px 1fr; gap: 9px; align-items: start; padding: 11px; border-radius: 13px; background: rgba(245,246,247,.8); line-height: 1.5; }
+.answer-disclosure, .answer-hidden { display: grid; grid-template-columns: 22px 1fr; gap: 5px 8px; margin: 18px 0; padding: 14px; border-radius: 14px; }
+.answer-disclosure { color: #17623b; background: rgba(52,199,89,.09); }
+.answer-disclosure p { grid-column: 2; margin: 0; line-height: 1.55; }
+.answer-hidden { color: var(--mindtrain-muted); background: rgba(23,23,23,.04); }
+.attempt-history { display: grid; gap: 7px; }
+.attempt-history p { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--mindtrain-muted); font-size: 13px; }
+.topic-section > a { display: block; margin-top: 7px; color: var(--mindtrain-accent); overflow-wrap: anywhere; }
 .catalog-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 12px 6px; }
 .catalog-heading h1 { margin: 5px 0 6px; font-size: clamp(36px,5vw,58px); letter-spacing: -.055em; }
 .catalog-heading p { margin: 0; color: var(--mindtrain-muted); }
@@ -309,7 +332,8 @@ th { color: var(--mindtrain-muted); font-size: 11px; letter-spacing: .05em; text
 .topic-path { margin: 8px 0 0; color: var(--mindtrain-accent); font-size: 10px; line-height: 1.5; }
 .topic-description { margin: 22px 0; color: var(--mindtrain-muted); font-size: 13px; line-height: 1.7; }
 .topic-metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
-.topic-metrics span { display: grid; min-width: 0; min-height: 70px; padding: 10px; place-content: center; justify-items: center; border-radius: 14px; color: var(--mindtrain-muted); background: #f5f7f9; font-size: 9px; }
+.topic-metrics span, .topic-metrics a { display: grid; min-width: 0; min-height: 70px; padding: 10px; place-content: center; justify-items: center; border-radius: 14px; color: var(--mindtrain-muted); background: #f5f7f9; font-size: 9px; }
+.topic-metrics a:hover { color: var(--mindtrain-accent); background: rgba(10,132,255,.08); }
 .topic-metrics svg { color: var(--mindtrain-accent); }
 .topic-metrics strong { display: block; margin-bottom: 3px; color: var(--mindtrain-text); font-size: 17px; }
 .topic-section { padding-top: 20px; margin-top: 20px; border-top: 1px solid var(--mindtrain-line); }
@@ -324,6 +348,8 @@ th { color: var(--mindtrain-muted); font-size: 11px; letter-spacing: .05em; text
 .topic-sources span { margin-top: 4px; color: var(--mindtrain-muted); font-size: 9px; white-space: nowrap; }
 .catalog-detail-empty { display: grid; height: 100%; min-height: 280px; place-content: center; justify-items: center; gap: 12px; color: var(--mindtrain-muted); font-size: 12px; }
 @media (max-width: 1180px) {
+  .question-filters { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .question-bank-workspace { grid-template-columns: 1fr; }
   .topbar { grid-template-columns: 1fr auto auto; }
   .connection-pill { display: none; }
   .hero { grid-template-columns: 1fr; }
@@ -336,6 +362,7 @@ th { color: var(--mindtrain-muted); font-size: 11px; letter-spacing: .05em; text
   .catalog-detail { grid-column: 1 / -1; min-height: 260px; border-top: 1px solid var(--mindtrain-line); border-left: 0; }
 }
 @media (max-width: 780px) {
+  .question-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .app-shell { padding: 14px 14px 92px; }
   .topbar { top: 8px; grid-template-columns: minmax(0,1fr) auto; margin-bottom: 14px; padding: 10px 12px; border-radius: 20px; }
   .brand-mark { min-width: 0; gap: 10px; }
@@ -388,6 +415,8 @@ th { color: var(--mindtrain-muted); font-size: 11px; letter-spacing: .05em; text
   .training-card, .settings-card { border-radius: 28px; }
 }
 @media (max-width: 520px) {
+  .question-filters { grid-template-columns: 1fr; }
+  .question-row { grid-template-columns: 1fr; gap: 7px; }
   .topbar { padding: 8px 9px; border-radius: 17px; }
   .brand-icon { width: 29px; height: 29px; }
   .brand-text { font-size: 16px; letter-spacing: 0; }

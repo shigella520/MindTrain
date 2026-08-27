@@ -19,6 +19,9 @@ function containsMatch(node: KnowledgeTopicNode): boolean {
 const visible = computed(() => containsMatch(props.node))
 const forceExpanded = computed(() => props.matchedIds !== null && props.node.children.some(containsMatch))
 const effectivelyExpanded = computed(() => expanded.value || forceExpanded.value)
+const statusLabel = computed(() => ({
+  untrained: '未训练', accumulating: '积累中', needs_work: '待加强', strengthening: '巩固中', strong: '已掌握',
+} as Record<string, string>)[props.node.training.status || ''] || '进度汇总')
 watch(() => props.expandAll, value => { expanded.value = value })
 </script>
 
@@ -34,7 +37,7 @@ watch(() => props.expandAll, value => { expanded.value = value })
       ><ChevronRight :size="15" /></button>
       <button class="tree-topic" type="button" @click="emit('select', node.id)">
         <Layers3 :size="16" />
-        <span><strong>{{ node.name }}</strong><em>{{ node.activeQuestionCount }} 道题 · {{ node.childCount }} 个子节点</em></span>
+        <span><strong>{{ node.name }}</strong><em>{{ node.activeQuestionCount }} 道题 · {{ node.training.dueCount }} 道到期 · {{ statusLabel }}</em></span>
         <FileQuestion v-if="node.activeQuestionCount" :size="14" />
       </button>
     </div>

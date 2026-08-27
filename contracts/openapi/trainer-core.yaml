@@ -103,7 +103,7 @@ paths:
   /api/v1/questions/{questionId}/revisions:
     post:
       operationId: reviseActiveQuestion
-      description: 基于当前可复习题创建不可变的新版本；旧 Assignment 和 Attempt 继续引用原版本。
+      description: 基于当前可复习题创建不可变的新版本；默认保留旧 Assignment 绑定，也可原子重绑仍待答的来源 Assignment。
       parameters:
         - {name: questionId, in: path, required: true, schema: {type: string}}
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -123,10 +123,46 @@ paths:
                 sourceAssignmentId: {type: string}
                 model: {type: string}
                 promptVersion: {type: string}
+                applyToPendingAssignment: {type: boolean, default: false, description: 为 true 时要求 sourceAssignmentId 仍为待答，并将它原子重绑到新版本。}
       responses:
         '200': {description: 新版本已保存并写入修订审计记录}
         '400': {description: 修订字段、来源 Assignment 或题目结构无效}
-        '409': {description: 题目不是 active 可复习题，或 expectedVersion 已过期}
+        '409': {description: 题目不是 active 可复习题、expectedVersion 已过期，或来源 Assignment 已不再待答}
+  /api/v1/questions:
+    get:
+      operationId: listActiveQuestions
+      description: 只读列出当前用户的 active 题目；candidate 永不进入全局题库，列表永不返回答案。
+      parameters:
+        - {name: q, in: query, required: false, schema: {type: string}}
+        - {name: domainId, in: query, required: false, schema: {type: string}}
+        - {name: topicId, in: query, required: false, schema: {type: string}}
+        - {name: type, in: query, required: false, schema: {type: string, enum: [single_choice, multiple_choice]}}
+        - {name: learningState, in: query, required: false, schema: {type: string, enum: [learned, unseen], default: learned}}
+        - {name: result, in: query, required: false, schema: {type: string, enum: [correct, wrong]}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: 题目摘要分页；不含答案和解析}
+  /api/v1/questions/{questionId}:
+    get:
+      operationId: getQuestionDetail
+      description: 返回 active 题目详情；仅当当前版本已有 Attempt 时显示当前版本答案与解析。
+      parameters:
+        - {name: questionId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: 安全的题目详情、来源与最近作答记录}
+        '404': {description: 题目不存在、非 active 或不属于当前用户}
+  /api/v1/questions/{questionId}/revision-context:
+    get:
+      operationId: getQuestionRevisionContext
+      description: 仅供 Codex 修订流程读取与当前待答 Assignment 匹配的完整当前版本。
+      parameters:
+        - {name: questionId, in: path, required: true, schema: {type: string}}
+        - {name: assignmentId, in: query, required: true, schema: {type: string}}
+        - {name: expectedVersion, in: query, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        '200': {description: 完整当前题目修订上下文}
+        '409': {description: 版本冲突或 Assignment 已不再匹配待答题}
   /api/v1/reports/overview:
     get:
       operationId: getLearningReport

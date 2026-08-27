@@ -143,9 +143,9 @@ public class QuestionService {
             assignmentId = "assignment-" + java.util.UUID.randomUUID();
             jdbc.sql("""
                     INSERT INTO assignment(id, session_id, question_id, question_version, attempt_type,
-                      parent_attempt_id, source_kind, status, created_at)
+                      parent_attempt_id, source_kind, selection_reason, status, created_at)
                     VALUES (:id, :sessionId, :questionId, :version, 'follow_up', :parentAttemptId,
-                      'follow_up_candidate', 'pending', :createdAt)
+                      'follow_up_candidate', 'FOLLOW_UP', 'pending', :createdAt)
                     """).param("id", assignmentId).param("sessionId", sessionId).param("questionId", id)
                 .param("version", version).param("parentAttemptId", parentAttemptId).param("createdAt", now).update();
         }
@@ -155,7 +155,8 @@ public class QuestionService {
     @Transactional
     public RevisionResponse reviseActive(String questionId, int expectedVersion, JsonNode changes,
                                          String reason, String sourceAssignmentId,
-                                         String model, String promptVersion) {
+                                         String model, String promptVersion,
+                                         boolean applyToPendingAssignment) {
         if (reason == null || reason.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "revision_reason_required", "A revision reason is required");
         }
@@ -181,6 +182,10 @@ public class QuestionService {
         }
 
         String userId = UserContext.requireUserId();
+        if (applyToPendingAssignment && (sourceAssignmentId == null || sourceAssignmentId.isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "revision_assignment_required",
+                "sourceAssignmentId is required when applying a revision to a pending assignment");
+        }
         if (sourceAssignmentId != null && !sourceAssignmentId.isBlank()) {
             int sourceExists = jdbc.sql("""
                     SELECT COUNT(*)
@@ -240,8 +245,23 @@ public class QuestionService {
             .param("toVersion", nextVersion).param("userId", userId).param("sourceAssignmentId", blankNull(sourceAssignmentId))
             .param("reason", reason.trim()).param("model", blankNull(model)).param("promptVersion", revisionPromptVersion)
             .param("createdAt", now).update();
+        boolean assignmentRebound = false;
+        if (applyToPendingAssignment) {
+            int rebound = jdbc.sql("""
+                    UPDATE assignment SET question_version=:nextVersion
+                    WHERE id=:assignmentId AND question_id=:questionId
+                      AND question_version=:expectedVersion AND status='pending'
+                    """)
+                .param("nextVersion", nextVersion).param("assignmentId", sourceAssignmentId)
+                .param("questionId", questionId).param("expectedVersion", expectedVersion).update();
+            if (rebound == 0) {
+                throw new ApiException(HttpStatus.CONFLICT, "revision_assignment_not_pending",
+                    "The source assignment is no longer pending; the revision was not applied");
+            }
+            assignmentRebound = true;
+        }
         return new RevisionResponse(revisionId, questionId, expectedVersion, nextVersion, "active",
-            reason.trim(), blankNull(sourceAssignmentId), now);
+            reason.trim(), blankNull(sourceAssignmentId), assignmentRebound, now);
     }
 
     public void validateCandidate(JsonNode question, String requiredTopicId) {
@@ -461,7 +481,7 @@ public class QuestionService {
                                     boolean usableInCurrentSession, String assignmentId) {}
     public record RevisionResponse(String revisionId, String questionId, int previousVersion, int version,
                                    String status, String reason, String sourceAssignmentId,
-                                   OffsetDateTime revisedAt) {}
+                                   boolean assignmentRebound, OffsetDateTime revisedAt) {}
     public record TopicContext(String id, String name, int importance, List<String> applicableVersions,
                                List<String> keywords, List<String> sourceRefs) {}
     public record GenerationProfile(String questionType, int difficulty, KnowledgePoint knowledgePoint) {}

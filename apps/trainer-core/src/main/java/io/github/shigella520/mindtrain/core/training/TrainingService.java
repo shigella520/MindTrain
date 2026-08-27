@@ -92,7 +92,7 @@ public class TrainingService {
         }
         Optional<AssignmentRow> pending = jdbc.sql("""
                 SELECT a.id, a.question_id, a.question_version, a.attempt_type, a.parent_attempt_id,
-                       a.source_kind, a.created_at, q.domain_id
+                       a.source_kind, a.selection_reason, a.created_at, q.domain_id
                 FROM assignment a JOIN question q ON q.id=a.question_id
                 WHERE a.session_id = :sessionId AND a.status = 'pending'
                 ORDER BY a.created_at LIMIT 1
@@ -117,13 +117,15 @@ public class TrainingService {
         TrainingSettings settings = applicationSettings.get();
         Optional<QuestionChoice> due = scheduledReviews < settings.reviewBudget() || backlog.newItemsPaused()
             ? selectDueQuestion(userId, session.domainId(), now) : Optional.empty();
-        if (due.isPresent()) return createAssignment(session, due.get());
+        if (due.isPresent()) return createAssignment(session, due.get(), "DUE_REVIEW");
 
         int newAllowance = Math.min(settings.newBudget(), backlog.newItemAllowance());
         boolean shortageFill = !backlog.newItemsPaused() && session.completedMain() < session.targetCount();
         if (session.introducedNewCount() < newAllowance || shortageFill) {
             Optional<QuestionChoice> unseen = selectUnseenQuestion(userId, session.domainId(), sessionId);
-            if (unseen.isPresent()) return createAssignment(session, unseen.get());
+            if (unseen.isPresent()) return createAssignment(session, unseen.get(),
+                "candidate".equals(unseen.get().sourceKind()) ? "AI_CANDIDATE"
+                    : session.introducedNewCount() < newAllowance ? "PLANNED_NEW" : "SHORTAGE_FILL");
 
             String topicId = selectGenerationTopic(userId, session.domainId());
             QuestionService.TopicContext generationContext = questions.topicContext(topicId, session.domainId());
@@ -484,28 +486,29 @@ public class TrainingService {
         cleanupExpiredOrphanCandidates(cutoff);
     }
 
-    private NextAssignmentResponse createAssignment(SessionRow session, QuestionChoice choice) {
+    private NextAssignmentResponse createAssignment(SessionRow session, QuestionChoice choice, String selectionReason) {
         String id = "assignment-" + UUID.randomUUID();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         jdbc.sql("""
                 INSERT INTO assignment(id, session_id, question_id, question_version, attempt_type,
-                  source_kind, status, created_at)
-                VALUES (:id, :sessionId, :questionId, :version, 'main', :sourceKind, 'pending', :createdAt)
+                  source_kind, selection_reason, status, created_at)
+                VALUES (:id, :sessionId, :questionId, :version, 'main', :sourceKind, :selectionReason, 'pending', :createdAt)
                 """)
             .param("id", id).param("sessionId", session.id()).param("questionId", choice.questionId())
-            .param("version", choice.version()).param("sourceKind", choice.sourceKind()).param("createdAt", now).update();
+            .param("version", choice.version()).param("sourceKind", choice.sourceKind())
+            .param("selectionReason", selectionReason).param("createdAt", now).update();
         if (!"review".equals(choice.sourceKind())) {
             jdbc.sql("UPDATE training_session SET introduced_new_count = introduced_new_count + 1 WHERE id = :id")
                 .param("id", session.id()).update();
         }
         return assignmentResponse(new AssignmentRow(id, choice.questionId(), choice.version(), "main", null,
-            choice.sourceKind(), now, session.domainId()));
+            choice.sourceKind(), selectionReason, now, session.domainId()));
     }
 
     private NextAssignmentResponse assignmentResponse(AssignmentRow assignment) {
         QuestionRecord question = questions.get(assignment.questionId(), assignment.version());
         AssignmentPresentation presentation = new AssignmentPresentation(assignment.id(), assignment.attemptType(),
-            assignment.parentAttemptId(), assignment.sourceKind(), questions.sanitized(question),
+            assignment.parentAttemptId(), assignment.sourceKind(), assignment.selectionReason(), questions.sanitized(question),
             "请回复选项字母，可用逗号分隔。");
         return new NextAssignmentResponse("assignment", presentation, null, null, null, null);
     }
@@ -891,7 +894,8 @@ public class TrainingService {
     private AssignmentRow mapAssignment(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new AssignmentRow(rs.getString("id"), rs.getString("question_id"), rs.getInt("question_version"),
             rs.getString("attempt_type"), rs.getString("parent_attempt_id"), rs.getString("source_kind"),
-            rs.getObject("created_at", OffsetDateTime.class), rs.getString("domain_id"));
+            rs.getString("selection_reason"), rs.getObject("created_at", OffsetDateTime.class),
+            rs.getString("domain_id"));
     }
 
     private SessionResponse toResponse(SessionRow session) {
@@ -935,7 +939,8 @@ public class TrainingService {
                                   int completedMainQuestions, int followUpCount, String schedulerProvider,
                                   OffsetDateTime startedAt, OffsetDateTime endedAt) {}
     public record AssignmentPresentation(String assignmentId, String attemptType, String parentAttemptId,
-                                         String sourceKind, JsonNode question, String answerPrompt) {}
+                                         String sourceKind, String selectionReason, JsonNode question,
+                                         String answerPrompt) {}
     public record NextAssignmentResponse(String status, AssignmentPresentation assignment, String message,
                                          QuestionService.TopicContext generationContext,
                                          QuestionService.GenerationProfile generationProfile,
@@ -952,7 +957,8 @@ public class TrainingService {
                               int completedMain, int followUpCount, int introducedNewCount,
                               String schedulerProvider, OffsetDateTime startedAt, OffsetDateTime endedAt) {}
     private record AssignmentRow(String id, String questionId, int version, String attemptType,
-                                 String parentAttemptId, String sourceKind, OffsetDateTime createdAt, String domainId) {}
+                                 String parentAttemptId, String sourceKind, String selectionReason,
+                                 OffsetDateTime createdAt, String domainId) {}
     private record AssignmentWithOwner(String id, String sessionId, String questionId, int questionVersion,
                                        String attemptType, String parentAttemptId, String sourceKind, String status,
                                        String userId, String sessionDomainId, String questionDomainId) {}

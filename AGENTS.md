@@ -28,3 +28,10 @@
 - Do not overwrite or delete existing user learning data while restructuring the platform.
 - Make external integrations idempotent and retain enough state to recover partial Core/plugin failures.
 - Keep third-party MCP and Anki Add-on APIs behind MindTrain-owned adapters.
+
+## Fast release workflow
+
+- Develop every fast-release feature on a dedicated feature branch; do not implement it directly on `main`.
+- Use the `codex/` branch prefix unless the user requests another branch name.
+- Publish or build the feature as the `dev` image for user experience validation before merging it into the main branch.
+- Treat validation approval and merging to the main branch as separate user-controlled steps; do not merge automatically after implementation.

@@ -6,6 +6,7 @@ import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.TrainingSettings;
 import io.github.shigella520.mindtrain.core.config.ApplicationSettingsService.UpdateTrainingSettingsRequest;
 import io.github.shigella520.mindtrain.core.question.QuestionService;
+import io.github.shigella520.mindtrain.core.question.QuestionQueryService;
 import io.github.shigella520.mindtrain.core.scheduling.SchedulerProvider;
 import io.github.shigella520.mindtrain.core.training.TrainingService;
 import io.github.shigella520.mindtrain.core.training.TrainingService.CreateSessionRequest;
@@ -28,16 +29,19 @@ import org.springframework.web.bind.annotation.PutMapping;
 public class CoreApiController {
     private final TrainingService training;
     private final QuestionService questions;
+    private final QuestionQueryService questionQueries;
     private final IdempotencyService idempotency;
     private final ApplicationSettingsService applicationSettings;
     private final CatalogService catalog;
 
     public CoreApiController(TrainingService training, QuestionService questions,
+                             QuestionQueryService questionQueries,
                              IdempotencyService idempotency,
                              ApplicationSettingsService applicationSettings,
                              CatalogService catalog) {
         this.training = training;
         this.questions = questions;
+        this.questionQueries = questionQueries;
         this.idempotency = idempotency;
         this.applicationSettings = applicationSettings;
         this.catalog = catalog;
@@ -98,7 +102,34 @@ public class CoreApiController {
                                                             @RequestBody RevisionRequest request) {
         return idempotency.execute("revise-question", key, QuestionService.RevisionResponse.class,
             () -> questions.reviseActive(id, request.expectedVersion(), request.changes(), request.reason(),
-                request.sourceAssignmentId(), request.model(), request.promptVersion()));
+                request.sourceAssignmentId(), request.model(), request.promptVersion(),
+                Boolean.TRUE.equals(request.applyToPendingAssignment())));
+    }
+
+    @GetMapping("/questions")
+    public QuestionQueryService.QuestionPage questions(
+        @RequestParam(name = "q", required = false) String query,
+        @RequestParam(name = "domainId", required = false) String domainId,
+        @RequestParam(name = "topicId", required = false) String topicId,
+        @RequestParam(name = "type", required = false) String type,
+        @RequestParam(name = "learningState", defaultValue = "learned") String learningState,
+        @RequestParam(name = "result", required = false) String result,
+        @RequestParam(name = "limit", defaultValue = "20") int limit,
+        @RequestParam(name = "cursor", required = false) String cursor) {
+        return questionQueries.list(query, domainId, topicId, type, learningState, result, limit, cursor);
+    }
+
+    @GetMapping("/questions/{id}")
+    public QuestionQueryService.QuestionDetail question(@PathVariable String id) {
+        return questionQueries.detail(id);
+    }
+
+    @GetMapping("/questions/{id}/revision-context")
+    public QuestionQueryService.RevisionContext revisionContext(
+        @PathVariable String id,
+        @RequestParam("assignmentId") String assignmentId,
+        @RequestParam("expectedVersion") int expectedVersion) {
+        return questionQueries.revisionContext(id, assignmentId, expectedVersion);
     }
 
     @GetMapping("/reports/overview")
@@ -179,5 +210,6 @@ public class CoreApiController {
     public record CandidateRequest(String sessionId, String topicId, JsonNode question,
                                    String attemptType, String parentAttemptId) {}
     public record RevisionRequest(int expectedVersion, JsonNode changes, String reason,
-                                  String sourceAssignmentId, String model, String promptVersion) {}
+                                  String sourceAssignmentId, String model, String promptVersion,
+                                  Boolean applyToPendingAssignment) {}
 }
