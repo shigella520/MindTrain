@@ -47,9 +47,9 @@ Never infer the correct answer before `submit_choice_answer` returns it. Invalid
 
 When the user reports that a displayed question is unclear, incorrect, outdated, or poorly sourced, record the feedback with `record_interaction` and discuss the issue first. Never change the question merely because the user challenged it.
 
-Call `revise_saved_question` only after the user explicitly asks to update the question bank and the intended correction is clear. Use the question ID and version from the assignment, include its assignment ID as `sourceAssignmentId`, and submit only changed fields. Preserve option IDs and the correct option set unless authoritative sources support a scoring correction. Explain the revision and report the new version returned by Core.
+Call `get_question_revision_context` before revising so the complete current version and pending Assignment are authoritative. Call `revise_saved_question` only after the user explicitly asks to update the question bank and the intended correction is clear. The phrase `不合适，修改后再出` (or an unambiguous equivalent) is explicit authorization for one revision of the displayed active question and does not require a second confirmation. Use the question ID and version from the assignment, include its assignment ID as `sourceAssignmentId`, set `applyToPendingAssignment: true`, and submit only changed fields. Preserve option IDs and the correct option set unless authoritative sources support a scoring correction. Explain the revision and report the new version returned by Core.
 
-On `question_version_conflict`, do not retry with a guessed version. Explain that the question changed concurrently and obtain the latest content through a future management flow.
+On `question_version_conflict`, do not retry with a guessed version. Call `get_question_revision_context` with the pending Assignment to retrieve authoritative current content; if the Assignment no longer matches, explain that it must be refreshed rather than silently replacing it.
 
 ## Generate a missing question
 

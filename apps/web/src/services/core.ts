@@ -1,6 +1,6 @@
 import { useConfigStore } from '../stores/config'
 import { DEFAULT_SCHEDULER_PROVIDER_ID } from '../domain/schedulers'
-import type { Attempt, Backlog, KnowledgeCatalogTree, KnowledgeDomain, KnowledgeTopicDetail, KnowledgeTopicSearchResponse, NextAssignment, Overview, RejectedGeneratedQuestion, Session, TrainingSettings } from '../types/api'
+import type { Attempt, Backlog, KnowledgeCatalogTree, KnowledgeDomain, KnowledgeTopicDetail, KnowledgeTopicSearchResponse, NextAssignment, Overview, QuestionDetail, QuestionPage, RejectedGeneratedQuestion, Session, TrainingSettings } from '../types/api'
 
 export class CoreApiError extends Error {
   constructor(
@@ -72,4 +72,9 @@ export const coreApi = {
   },
   knowledgeTopic: (topicId: string) =>
     request<KnowledgeTopicDetail>(`/catalog/topics/${encodeURIComponent(topicId)}`),
+  questions: (filters: Record<string, string>) => {
+    const params = new URLSearchParams(filters)
+    return request<QuestionPage>(`/questions?${params}`)
+  },
+  question: (questionId: string) => request<QuestionDetail>(`/questions/${encodeURIComponent(questionId)}`),
 }

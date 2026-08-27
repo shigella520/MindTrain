@@ -192,9 +192,23 @@ public class CatalogService {
         Map<String, Set<String>> questionIds = activeQuestionIds();
         Map<String, Integer> questionCounts = subtreeQuestionCounts(topics, questionIds);
         Map<String, Integer> mastery = masteryScores();
+        Map<String, TrainingState> trainingStates = trainingStates();
+        Map<String, OffsetDateTime> reviewDueAt = reviewDueAt();
+        Map<String, List<String>> topicChildren = new HashMap<>();
+        topics.forEach(topic -> topicChildren.computeIfAbsent(topic.parentId(), ignored -> new ArrayList<>()).add(topic.id()));
+        Map<String, Set<String>> subtreeQuestions = new HashMap<>();
+        topics.forEach(topic -> subtreeQuestionIds(topic.id(), topicChildren, questionIds,
+            subtreeQuestions, new HashSet<>()));
+        OffsetDateTime now = OffsetDateTime.now(java.time.ZoneOffset.UTC);
         Map<String, List<TopicNode>> children = new HashMap<>();
         for (TopicRow topic : topics) {
-            TopicNode node = node(topic, questionCounts, mastery, List.of());
+            Set<String> coveredQuestions = subtreeQuestions.getOrDefault(topic.id(), Set.of());
+            int dueCount = (int) coveredQuestions.stream()
+                .filter(id -> reviewDueAt.containsKey(id) && !reviewDueAt.get(id).isAfter(now)).count();
+            int overdueCount = (int) coveredQuestions.stream()
+                .filter(id -> reviewDueAt.containsKey(id) && reviewDueAt.get(id).isBefore(now.minusDays(1))).count();
+            TopicNode node = node(topic, questionCounts, mastery, trainingStates.get(topic.id()),
+                dueCount, overdueCount, List.of());
             children.computeIfAbsent(topic.parentId(), ignored -> new ArrayList<>()).add(node);
         }
         Comparator<TopicNode> order = Comparator.comparingInt(TopicNode::sortOrder)
@@ -246,8 +260,7 @@ public class CatalogService {
         all.forEach(item -> byId.put(item.id(), item));
         Map<String, Integer> questionCounts = subtreeQuestionCounts(all, activeQuestionIds());
         Map<String, Integer> mastery = masteryScores();
-        List<TopicNode> children = all.stream().filter(item -> topic.id().equals(item.parentId()))
-            .sorted(topicOrder()).map(item -> node(item, questionCounts, mastery, List.of())).toList();
+        TopicNode treeNode = findNode(tree(domain.id()).roots(), topicId);
         List<JsonNode> relations = jdbc.sql("""
                 SELECT content_json FROM topic_relation
                 WHERE user_id=:userId AND (from_topic_id=:topicId OR to_topic_id=:topicId)
@@ -263,8 +276,27 @@ public class CatalogService {
         return new TopicDetail(topic.id(), topic.domainId(), domain.name(), topic.parentId(), topic.name(),
             description(topic.content()), topic.kind(), topic.importance(), topic.sortOrder(),
             ancestorPath(topic, byId), keywords(topic.content()), strings(topic.content().path("sourceRefs")),
-            questionCounts.getOrDefault(topic.id(), 0), mastery.get(topic.id()), children, relations, sources,
+            questionCounts.getOrDefault(topic.id(), 0), mastery.get(topic.id()), treeNode.training(),
+            treeNode.children(), relations, sources,
             topic.createdAt(), topic.updatedAt());
+    }
+
+    private TopicNode findNode(List<TopicNode> nodes, String topicId) {
+        for (TopicNode node : nodes) {
+            if (node.id().equals(topicId)) return node;
+            TopicNode found = findNodeOrNull(node.children(), topicId);
+            if (found != null) return found;
+        }
+        throw new ApiException(HttpStatus.NOT_FOUND, "knowledge_topic_not_found", "Knowledge topic was not found");
+    }
+
+    private TopicNode findNodeOrNull(List<TopicNode> nodes, String topicId) {
+        for (TopicNode node : nodes) {
+            if (node.id().equals(topicId)) return node;
+            TopicNode found = findNodeOrNull(node.children(), topicId);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private Validation validate(JsonNode proposal, String originType, String libraryId) {
@@ -529,20 +561,74 @@ public class CatalogService {
         return result;
     }
 
+    private Map<String, TrainingState> trainingStates() {
+        Map<String, TrainingState> result = new HashMap<>();
+        jdbc.sql("""
+                SELECT topic_id,mastery_score,correct_count,wrong_count
+                FROM topic_mastery WHERE user_id=:userId
+                """).param("userId", UserContext.requireUserId())
+            .query((rs, rowNum) -> {
+                int attempts = rs.getInt("correct_count") + rs.getInt("wrong_count");
+                int mastery = rs.getInt("mastery_score");
+                return Map.entry(rs.getString("topic_id"),
+                    new TrainingState(mastery, attempts, classifyTrainingStatus(attempts, mastery)));
+            }).list().forEach(entry -> result.put(entry.getKey(), entry.getValue()));
+        return result;
+    }
+
+    private Map<String, OffsetDateTime> reviewDueAt() {
+        Map<String, OffsetDateTime> result = new HashMap<>();
+        jdbc.sql("SELECT question_id,next_review_at FROM review_state WHERE user_id=:userId")
+            .param("userId", UserContext.requireUserId())
+            .query((rs, rowNum) -> Map.entry(rs.getString("question_id"),
+                rs.getObject("next_review_at", OffsetDateTime.class)))
+            .list().forEach(entry -> result.put(entry.getKey(), entry.getValue()));
+        return result;
+    }
+
+    private String classifyTrainingStatus(int attempts, int mastery) {
+        if (attempts == 0) return "untrained";
+        if (attempts >= 2 && mastery < 60) return "needs_work";
+        if (attempts >= 3 && mastery >= 75) return "strong";
+        if (attempts < 2) return "accumulating";
+        return "strengthening";
+    }
+
     private List<TopicNode> buildChildren(String parentId, Map<String, List<TopicNode>> grouped, Comparator<TopicNode> order) {
         return grouped.getOrDefault(parentId, List.of()).stream().sorted(order)
-            .map(node -> new TopicNode(node.id(), node.domainId(), node.parentId(), node.name(), node.description(),
-                node.kind(), node.importance(), node.sortOrder(), node.keywords(), node.sourceRefs(),
-                grouped.getOrDefault(node.id(), List.of()).size(), node.activeQuestionCount(), node.masteryScore(),
-                buildChildren(node.id(), grouped, order))).toList();
+            .map(node -> {
+                List<TopicNode> childNodes = buildChildren(node.id(), grouped, order);
+                Map<String, Integer> statusCounts = new LinkedHashMap<>();
+                for (String status : List.of("untrained", "accumulating", "needs_work", "strengthening", "strong")) {
+                    int count = childNodes.isEmpty()
+                        ? (status.equals(node.training().status()) ? 1 : 0)
+                        : childNodes.stream().mapToInt(child -> child.training().statusCounts().getOrDefault(status, 0)).sum();
+                    statusCounts.put(status, count);
+                }
+                TopicTraining training = childNodes.isEmpty()
+                    ? new TopicTraining(node.training().status(), node.training().attemptCount(), node.training().dueCount(),
+                        node.training().overdueCount(), statusCounts)
+                    : new TopicTraining(null, 0, node.training().dueCount(), node.training().overdueCount(), statusCounts);
+                return new TopicNode(node.id(), node.domainId(), node.parentId(), node.name(), node.description(),
+                    node.kind(), node.importance(), node.sortOrder(), node.keywords(), node.sourceRefs(),
+                    childNodes.size(), node.activeQuestionCount(), childNodes.isEmpty() ? node.masteryScore() : null,
+                    training, childNodes);
+            }).toList();
     }
 
     private TopicNode node(TopicRow topic, Map<String, Integer> questionCounts, Map<String, Integer> mastery,
                            List<TopicNode> children) {
+        return node(topic, questionCounts, mastery, null, 0, 0, children);
+    }
+
+    private TopicNode node(TopicRow topic, Map<String, Integer> questionCounts, Map<String, Integer> mastery,
+                           TrainingState state, int dueCount, int overdueCount, List<TopicNode> children) {
+        TrainingState effective = state == null ? new TrainingState(0, 0, "untrained") : state;
         return new TopicNode(topic.id(), topic.domainId(), topic.parentId(), topic.name(), description(topic.content()),
             topic.kind(), topic.importance(), topic.sortOrder(), keywords(topic.content()),
             strings(topic.content().path("sourceRefs")), children.size(), questionCounts.getOrDefault(topic.id(), 0),
-            mastery.get(topic.id()), children);
+            mastery.get(topic.id()), new TopicTraining(effective.status(), effective.attemptCount(), dueCount,
+                overdueCount, Map.of(effective.status(), 1)), children);
     }
 
     private List<String> ancestorPath(TopicRow topic, Map<String, TopicRow> byId) {
@@ -656,7 +742,9 @@ public class CatalogService {
     public record TopicNode(String id, String domainId, String parentId, String name, String description,
                             String kind, int importance, int sortOrder, List<String> keywords,
                             List<String> sourceRefs, int childCount, int activeQuestionCount,
-                            Integer masteryScore, List<TopicNode> children) {}
+                            Integer masteryScore, TopicTraining training, List<TopicNode> children) {}
+    public record TopicTraining(String status, int attemptCount, int dueCount, int overdueCount,
+                                Map<String, Integer> statusCounts) {}
     public record TopicTreeResponse(DomainSummary domain, List<TopicNode> roots) {}
     public record TopicSearchResult(String id, String domainId, String domainName, String parentId, String name,
                                     String description, List<String> ancestorPath, List<String> keywords,
@@ -665,11 +753,13 @@ public class CatalogService {
     public record TopicDetail(String id, String domainId, String domainName, String parentId, String name,
                               String description, String kind, int importance, int sortOrder,
                               List<String> ancestorPath, List<String> keywords, List<String> sourceRefs,
-                              int activeQuestionCount, Integer masteryScore, List<TopicNode> children,
+                              int activeQuestionCount, Integer masteryScore, TopicTraining training,
+                              List<TopicNode> children,
                               List<JsonNode> relations, List<JsonNode> sources, OffsetDateTime createdAt,
                               OffsetDateTime updatedAt) {}
     private record DomainRow(String id, String name, JsonNode content, String originType, int sortOrder,
                              OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
     private record TopicRow(String id, String domainId, String parentId, String name, String kind, int importance,
                             JsonNode content, int sortOrder, OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
+    private record TrainingState(int masteryScore, int attemptCount, String status) {}
 }

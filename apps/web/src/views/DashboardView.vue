@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { ArrowRight, BrainCircuit, CalendarClock, RefreshCw, Sparkles } from '@lucide/vue'
+import { computed, onMounted, ref } from 'vue'
+import { ArrowRight, BrainCircuit, CalendarClock, Check, Copy, RefreshCw, Sparkles } from '@lucide/vue'
 import MetricCard from '../components/MetricCard.vue'
 import MasteryHighlights from '../components/MasteryHighlights.vue'
 import ProgressRing from '../components/ProgressRing.vue'
@@ -10,6 +10,8 @@ import { useDashboardStore } from '../stores/dashboard'
 
 const config = useConfigStore()
 const dashboard = useDashboardStore()
+const copied = ref(false)
+const initializationPrompt = '使用 $mindtrain，根据【我的学习目标】创建一个训练领域。请先展示完整知识点树，等我确认后再保存。'
 const todayCompleted = computed(() => dashboard.overview.todayCompletedMainQuestions)
 const dailyTarget = computed(() => dashboard.overview.dailyTarget)
 const todayProgress = computed(() => dailyProgressPercent(todayCompleted.value, dailyTarget.value))
@@ -35,6 +37,12 @@ const masterySummary = computed(() => `当前有 ${dashboard.overview.weakTopics
 const accuracySummary = computed(() => `累计完成 ${dashboard.overview.attempts} 次作答，其中 ${dashboard.overview.correct} 次正确、${Math.max(0, dashboard.overview.attempts - dashboard.overview.correct)} 次错误。`)
 const contentSummary = computed(() => `当前有 ${dashboard.overview.activeQuestions} 道生效题目：${dashboard.overview.reviewableQuestionCount} 道已学习可复习，${dashboard.overview.unseenQuestionCount} 道尚未学习。`)
 
+async function copyPrompt() {
+  await navigator.clipboard.writeText(initializationPrompt)
+  copied.value = true
+  window.setTimeout(() => { copied.value = false }, 1600)
+}
+
 onMounted(() => {
   dashboard.refresh()
 })
@@ -50,12 +58,20 @@ onMounted(() => {
       </div>
       <RouterLink class="button primary" to="/settings">配置实例 <ArrowRight :size="17" /></RouterLink>
     </section>
+    <section v-else-if="dashboard.overview.knowledgeDomainCount === 0" class="setup-banner reveal">
+      <div><span class="eyebrow">FIRST DOMAIN</span><h2>把想学的知识，变成每天可以练的题</h2><p>复制一句提示给 Codex，确认知识点树后再保存，不需要手工配置题库。</p></div>
+      <button class="button primary" type="button" @click="copyPrompt"><Check v-if="copied" :size="17" /><Copy v-else :size="17" />{{ copied ? '已复制' : '复制创建提示' }}</button>
+    </section>
+    <section v-else-if="dashboard.overview.attempts === 0" class="setup-banner reveal">
+      <div><span class="eyebrow">FIRST TRAINING</span><h2>训练领域已就绪</h2><p>开始第一次训练；AI 负责出题和讲解，MindTrain 负责判分、记录和调度。</p></div>
+      <RouterLink class="button primary" to="/train">开始第一次训练 <ArrowRight :size="17" /></RouterLink>
+    </section>
 
     <section class="hero reveal">
       <div class="hero-copy">
-        <p class="eyebrow">PERSONAL LEARNING SYSTEM</p>
+        <p class="eyebrow">PRIVATE AI KNOWLEDGE TRAINING</p>
         <h1 class="hero-wordmark"><span>MindTrain</span><span>Dashboard</span></h1>
-        <p class="hero-description">MindTrain 根据复习积压、薄弱知识点和错误频率安排训练，让新知识的加入始终服从你的每日容量。</p>
+        <p class="hero-description">私有 AI 知识训练平台。AI 负责出题和讲解，MindTrain 负责判分、记录和调度。</p>
         <div class="hero-actions">
           <RouterLink class="button primary large" to="/train">{{ trainingActionLabel }} <ArrowRight :size="18" /></RouterLink>
           <button class="button ghost" type="button" :disabled="dashboard.loading" @click="dashboard.refresh">
@@ -120,6 +136,7 @@ onMounted(() => {
             :strong-topics="dashboard.overview.strongTopics"
             :insufficient-evidence-topic-count="dashboard.overview.insufficientEvidenceTopicCount"
           />
+          <RouterLink class="button ghost" to="/catalog">查看训练地图 <ArrowRight :size="16" /></RouterLink>
         </section>
         <section class="content-card accuracy-card">
           <div><p class="card-kicker">ACCURACY</p><h3>累计答题质量</h3></div>
@@ -141,8 +158,8 @@ onMounted(() => {
           <MetricCard label="尚未学习" :value="dashboard.overview.unseenQuestionCount" :note="`${dashboard.overview.activeQuestions} 道生效题目中的新内容`" tone="peach" />
           <MetricCard label="待答 AI 题" :value="dashboard.overview.pendingGeneratedQuestions" :note="dashboard.overview.pendingGeneratedQuestions ? '回答后进入普通调度' : '当前没有临时题积压'" tone="mint" />
         </div>
-        <RouterLink class="content-card management-link" to="/admin">
-          <div><p class="card-kicker">CONTENT GOVERNANCE</p><h3>进入内容与实例管理</h3><p>{{ dashboard.overview.knowledgeDomainCount }} 个领域 · {{ dashboard.overview.knowledgeTopicCount }} 个知识点 · {{ dashboard.schedulerName }}</p></div>
+        <RouterLink class="content-card management-link" to="/questions">
+          <div><p class="card-kicker">QUESTION BANK</p><h3>浏览只读题库</h3><p>{{ dashboard.overview.knowledgeDomainCount }} 个领域 · {{ dashboard.overview.knowledgeTopicCount }} 个知识点 · {{ dashboard.overview.activeQuestions }} 道生效题目</p></div>
           <ArrowRight :size="24" />
         </RouterLink>
       </div>

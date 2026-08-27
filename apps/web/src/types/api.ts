@@ -100,6 +100,7 @@ export interface Assignment {
   attemptType: string
   parentAttemptId: string | null
   sourceKind: string
+  selectionReason: 'DUE_REVIEW' | 'PLANNED_NEW' | 'SHORTAGE_FILL' | 'AI_CANDIDATE' | 'FOLLOW_UP' | null
   question: Question
   answerPrompt: string
 }
@@ -180,7 +181,60 @@ export interface KnowledgeTopicNode {
   childCount: number
   activeQuestionCount: number
   masteryScore: number | null
+  training: TopicTraining
   children: KnowledgeTopicNode[]
+}
+
+export interface TopicTraining {
+  status: 'untrained' | 'accumulating' | 'needs_work' | 'strengthening' | 'strong' | null
+  attemptCount: number
+  dueCount: number
+  overdueCount: number
+  statusCounts: Record<string, number>
+}
+
+export interface QuestionSummary {
+  id: string
+  domainId: string
+  version: number
+  type: 'single_choice' | 'multiple_choice'
+  title: string
+  stem: string
+  topicIds: string[]
+  difficulty: number
+  sources: Array<{ title?: string; url?: string; accessedAt?: string }>
+  attemptCount: number
+  correctCount: number
+  wrongCount: number
+  lastAnsweredAt: string | null
+  nextReviewAt: string | null
+  createdAt: string
+}
+
+export interface QuestionPage {
+  items: QuestionSummary[]
+  total: number
+  nextCursor: string | null
+}
+
+export interface QuestionAttemptSummary {
+  id: string
+  questionVersion: number
+  selectedOptionIds: string[]
+  correct: boolean
+  score: 0 | 100
+  answeredAt: string
+}
+
+export interface QuestionDetail {
+  summary: QuestionSummary
+  answerVisible: boolean
+  question: Question & {
+    correctOptionIds?: string[]
+    explanation?: Attempt['explanation']
+    sources?: Array<{ title?: string; url?: string; accessedAt?: string }>
+  }
+  attempts: QuestionAttemptSummary[]
 }
 
 export interface KnowledgeCatalogTree {

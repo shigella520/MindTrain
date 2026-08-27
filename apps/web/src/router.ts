@@ -4,6 +4,7 @@ import TrainingView from './views/TrainingView.vue'
 import AdminView from './views/AdminView.vue'
 import SettingsView from './views/SettingsView.vue'
 import CatalogView from './views/CatalogView.vue'
+import QuestionBankView from './views/QuestionBankView.vue'
 
 export default createRouter({
   history: createWebHistory(),
@@ -11,6 +12,7 @@ export default createRouter({
     { path: '/', name: 'dashboard', component: DashboardView },
     { path: '/train', name: 'training', component: TrainingView },
     { path: '/catalog', name: 'catalog', component: CatalogView },
+    { path: '/questions', name: 'questions', component: QuestionBankView },
     { path: '/admin', name: 'admin', component: AdminView },
     { path: '/settings', name: 'settings', component: SettingsView },
   ],

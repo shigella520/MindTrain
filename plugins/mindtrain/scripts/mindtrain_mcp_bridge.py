@@ -43,6 +43,7 @@ REMOTE_TOOL_NAMES = {
     "record_interaction",
     "create_candidate_question",
     "revise_saved_question",
+    "get_question_revision_context",
     "finish_training_session",
     "get_learning_report",
     "get_scheduler_backlog",
@@ -90,6 +91,10 @@ def integer_property(description):
 
 def object_property(description):
     return {"type": "object", "description": description}
+
+
+def boolean_property(description):
+    return {"type": "boolean", "description": description}
 
 
 def schema(properties, required=()):
@@ -200,10 +205,25 @@ def tool_definitions():
                     "changes": object_property("Only changed question fields"),
                     "reason": string_property("Concise reason for the revision audit log"),
                     "sourceAssignmentId": string_property("Assignment that exposed the issue when available"),
+                    "applyToPendingAssignment": boolean_property(
+                        "Rebind that pending assignment to the new version atomically"
+                    ),
                     "model": string_property("Model identifier when known"),
                     "promptVersion": string_property("Prompt version when known"),
                 },
                 ("questionId", "expectedVersion", "changes", "reason"),
+            ),
+        ),
+        tool(
+            "get_question_revision_context",
+            "Read full current question content tied to a pending assignment for revision or conflict recovery.",
+            schema(
+                {
+                    "questionId": string_property("Active saved question ID"),
+                    "expectedVersion": integer_property("Expected current version"),
+                    "assignmentId": string_property("Current pending assignment ID"),
+                },
+                ("questionId", "expectedVersion", "assignmentId"),
             ),
         ),
         tool(

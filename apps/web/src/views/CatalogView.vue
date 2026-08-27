@@ -148,7 +148,8 @@ onMounted(loadDomains)
           <p class="card-kicker">TOPIC DETAIL</p><h2>{{ topic.name }}</h2>
           <p class="topic-path">{{ [topic.domainName, ...topic.ancestorPath, topic.name].join(' / ') }}</p>
           <p class="topic-description">{{ topic.description || '暂无知识点说明。' }}</p>
-          <div class="topic-metrics"><span><FileQuestion :size="16" /><strong>{{ topic.activeQuestionCount }}</strong>道题</span><span><strong>{{ topic.masteryScore ?? '—' }}</strong>掌握度</span><span><strong>{{ topic.importance }}</strong>重要度</span></div>
+          <div class="topic-metrics"><RouterLink :to="{ path: '/questions', query: { topicId: topic.id, learningState: 'learned' } }"><FileQuestion :size="16" /><strong>{{ topic.activeQuestionCount }}</strong>查看题目</RouterLink><span><strong>{{ topic.masteryScore ?? '—' }}</strong>掌握度</span><span><strong>{{ topic.training.dueCount }}</strong>到期复习</span></div>
+          <div class="topic-section"><h3>训练状态</h3><div class="topic-tags"><span v-if="topic.training.status">{{ ({ untrained: '未训练', accumulating: '数据积累中', needs_work: '待加强', strengthening: '巩固中', strong: '已掌握' } as Record<string,string>)[topic.training.status] }}</span><span v-else>子知识点汇总</span><span v-if="topic.training.overdueCount">{{ topic.training.overdueCount }} 道已逾期</span><span>{{ topic.training.attemptCount }} 次证据</span></div></div>
           <div v-if="topic.keywords.length" class="topic-section"><h3>关键词</h3><div class="topic-tags"><span v-for="keyword in topic.keywords" :key="keyword">{{ keyword }}</span></div></div>
           <div class="topic-section"><h3>来源</h3><div v-if="topic.sources.length" class="topic-sources"><article v-for="(source, index) in topic.sources" :key="String(source.id || index)"><strong>{{ source.title || source.id || '来源' }}</strong><span>{{ source.url }}</span></article></div><p v-else>尚未绑定参考资料。</p></div>
         </template>

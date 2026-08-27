@@ -7,7 +7,7 @@ import { initialTrainingDomainId } from '../domain/trainingDomains'
 import type { Assignment, Attempt, KnowledgeDomain, Session } from '../types/api'
 
 const config = useConfigStore()
-const showCodexIntro = ref(true)
+const showCodexIntro = ref(window.localStorage.getItem('mindtrain-codex-intro-seen') !== '1')
 const session = ref<Session | null>(null)
 const assignment = ref<Assignment | null>(null)
 const result = ref<Attempt | null>(null)
@@ -24,6 +24,7 @@ const canReject = computed(() => assignment.value?.sourceKind === 'candidate'
 const suggestedMcpUrl = `${window.location.origin}/mcp`
 
 async function continueWithWeb() {
+  window.localStorage.setItem('mindtrain-codex-intro-seen', '1')
   showCodexIntro.value = false
   if (config.configured) await loadDomains()
 }

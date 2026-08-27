@@ -46,7 +46,7 @@ class McpProtocolTest {
                 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
                 """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.result.tools.length()").value(22))
+            .andExpect(jsonPath("$.result.tools.length()").value(23))
             .andExpect(jsonPath("$.result.tools[0].name").value("create_training_session"));
 
         when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("""

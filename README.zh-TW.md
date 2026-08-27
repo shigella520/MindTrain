@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <strong>你的私人 AI 知識訓練場：邊問、邊練、邊複習，把一次對話變成長期記憶。</strong>
+  <strong>私有 AI 知識訓練平臺：把想學的知識，變成每天可以練的題。</strong>
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 3.5" /></a>
 </p>
 
-MindTrain 是一個面向 Codex 和其他 AI 客戶端的開源知識訓練平臺。你可以像普通聊天一樣隨時追問、質疑和索要提示；MindTrain 在後臺負責題庫、精確判分、學習記錄和抗遺忘排程。
+MindTrain 是一個面向 Codex 和其他 AI 客戶端的開源知識訓練平臺。AI 負責出題和講解，MindTrain 負責判分、記錄和排程。你可以像普通聊天一樣隨時追問、質疑和索要提示。
 
 - **對話不中斷**：遇到不懂的概念直接問，當前題目不會被誤判為已作答。
 - **資料歸自己**：單使用者私有部署，題庫和學習歷史儲存在自己的 PostgreSQL 中。
@@ -73,10 +73,11 @@ MindTrain 核心不繫結具體知識領域；每個私有例項可以獨立管�
 | 抗遺忘排程 | 預設平衡複習題和新題；積壓過高時自動暫停新題 |
 | AI 補題 | 題庫不足時由 Codex 按指定知識點、題型和難度生成並校驗新題 |
 | 本地資料庫 | 支援 MD、TXT、PDF、DOCX、PPTX；原文和索引只留在本機 |
-| 知識目錄 | Codex 與 Web 均可查詢多個領域、知識點樹、關鍵詞、題目覆蓋和掌握度 |
+| 訓練地圖 | 在知識點樹中檢視未訓練、累積中、待加強、鞏固中、已掌握，以及到期與逾期數量 |
+| 唯讀題庫 | 依領域、知識點、題型、學習狀態和最近結果瀏覽生效題目；未作答目前版本不顯示答案 |
 | 掌握雙榜 | 依掌握度與最低作答樣本區分待加強、擅長和資料累積中的知識點 |
 | 私有資料 | Core 是唯一權威資料來源；Skill 無狀態，倉庫不承載執行資料 |
-| Web + Codex | Web 用於看板、舊題複習和配置；Codex 用於完整的 AI 教練體驗 |
+| Web + Codex | Web 用於看板、訓練地圖、唯讀題庫、舊題複習和配置；Codex 用於完整 AI 教練和題目修訂 |
 
 當前可用：Training Core、Trainer MCP、MindTrain Web、Codex Plugin 和加權排程。Anki / FSRS Provider 尚在規劃中。
 
