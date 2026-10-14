@@ -1,6 +1,6 @@
 ---
 name: mindtrain
-description: Configure a private MindTrain instance, query its knowledge catalog, create user-approved training domains and knowledge points from AI dialogue or local reference libraries, and run persistent conversational training through Trainer MCP. Use when the user configures MindTrain, asks what domains or topics exist, searches the catalog, wants to create or extend a training domain, selects a local document directory, confirms a domain draft, starts or continues training, generates a question, answers or rejects a question, asks follow-ups, revises a saved question, ends a session, or inspects learning progress.
+description: Configure a private MindTrain instance, query its knowledge catalog, create user-approved training domains and knowledge points from AI dialogue or local reference libraries, and run persistent conversational training through Trainer MCP. Use when the user configures MindTrain, asks what domains or topics exist, searches the catalog, wants to create or extend a training domain, selects a local document directory, confirms a domain draft, starts or continues training, generates a question, answers or rejects a question, asks follow-ups, revises, deletes or restores a saved question, ends a session, or inspects learning progress.
 ---
 
 # MindTrain
