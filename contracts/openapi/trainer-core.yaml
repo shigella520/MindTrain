@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MindTrain Training Core API
-  version: 1.0.1
+  version: 1.1.0
 servers:
   - url: http://127.0.0.1:8080
 security:
@@ -103,7 +103,7 @@ paths:
   /api/v1/questions/{questionId}/revisions:
     post:
       operationId: reviseActiveQuestion
-      description: 基于当前可复习题创建不可变的新版本；默认保留旧 Assignment 绑定，也可原子重绑仍待答的来源 Assignment。
+      description: 答题前后均可创建不可变新版本；来源 Assignment 可引用旧版本。默认保留历史绑定和评分，仅显式重绑时要求来源待答且版本匹配。
       parameters:
         - {name: questionId, in: path, required: true, schema: {type: string}}
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -131,13 +131,14 @@ paths:
   /api/v1/questions:
     get:
       operationId: listActiveQuestions
-      description: 只读列出当前用户的 active 题目；candidate 永不进入全局题库，列表永不返回答案。
+      description: 列出当前用户的 active 或 deleted 题目；candidate 永不进入全局题库，列表永不返回答案。摘要包含 status、deletedAt、deletionReason。
       parameters:
+        - {name: status, in: query, required: false, schema: {type: string, enum: [active, deleted], default: active}}
         - {name: q, in: query, required: false, schema: {type: string}}
         - {name: domainId, in: query, required: false, schema: {type: string}}
         - {name: topicId, in: query, required: false, schema: {type: string}}
         - {name: type, in: query, required: false, schema: {type: string, enum: [single_choice, multiple_choice]}}
-        - {name: learningState, in: query, required: false, schema: {type: string, enum: [learned, unseen], default: learned}}
+        - {name: learningState, in: query, required: false, schema: {type: string, enum: [learned, unseen, all], default: learned}}
         - {name: result, in: query, required: false, schema: {type: string, enum: [correct, wrong]}}
         - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
         - {name: cursor, in: query, required: false, schema: {type: string}}
@@ -146,23 +147,66 @@ paths:
   /api/v1/questions/{questionId}:
     get:
       operationId: getQuestionDetail
-      description: 返回 active 题目详情；仅当当前版本已有 Attempt 时显示当前版本答案与解析。
+      description: 返回 active 或 deleted 题目详情；仅当当前版本已有 Attempt 时显示当前版本答案与解析。最近作答附带该 Attempt 对应版本的 question 内容。
       parameters:
         - {name: questionId, in: path, required: true, schema: {type: string}}
       responses:
         '200': {description: 安全的题目详情、来源与最近作答记录}
-        '404': {description: 题目不存在、非 active 或不属于当前用户}
+        '404': {description: 题目不存在、属于临时题或不属于当前用户}
   /api/v1/questions/{questionId}/revision-context:
     get:
       operationId: getQuestionRevisionContext
-      description: 仅供 Codex 修订流程读取与当前待答 Assignment 匹配的完整当前版本。
+      description: 供 Codex 维护流程读取完整当前版本及状态；来源 Assignment 可为已答或旧版本。需要认证，此接口包含答案，不得用于未答训练题展示。
       parameters:
         - {name: questionId, in: path, required: true, schema: {type: string}}
-        - {name: assignmentId, in: query, required: true, schema: {type: string}}
-        - {name: expectedVersion, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: assignmentId, in: query, required: false, schema: {type: string}}
+        - {name: expectedVersion, in: query, required: false, schema: {type: integer, minimum: 1}}
       responses:
-        '200': {description: 完整当前题目修订上下文}
-        '409': {description: 版本冲突或 Assignment 已不再匹配待答题}
+        '200': {description: questionId、version、question、status、assignmentId、可空 sourceAssignmentVersion 和 sourceAssignmentStatus}
+        '409': {description: 版本冲突或来源 Assignment 不属于该题及当前用户}
+  /api/v1/questions/{questionId}/delete:
+    post:
+      operationId: deleteSavedQuestion
+      description: 软删除已保存题，取消所有待答项并释放未消费的新题预占额度；保留版本、答题、掌握度和复习历史。相同幂等键重试返回原结果。
+      parameters:
+        - {name: questionId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, reason]
+              properties:
+                expectedVersion: {type: integer, minimum: 1}
+                reason: {type: string, minLength: 1}
+                sourceAssignmentId: {type: string}
+      responses:
+        '200': {description: 返回 questionId、version、status 和 cancelledAssignmentCount；重复删除不新增审计}
+        '400': {description: 缺少原因或来源 Assignment 无效}
+        '404': {description: 题目不存在或不属于当前用户}
+        '409': {description: question_version_conflict 或 question_status_invalid（临时题需拒绝）}
+  /api/v1/questions/{questionId}/restore:
+    post:
+      operationId: restoreSavedQuestion
+      description: 恢复已删除题为 active，保留原复习进度及到期时间，不恢复已取消 Assignment。
+      parameters:
+        - {name: questionId, in: path, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: {type: integer, minimum: 1}
+      responses:
+        '200': {description: 返回 questionId、version、status、cancelledAssignmentCount（0）；重复恢复不新增审计}
+        '404': {description: 题目不存在或不属于当前用户}
+        '409': {description: question_version_conflict 或 question_status_invalid}
   /api/v1/reports/overview:
     get:
       operationId: getLearningReport

@@ -38,7 +38,7 @@ class McpProtocolTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.result.protocolVersion").value("2025-03-26"))
             .andExpect(jsonPath("$.result.capabilities.tools").exists())
-            .andExpect(jsonPath("$.result.serverInfo.version").value("1.0.1"))
+            .andExpect(jsonPath("$.result.serverInfo.version").value("1.1.0-SNAPSHOT"))
             .andExpect(jsonPath("$.result._meta.mindtrainCompatibility.contractVersion").value(1))
             .andExpect(jsonPath("$.result._meta.mindtrainCompatibility.minimumPluginVersion").value("0.2.0"));
 
@@ -46,7 +46,7 @@ class McpProtocolTest {
                 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
                 """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.result.tools.length()").value(23))
+            .andExpect(jsonPath("$.result.tools.length()").value(25))
             .andExpect(jsonPath("$.result.tools[0].name").value("create_training_session"));
 
         when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("""
@@ -144,6 +144,24 @@ class McpProtocolTest {
             .andExpect(jsonPath("$.result.structuredContent.version").value(2));
 
         verify(coreClient).post(eq("/api/v1/questions/java.concurrency.volatile.001/revisions"), any(), any());
+    }
+
+    @Test
+    void proxiesQuestionMaintenanceWithOptionalRevisionContext() throws Exception {
+        when(coreClient.get(anyString())).thenReturn(objectMapper.readTree("{\"version\":2,\"status\":\"active\"}"));
+        mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+            {"jsonrpc":"2.0","id":10,"method":"tools/call","params":{
+              "name":"get_question_revision_context","arguments":{"questionId":"test-question"}}}
+            """)).andExpect(status().isOk()).andExpect(jsonPath("$.result.isError").value(false));
+        verify(coreClient).get(eq("/api/v1/questions/test-question/revision-context"));
+        when(coreClient.post(anyString(), any(), any())).thenReturn(objectMapper.readTree("{\"status\":\"deleted\"}"));
+        for (String action : java.util.List.of("delete", "restore")) {
+            mvc.perform(authenticatedPost().contentType(MediaType.APPLICATION_JSON).content("""
+                {"jsonrpc":"2.0","id":11,"method":"tools/call","params":{
+                  "name":"%s_saved_question","arguments":{"questionId":"test-question","expectedVersion":2,"reason":"user request"}}}
+                """.formatted(action))).andExpect(status().isOk()).andExpect(jsonPath("$.result.isError").value(false));
+            verify(coreClient).post(eq("/api/v1/questions/test-question/" + action), any(), any());
+        }
     }
 
     @Test

@@ -84,6 +84,10 @@ class MindTrainPluginTest(unittest.TestCase):
             "configure_mindtrain_instance", "get_mindtrain_configuration"
         } - BRIDGE.REFERENCE_TOOL_NAMES)
         self.assertIn("revise_saved_question", names)
+        self.assertIn("delete_saved_question", names)
+        self.assertIn("restore_saved_question", names)
+        context = next(item for item in definitions if item["name"] == "get_question_revision_context")
+        self.assertEqual(context["inputSchema"]["required"], ["questionId"])
         self.assertIn("reject_generated_question", names)
         self.assertIn("preview_knowledge_catalog_import", names)
         self.assertIn("list_knowledge_domains", names)

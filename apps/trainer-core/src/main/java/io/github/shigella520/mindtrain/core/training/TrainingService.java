@@ -95,6 +95,7 @@ public class TrainingService {
                        a.source_kind, a.selection_reason, a.created_at, q.domain_id
                 FROM assignment a JOIN question q ON q.id=a.question_id
                 WHERE a.session_id = :sessionId AND a.status = 'pending'
+                  AND q.status IN ('active', 'candidate')
                 ORDER BY a.created_at LIMIT 1
                 """)
             .param("sessionId", sessionId).query(this::mapAssignment).optional();
@@ -112,7 +113,7 @@ public class TrainingService {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         SchedulerProvider.Backlog backlog = scheduler.backlog(userId, session.domainId(), now);
         int scheduledReviews = jdbc.sql("""
-                SELECT COUNT(*) FROM assignment WHERE session_id = :sessionId AND source_kind = 'review'
+                SELECT COUNT(*) FROM assignment WHERE session_id = :sessionId AND source_kind = 'review' AND status<>'cancelled'
                 """).param("sessionId", sessionId).query(Integer.class).single();
         TrainingSettings settings = applicationSettings.get();
         Optional<QuestionChoice> due = scheduledReviews < settings.reviewBudget() || backlog.newItemsPaused()
@@ -146,6 +147,15 @@ public class TrainingService {
     @Transactional
     public AttemptResponse submitAttempt(String assignmentId, SubmitAttemptRequest request) {
         String userId = UserContext.requireUserId();
+        String questionId = jdbc.sql("""
+                SELECT a.question_id FROM assignment a JOIN training_session s ON s.id=a.session_id
+                WHERE a.id=:id AND s.user_id=:userId
+                """).param("id", assignmentId).param("userId", userId).query(String.class).optional()
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "assignment_not_found", "Assignment was not found"));
+        String questionStatus = questions.lock(questionId);
+        if ("deleted".equals(questionStatus)) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_deleted", "Question was deleted; request another assignment");
+        }
         AssignmentWithOwner assignment = jdbc.sql("""
                 SELECT a.id, a.session_id, a.question_id, a.question_version, a.attempt_type, a.parent_attempt_id,
                        a.source_kind, a.status, s.user_id, s.domain_id AS session_domain_id,
@@ -165,6 +175,7 @@ public class TrainingService {
             throw new ApiException(HttpStatus.CONFLICT, "session_domain_invalid",
                 "Assignment question belongs to a different training domain");
         }
+        if ("cancelled".equals(assignment.status())) throw new ApiException(HttpStatus.CONFLICT, "assignment_cancelled", "Assignment was cancelled; request another assignment");
         if (!"pending".equals(assignment.status())) throw new ApiException(HttpStatus.CONFLICT, "assignment_already_answered", "Assignment is already answered");
 
         QuestionRecord question = questions.get(assignment.questionId(), assignment.questionVersion());
@@ -288,6 +299,7 @@ public class TrainingService {
                 FROM assignment a JOIN training_session s ON s.id=a.session_id
                 WHERE s.user_id=:userId AND a.attempt_type='main'
                   AND a.source_kind IN ('new','candidate')
+                  AND a.status<>'cancelled'
                   AND a.created_at >= :dayStart AND a.created_at < :dayEnd
                 """).param("userId", userId).param("dayStart", dayStart).param("dayEnd", dayEnd)
             .query(Integer.class).single();
@@ -487,6 +499,13 @@ public class TrainingService {
     }
 
     private NextAssignmentResponse createAssignment(SessionRow session, QuestionChoice choice, String selectionReason) {
+        if ("deleted".equals(questions.lock(choice.questionId()))) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_deleted", "Question was deleted; request another assignment");
+        }
+        // Re-read after locking: a concurrent revision may have advanced the current version.
+        int currentVersion = jdbc.sql("SELECT current_version FROM question WHERE id=:id")
+            .param("id", choice.questionId()).query(Integer.class).single();
+        choice = new QuestionChoice(choice.questionId(), currentVersion, choice.sourceKind());
         String id = "assignment-" + UUID.randomUUID();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         jdbc.sql("""
@@ -506,7 +525,14 @@ public class TrainingService {
     }
 
     private NextAssignmentResponse assignmentResponse(AssignmentRow assignment) {
-        QuestionRecord question = questions.get(assignment.questionId(), assignment.version());
+        if ("deleted".equals(questions.lock(assignment.questionId()))) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_deleted", "Question was deleted; request another assignment");
+        }
+        var current = jdbc.sql("SELECT status, question_version FROM assignment WHERE id=:id")
+            .param("id", assignment.id()).query((rs, n) -> Map.entry(rs.getString("status"), rs.getInt("question_version"))).single();
+        if (!"pending".equals(current.getKey())) throw new ApiException(HttpStatus.CONFLICT,
+            "assignment_cancelled", "Assignment is no longer pending; request another assignment");
+        QuestionRecord question = questions.get(assignment.questionId(), current.getValue());
         AssignmentPresentation presentation = new AssignmentPresentation(assignment.id(), assignment.attemptType(),
             assignment.parentAttemptId(), assignment.sourceKind(), assignment.selectionReason(), questions.sanitized(question),
             "请回复选项字母，可用逗号分隔。");
@@ -547,7 +573,7 @@ public class TrainingService {
                 FROM question q LEFT JOIN review_state rs ON rs.question_id = q.id AND rs.user_id = :userId
                 WHERE rs.question_id IS NULL
                   AND q.user_id=:userId AND q.domain_id=:domainId
-                  AND (q.status = 'active' OR q.session_eligible_id = :sessionId)
+                  AND (q.status = 'active' OR (q.status='candidate' AND q.session_eligible_id = :sessionId))
                 """).param("userId", userId).param("domainId", domainId).param("sessionId", sessionId)
             .query((rs, rowNum) -> new ScheduledQuestion(rs.getString("id"), rs.getInt("current_version"),
                 rs.getString("status"), 0, 0, null)).list();

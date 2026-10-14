@@ -25,13 +25,15 @@ public class QuestionQueryService {
     }
 
     public QuestionPage list(String query, String domainId, String topicId, String type,
-                             String learningState, String result, int requestedLimit, String cursor) {
+                             String learningState, String result, int requestedLimit, String cursor, String status) {
+        if (!List.of("active", "deleted").contains(status)) throw new ApiException(HttpStatus.BAD_REQUEST,
+            "question_status_invalid", "status must be active or deleted");
         String userId = UserContext.requireUserId();
         int limit = Math.max(1, Math.min(requestedLimit <= 0 ? 20 : requestedLimit, 100));
         int offset = parseCursor(cursor);
         String normalized = lower(query);
         List<QuestionRow> rows = jdbc.sql("""
-                SELECT q.id,q.domain_id,q.current_version,qv.type,qv.content_json,q.created_at,
+                SELECT q.id,q.domain_id,q.current_version,qv.type,qv.content_json,q.created_at,q.status,q.deleted_at,q.deletion_reason,
                        rs.correct_count,rs.wrong_count,rs.last_answered_at,rs.next_review_at,
                        (SELECT a.correct FROM attempt a
                         WHERE a.user_id=:userId AND a.question_id=q.id
@@ -39,14 +41,15 @@ public class QuestionQueryService {
                 FROM question q
                 JOIN question_version qv ON qv.question_id=q.id AND qv.version=q.current_version
                 LEFT JOIN review_state rs ON rs.question_id=q.id AND rs.user_id=:userId
-                WHERE q.user_id=:userId AND q.status='active'
-                """).param("userId", userId).query((rs, rowNum) -> new QuestionRow(
+                WHERE q.user_id=:userId AND q.status=:status
+                """).param("userId", userId).param("status", status).query((rs, rowNum) -> new QuestionRow(
                     rs.getString("id"), rs.getString("domain_id"), rs.getInt("current_version"),
                     rs.getString("type"), read(rs.getString("content_json")),
                     rs.getObject("created_at", OffsetDateTime.class), nullableInt(rs, "correct_count"),
                     nullableInt(rs, "wrong_count"), rs.getObject("last_answered_at", OffsetDateTime.class),
                     rs.getObject("next_review_at", OffsetDateTime.class),
-                    nullableBoolean(rs, "latest_correct"))).list();
+                    nullableBoolean(rs, "latest_correct"), rs.getString("status"),
+                    rs.getObject("deleted_at", OffsetDateTime.class), rs.getString("deletion_reason"))).list();
 
         List<QuestionSummary> matches = rows.stream()
             .filter(row -> blank(domainId) || domainId.equals(row.domainId()))
@@ -70,15 +73,18 @@ public class QuestionQueryService {
         String userId = UserContext.requireUserId();
         QuestionRow row = current(questionId, userId);
         List<AttemptSummary> attempts = jdbc.sql("""
-                SELECT id,question_version,selected_option_ids_json,correct,score,answered_at
-                FROM attempt WHERE user_id=:userId AND question_id=:questionId
-                ORDER BY answered_at DESC LIMIT 20
+                SELECT a.id,a.question_version,a.selected_option_ids_json,a.correct,a.score,a.answered_at,v.content_json
+                FROM attempt a JOIN question_version v ON v.question_id=a.question_id AND v.version=a.question_version
+                WHERE a.user_id=:userId AND a.question_id=:questionId
+                ORDER BY a.answered_at DESC LIMIT 20
                 """).param("userId", userId).param("questionId", questionId)
             .query((rs, rowNum) -> new AttemptSummary(rs.getString("id"), rs.getInt("question_version"),
                 strings(read(rs.getString("selected_option_ids_json"))),
                 rs.getBoolean("correct"), rs.getInt("score"),
-                rs.getObject("answered_at", OffsetDateTime.class))).list();
-        boolean answerVisible = attempts.stream().anyMatch(attempt -> attempt.questionVersion() == row.version());
+                rs.getObject("answered_at", OffsetDateTime.class), read(rs.getString("content_json")))).list();
+        boolean answerVisible = jdbc.sql("""
+            SELECT COUNT(*) FROM attempt WHERE user_id=:userId AND question_id=:id AND question_version=:version
+            """).param("userId", userId).param("id", questionId).param("version", row.version()).query(Integer.class).single() > 0;
         JsonNode presentation = row.content().deepCopy();
         if (!answerVisible && presentation.isObject()) {
             ((com.fasterxml.jackson.databind.node.ObjectNode) presentation).remove(List.of("correctOptionIds", "explanation"));
@@ -86,43 +92,45 @@ public class QuestionQueryService {
         return new QuestionDetail(summary(row), answerVisible, presentation, attempts);
     }
 
-    public RevisionContext revisionContext(String questionId, String assignmentId, int expectedVersion) {
+    public RevisionContext revisionContext(String questionId, String assignmentId, Integer expectedVersion) {
         String userId = UserContext.requireUserId();
         QuestionRow row = current(questionId, userId);
-        if (row.version() != expectedVersion) {
+        if (expectedVersion != null && row.version() != expectedVersion) {
             throw new ApiException(HttpStatus.CONFLICT, "question_version_conflict",
                 "Question current version is " + row.version() + ", not " + expectedVersion);
         }
-        int matching = jdbc.sql("""
-                SELECT COUNT(*) FROM assignment a JOIN training_session s ON s.id=a.session_id
-                WHERE a.id=:assignmentId AND a.question_id=:questionId AND a.question_version=:version
-                  AND a.status='pending' AND s.user_id=:userId
+        SourceAssignment source = null;
+        if (!blank(assignmentId)) {
+            source = jdbc.sql("""
+                SELECT a.question_version,a.status FROM assignment a JOIN training_session s ON s.id=a.session_id
+                WHERE a.id=:assignmentId AND a.question_id=:questionId AND s.user_id=:userId
                 """).param("assignmentId", assignmentId).param("questionId", questionId)
-            .param("version", expectedVersion).param("userId", userId).query(Integer.class).single();
-        if (matching == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "revision_assignment_invalid",
-                "Revision context requires the current unanswered assignment");
+                .param("userId", userId).query((rs, n) -> new SourceAssignment(rs.getInt("question_version"), rs.getString("status")))
+                .optional().orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "revision_assignment_invalid",
+                    "Source assignment does not belong to this question and user"));
         }
-        return new RevisionContext(questionId, expectedVersion, assignmentId, row.content());
+        return new RevisionContext(questionId, row.version(), assignmentId, row.content(), row.status(),
+            source == null ? null : source.version(), source == null ? null : source.status());
     }
 
     private QuestionRow current(String questionId, String userId) {
         return jdbc.sql("""
-                SELECT q.id,q.domain_id,q.current_version,qv.type,qv.content_json,q.created_at,
+                SELECT q.id,q.domain_id,q.current_version,qv.type,qv.content_json,q.created_at,q.status,q.deleted_at,q.deletion_reason,
                        rs.correct_count,rs.wrong_count,rs.last_answered_at,rs.next_review_at,
                        (SELECT a.correct FROM attempt a
                         WHERE a.user_id=:userId AND a.question_id=q.id
                         ORDER BY a.answered_at DESC LIMIT 1) AS latest_correct
                 FROM question q JOIN question_version qv ON qv.question_id=q.id AND qv.version=q.current_version
                 LEFT JOIN review_state rs ON rs.question_id=q.id AND rs.user_id=:userId
-                WHERE q.id=:questionId AND q.user_id=:userId AND q.status='active'
+                WHERE q.id=:questionId AND q.user_id=:userId AND q.status IN ('active','deleted')
                 """).param("questionId", questionId).param("userId", userId)
             .query((rs, rowNum) -> new QuestionRow(rs.getString("id"), rs.getString("domain_id"),
                 rs.getInt("current_version"), rs.getString("type"), read(rs.getString("content_json")),
                 rs.getObject("created_at", OffsetDateTime.class), nullableInt(rs, "correct_count"),
                 nullableInt(rs, "wrong_count"), rs.getObject("last_answered_at", OffsetDateTime.class),
                 rs.getObject("next_review_at", OffsetDateTime.class),
-                nullableBoolean(rs, "latest_correct")))
+                nullableBoolean(rs, "latest_correct"), rs.getString("status"),
+                rs.getObject("deleted_at", OffsetDateTime.class), rs.getString("deletion_reason")))
             .optional().orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "question_not_found", "Question was not found"));
     }
 
@@ -134,7 +142,7 @@ public class QuestionQueryService {
             content.path("title").asText(), content.path("stem").asText(),
             strings(content.path("topicIds")), content.path("difficulty").asInt(),
             content.path("sources"), correct + wrong, correct, wrong,
-            row.lastAnsweredAt(), row.nextReviewAt(), row.createdAt());
+            row.lastAnsweredAt(), row.nextReviewAt(), row.createdAt(), row.status(), row.deletedAt(), row.deletionReason());
     }
 
     private boolean learningMatches(QuestionRow row, String state) {
@@ -188,16 +196,19 @@ public class QuestionQueryService {
     private record QuestionRow(String id, String domainId, int version, String type, JsonNode content,
                                OffsetDateTime createdAt, Integer correctCount, Integer wrongCount,
                                OffsetDateTime lastAnsweredAt, OffsetDateTime nextReviewAt,
-                               Boolean latestCorrect) {}
+                               Boolean latestCorrect, String status, OffsetDateTime deletedAt, String deletionReason) {}
     public record QuestionPage(List<QuestionSummary> items, int total, String nextCursor) {}
     public record QuestionSummary(String id, String domainId, int version, String type, String title, String stem,
                                   List<String> topicIds, int difficulty, JsonNode sources, int attemptCount,
                                   int correctCount, int wrongCount, OffsetDateTime lastAnsweredAt,
-                                  OffsetDateTime nextReviewAt, OffsetDateTime createdAt) {}
+                                  OffsetDateTime nextReviewAt, OffsetDateTime createdAt,
+                                  String status, OffsetDateTime deletedAt, String deletionReason) {}
     public record AttemptSummary(String id, int questionVersion, List<String> selectedOptionIds,
                                  boolean correct, int score,
-                                 OffsetDateTime answeredAt) {}
+                                 OffsetDateTime answeredAt, JsonNode question) {}
     public record QuestionDetail(QuestionSummary summary, boolean answerVisible, JsonNode question,
                                  List<AttemptSummary> attempts) {}
-    public record RevisionContext(String questionId, int version, String assignmentId, JsonNode question) {}
+    private record SourceAssignment(int version, String status) {}
+    public record RevisionContext(String questionId, int version, String assignmentId, JsonNode question,
+                                  String status, Integer sourceAssignmentVersion, String sourceAssignmentStatus) {}
 }

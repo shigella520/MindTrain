@@ -21,6 +21,16 @@ public class IdempotencyService {
     }
 
     @Transactional
+    public <T> T executeQuestion(String questionId, String operation, String key, Class<T> type, Supplier<T> action) {
+        // Serialize lifecycle retries before checking the idempotency record, including concurrent retries.
+        jdbc.sql("SELECT id FROM question WHERE id=:id AND user_id=:userId FOR UPDATE")
+            .param("id", questionId).param("userId", UserContext.requireUserId()).query(String.class)
+            .optional().orElseThrow(() -> new ApiException(org.springframework.http.HttpStatus.NOT_FOUND,
+                "question_not_found", "Question was not found"));
+        return execute(operation, key, type, action);
+    }
+
+    @Transactional
     public <T> T execute(String operation, String key, Class<T> type, Supplier<T> action) {
         if (key == null || key.isBlank()) {
             throw new ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,

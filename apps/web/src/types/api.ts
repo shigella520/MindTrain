@@ -194,6 +194,9 @@ export interface TopicTraining {
 }
 
 export interface QuestionSummary {
+  status: 'active' | 'deleted'
+  deletedAt: string | null
+  deletionReason: string | null
   id: string
   domainId: string
   version: number
@@ -218,6 +221,7 @@ export interface QuestionPage {
 }
 
 export interface QuestionAttemptSummary {
+  question: QuestionDetail['question']
   id: string
   questionVersion: number
   selectedOptionIds: string[]
@@ -235,6 +239,13 @@ export interface QuestionDetail {
     sources?: Array<{ title?: string; url?: string; accessedAt?: string }>
   }
   attempts: QuestionAttemptSummary[]
+}
+
+export interface QuestionLifecycleResult {
+  questionId: string
+  version: number
+  status: 'active' | 'deleted'
+  cancelledAssignmentCount: number
 }
 
 export interface KnowledgeCatalogTree {

@@ -44,6 +44,8 @@ REMOTE_TOOL_NAMES = {
     "create_candidate_question",
     "revise_saved_question",
     "get_question_revision_context",
+    "delete_saved_question",
+    "restore_saved_question",
     "finish_training_session",
     "get_learning_report",
     "get_scheduler_backlog",
@@ -201,7 +203,7 @@ def tool_definitions():
             schema(
                 {
                     "questionId": string_property("Active saved question ID"),
-                    "expectedVersion": integer_property("Version shown in the assignment; prevents stale overwrites"),
+                    "expectedVersion": integer_property("Current question version from revision context; prevents stale overwrites"),
                     "changes": object_property("Only changed question fields"),
                     "reason": string_property("Concise reason for the revision audit log"),
                     "sourceAssignmentId": string_property("Assignment that exposed the issue when available"),
@@ -216,15 +218,33 @@ def tool_definitions():
         ),
         tool(
             "get_question_revision_context",
-            "Read full current question content tied to a pending assignment for revision or conflict recovery.",
+            "Read authoritative current saved question content and status before or after answering for maintenance or conflict recovery.",
             schema(
                 {
                     "questionId": string_property("Active saved question ID"),
                     "expectedVersion": integer_property("Expected current version"),
-                    "assignmentId": string_property("Current pending assignment ID"),
+                    "assignmentId": string_property("Optional source assignment ID, including answered or older versions"),
                 },
-                ("questionId", "expectedVersion", "assignmentId"),
+                ("questionId",),
             ),
+        ),
+        tool(
+            "delete_saved_question",
+            "Soft-delete a saved question on explicit user request; preserve history and cancel pending assignments.",
+            schema({
+                "questionId": string_property("Saved question ID"),
+                "expectedVersion": integer_property("Current question version"),
+                "reason": string_property("User's reason for deletion"),
+                "sourceAssignmentId": string_property("Optional source assignment ID"),
+            }, ("questionId", "expectedVersion", "reason")),
+        ),
+        tool(
+            "restore_saved_question",
+            "Restore a deleted question with its existing review progress; cancelled assignments stay cancelled.",
+            schema({
+                "questionId": string_property("Deleted question ID"),
+                "expectedVersion": integer_property("Current question version"),
+            }, ("questionId", "expectedVersion")),
         ),
         tool(
             "finish_training_session",
