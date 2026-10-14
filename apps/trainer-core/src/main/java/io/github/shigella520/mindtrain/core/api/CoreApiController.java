@@ -100,7 +100,7 @@ public class CoreApiController {
     public QuestionService.RevisionResponse reviseQuestion(@PathVariable String id,
                                                             @RequestHeader("Idempotency-Key") String key,
                                                             @RequestBody RevisionRequest request) {
-        return idempotency.execute("revise-question", key, QuestionService.RevisionResponse.class,
+        return idempotency.executeQuestion(id, "revise-question", key, QuestionService.RevisionResponse.class,
             () -> questions.reviseActive(id, request.expectedVersion(), request.changes(), request.reason(),
                 request.sourceAssignmentId(), request.model(), request.promptVersion(),
                 Boolean.TRUE.equals(request.applyToPendingAssignment())));
@@ -115,8 +115,9 @@ public class CoreApiController {
         @RequestParam(name = "learningState", defaultValue = "learned") String learningState,
         @RequestParam(name = "result", required = false) String result,
         @RequestParam(name = "limit", defaultValue = "20") int limit,
-        @RequestParam(name = "cursor", required = false) String cursor) {
-        return questionQueries.list(query, domainId, topicId, type, learningState, result, limit, cursor);
+        @RequestParam(name = "cursor", required = false) String cursor,
+        @RequestParam(name = "status", defaultValue = "active") String status) {
+        return questionQueries.list(query, domainId, topicId, type, learningState, result, limit, cursor, status);
     }
 
     @GetMapping("/questions/{id}")
@@ -127,10 +128,26 @@ public class CoreApiController {
     @GetMapping("/questions/{id}/revision-context")
     public QuestionQueryService.RevisionContext revisionContext(
         @PathVariable String id,
-        @RequestParam("assignmentId") String assignmentId,
-        @RequestParam("expectedVersion") int expectedVersion) {
+        @RequestParam(value = "assignmentId", required = false) String assignmentId,
+        @RequestParam(value = "expectedVersion", required = false) Integer expectedVersion) {
         return questionQueries.revisionContext(id, assignmentId, expectedVersion);
     }
+
+    @PostMapping("/questions/{id}/delete")
+    public QuestionService.LifecycleResponse deleteQuestion(@PathVariable String id,
+        @RequestHeader("Idempotency-Key") String key, @RequestBody LifecycleRequest request) {
+        return idempotency.executeQuestion(id, "delete-question", key, QuestionService.LifecycleResponse.class,
+            () -> questions.changeStatus(id, request.expectedVersion(), true, request.reason(), request.sourceAssignmentId()));
+    }
+
+    @PostMapping("/questions/{id}/restore")
+    public QuestionService.LifecycleResponse restoreQuestion(@PathVariable String id,
+        @RequestHeader("Idempotency-Key") String key, @RequestBody LifecycleRequest request) {
+        return idempotency.executeQuestion(id, "restore-question", key, QuestionService.LifecycleResponse.class,
+            () -> questions.changeStatus(id, request.expectedVersion(), false, null, null));
+    }
+
+    public record LifecycleRequest(int expectedVersion, String reason, String sourceAssignmentId) {}
 
     @GetMapping("/reports/overview")
     public JsonNode overview() {

@@ -1,5 +1,6 @@
 import { useConfigStore } from '../stores/config'
 import { DEFAULT_SCHEDULER_PROVIDER_ID } from '../domain/schedulers'
+import type { QuestionLifecycleResult } from '../types/api'
 import type { Attempt, Backlog, KnowledgeCatalogTree, KnowledgeDomain, KnowledgeTopicDetail, KnowledgeTopicSearchResponse, NextAssignment, Overview, QuestionDetail, QuestionPage, RejectedGeneratedQuestion, Session, TrainingSettings } from '../types/api'
 
 export class CoreApiError extends Error {
@@ -77,4 +78,8 @@ export const coreApi = {
     return request<QuestionPage>(`/questions?${params}`)
   },
   question: (questionId: string) => request<QuestionDetail>(`/questions/${encodeURIComponent(questionId)}`),
+  deleteQuestion: (questionId: string, expectedVersion: number, reason: string) =>
+    post<QuestionLifecycleResult>(`/questions/${encodeURIComponent(questionId)}/delete`, { expectedVersion, reason }, 'delete-question'),
+  restoreQuestion: (questionId: string, expectedVersion: number) =>
+    post<QuestionLifecycleResult>(`/questions/${encodeURIComponent(questionId)}/restore`, { expectedVersion }, 'restore-question'),
 }

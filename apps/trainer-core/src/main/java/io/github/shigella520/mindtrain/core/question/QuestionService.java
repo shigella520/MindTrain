@@ -172,6 +172,7 @@ public class QuestionService {
                 "Unsupported revision fields: " + String.join(", ", unsupported));
         }
 
+        lock(questionId);
         QuestionRecord current = current(questionId);
         if (!"active".equals(current.status())) {
             throw new ApiException(HttpStatus.CONFLICT, "question_not_active", "Only active questions can be revised");
@@ -191,14 +192,14 @@ public class QuestionService {
                     SELECT COUNT(*)
                     FROM assignment a JOIN training_session s ON s.id = a.session_id
                     WHERE a.id = :assignmentId AND a.question_id = :questionId
-                      AND a.question_version = :version AND s.user_id = :userId
+                      AND s.user_id = :userId
                     """)
                 .param("assignmentId", sourceAssignmentId).param("questionId", questionId)
-                .param("version", expectedVersion).param("userId", userId)
+                .param("userId", userId)
                 .query(Integer.class).single();
             if (sourceExists == 0) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "revision_assignment_invalid",
-                    "Source assignment does not match the question version and current user");
+                    "Source assignment does not match the question and current user");
             }
         }
 
@@ -263,6 +264,77 @@ public class QuestionService {
         return new RevisionResponse(revisionId, questionId, expectedVersion, nextVersion, "active",
             reason.trim(), blankNull(sourceAssignmentId), assignmentRebound, now);
     }
+
+    /** All question mutations acquire this lock before reading assignments or updating sessions. */
+    public String lock(String questionId) {
+        return jdbc.sql("SELECT status FROM question WHERE id=:id AND user_id=:userId FOR UPDATE")
+            .param("id", questionId).param("userId", UserContext.requireUserId()).query(String.class)
+            .optional().orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
+                "question_not_found", "Question was not found"));
+    }
+
+    @Transactional
+    public LifecycleResponse changeStatus(String questionId, int expectedVersion, boolean delete,
+                                          String reason, String sourceAssignmentId) {
+        lock(questionId);
+        QuestionRecord current = current(questionId);
+        if (current.version() != expectedVersion) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_version_conflict", "Question version changed");
+        }
+        if (!List.of("active", "deleted").contains(current.status())) {
+            throw new ApiException(HttpStatus.CONFLICT, "question_status_invalid",
+                "Use candidate rejection for an unanswered generated question");
+        }
+        if (delete && (reason == null || reason.isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "deletion_reason_required", "A deletion reason is required");
+        }
+        String userId = UserContext.requireUserId();
+        if (sourceAssignmentId != null && !sourceAssignmentId.isBlank()) {
+            int matches = jdbc.sql("""
+                SELECT COUNT(*) FROM assignment a JOIN training_session s ON s.id=a.session_id
+                WHERE a.id=:id AND a.question_id=:questionId AND s.user_id=:userId
+                """).param("id", sourceAssignmentId).param("questionId", questionId)
+                .param("userId", userId).query(Integer.class).single();
+            if (matches == 0) throw new ApiException(HttpStatus.BAD_REQUEST,
+                "revision_assignment_invalid", "Source assignment does not belong to this question and user");
+        }
+        String status = delete ? "deleted" : "active";
+        if (status.equals(current.status())) return new LifecycleResponse(questionId, expectedVersion, status, 0);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        int cancelled = 0;
+        if (delete) {
+            // A main new assignment reserves one slot at issue time, not at answer time.
+            var reservations = jdbc.sql("""
+                SELECT session_id, COUNT(*) AS reserved FROM assignment
+                WHERE question_id=:id AND status='pending' AND attempt_type='main' AND source_kind<>'review'
+                GROUP BY session_id ORDER BY session_id
+                """).param("id", questionId).query((rs, n) ->
+                    Map.entry(rs.getString("session_id"), rs.getInt("reserved"))).list();
+            for (var reservation : reservations) {
+                jdbc.sql("""
+                    UPDATE training_session SET introduced_new_count=GREATEST(0, introduced_new_count-:count)
+                    WHERE id=:id
+                    """).param("count", reservation.getValue()).param("id", reservation.getKey()).update();
+            }
+            cancelled = jdbc.sql("""
+                UPDATE assignment SET status='cancelled', cancellation_reason='question_deleted'
+                WHERE question_id=:id AND status='pending'
+                """).param("id", questionId).update();
+        }
+        jdbc.sql("UPDATE question SET status=:status, deleted_at=:at, deletion_reason=:reason WHERE id=:id")
+            .param("status", status).param("at", delete ? now : null)
+            .param("reason", delete ? reason.trim() : null).param("id", questionId).update();
+        jdbc.sql("""
+            INSERT INTO question_lifecycle_event(id,question_id,user_id,question_version,action,reason,source_assignment_id,created_at)
+            VALUES (:id,:questionId,:userId,:version,:action,:reason,:source,:at)
+            """).param("id", "lifecycle-" + java.util.UUID.randomUUID()).param("questionId", questionId)
+            .param("userId", userId).param("version", expectedVersion).param("action", delete ? "delete" : "restore")
+            .param("reason", delete ? reason.trim() : null).param("source", blankNull(sourceAssignmentId))
+            .param("at", now).update();
+        return new LifecycleResponse(questionId, expectedVersion, status, cancelled);
+    }
+
+    public record LifecycleResponse(String questionId, int version, String status, int cancelledAssignmentCount) {}
 
     public void validateCandidate(JsonNode question, String requiredTopicId) {
         validateQuestion(question, requiredTopicId, "candidate_invalid");

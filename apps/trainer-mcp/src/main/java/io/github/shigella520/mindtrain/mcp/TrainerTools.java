@@ -55,7 +55,7 @@ public class TrainerTools {
             "Create an immutable next version of an active saved question after explicit user approval.",
             schema(Map.of(
                 "questionId", string("Active saved question ID"),
-                "expectedVersion", integer("Version shown in the assignment; prevents stale overwrites"),
+                "expectedVersion", integer("Current question version returned by revision context; prevents stale overwrites"),
                 "changes", object("Only changed fields, such as title, stem, options, explanation or sources"),
                 "reason", string("Concise reason for the revision audit log"),
                 "sourceAssignmentId", string("Assignment that exposed the issue when available"),
@@ -64,12 +64,19 @@ public class TrainerTools {
                 "promptVersion", string("Prompt version when known")
             ), List.of("questionId", "expectedVersion", "changes", "reason"))));
         tools.add(tool("get_question_revision_context",
-            "Read the full current content of an active question tied to its pending assignment for revision or conflict recovery.",
+            "Read authoritative current saved question content and status before or after answering, for maintenance or conflict recovery.",
             schema(Map.of(
                 "questionId", string("Active saved question ID"),
                 "expectedVersion", integer("Expected current version"),
-                "assignmentId", string("Current pending assignment ID")
-            ), List.of("questionId", "expectedVersion", "assignmentId"))));
+                "assignmentId", string("Optional source assignment ID, including an answered or older-version assignment")
+            ), List.of("questionId"))));
+        tools.add(tool("delete_saved_question", "Soft-delete a saved question on explicit user request; preserve learning history and cancel pending assignments.",
+            schema(Map.of("questionId", string("Saved question ID"), "expectedVersion", integer("Current question version"),
+                "reason", string("User's reason for deletion"), "sourceAssignmentId", string("Optional source assignment ID")),
+                List.of("questionId", "expectedVersion", "reason"))));
+        tools.add(tool("restore_saved_question", "Restore a deleted saved question with its existing review progress; cancelled assignments stay cancelled.",
+            schema(Map.of("questionId", string("Deleted question ID"), "expectedVersion", integer("Current question version")),
+                List.of("questionId", "expectedVersion"))));
         tools.add(tool("finish_training_session", "Finish a session and persist its summary.",
             schema(Map.of("sessionId", string("Session ID")), List.of("sessionId"))));
         tools.add(tool("get_learning_report",
@@ -145,8 +152,11 @@ public class TrainerTools {
                 without(arguments, "questionId", "idempotencyKey"), key);
             case "get_question_revision_context" -> core.get(
                 "/api/v1/questions/" + encode(required(arguments, "questionId")) + "/revision-context"
-                    + "?assignmentId=" + encode(required(arguments, "assignmentId"))
-                    + "&expectedVersion=" + arguments.path("expectedVersion").asInt());
+                    + revisionQuery(arguments));
+            case "delete_saved_question", "restore_saved_question" -> core.post(
+                "/api/v1/questions/" + encode(required(arguments, "questionId"))
+                    + ("delete_saved_question".equals(name) ? "/delete" : "/restore"),
+                without(arguments, "questionId", "idempotencyKey"), key);
             case "finish_training_session" -> core.post("/api/v1/sessions/" + required(arguments, "sessionId") + "/finish",
                 objectMapper.createObjectNode(), key);
             case "get_learning_report" -> core.get("/api/v1/reports/overview");
@@ -186,6 +196,14 @@ public class TrainerTools {
         ObjectNode result = source.deepCopy();
         for (String name : names) result.remove(name);
         return result;
+    }
+
+    private String revisionQuery(JsonNode arguments) {
+        List<String> params = new java.util.ArrayList<>();
+        for (String field : List.of("assignmentId", "expectedVersion")) {
+            if (arguments.hasNonNull(field)) params.add(field + "=" + encode(arguments.path(field).asText()));
+        }
+        return params.isEmpty() ? "" : "?" + String.join("&", params);
     }
 
     private String query(JsonNode arguments, String argumentName, String parameterName) {

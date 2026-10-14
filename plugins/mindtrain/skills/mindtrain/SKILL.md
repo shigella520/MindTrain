@@ -1,6 +1,6 @@
 ---
 name: mindtrain
-description: Configure a private MindTrain instance, query its knowledge catalog, create user-approved training domains and knowledge points from AI dialogue or local reference libraries, and run persistent conversational training through Trainer MCP. Use when the user configures MindTrain, asks what domains or topics exist, searches the catalog, wants to create or extend a training domain, selects a local document directory, confirms a domain draft, starts or continues training, generates a question, answers or rejects a question, asks follow-ups, revises a saved question, ends a session, or inspects learning progress.
+description: Configure a private MindTrain instance, query its knowledge catalog, create user-approved training domains and knowledge points from AI dialogue or local reference libraries, and run persistent conversational training through Trainer MCP. Use when the user configures MindTrain, asks what domains or topics exist, searches the catalog, wants to create or extend a training domain, selects a local document directory, confirms a domain draft, starts or continues training, generates a question, answers or rejects a question, asks follow-ups, revises, deletes or restores a saved question, ends a session, or inspects learning progress.
 ---
 
 # MindTrain
@@ -47,9 +47,21 @@ Never infer the correct answer before `submit_choice_answer` returns it. Invalid
 
 When the user reports that a displayed question is unclear, incorrect, outdated, or poorly sourced, record the feedback with `record_interaction` and discuss the issue first. Never change the question merely because the user challenged it.
 
-Call `get_question_revision_context` before revising so the complete current version and pending Assignment are authoritative. Call `revise_saved_question` only after the user explicitly asks to update the question bank and the intended correction is clear. The phrase `不合适，修改后再出` (or an unambiguous equivalent) is explicit authorization for one revision of the displayed active question and does not require a second confirmation. Use the question ID and version from the assignment, include its assignment ID as `sourceAssignmentId`, set `applyToPendingAssignment: true`, and submit only changed fields. Preserve option IDs and the correct option set unless authoritative sources support a scoring correction. Explain the revision and report the new version returned by Core.
+Call `get_question_revision_context` with `questionId` before revising, before or after answering. Optionally include the source `assignmentId`; it may refer to an older version or an answered assignment. Use the returned current `version` as `expectedVersion`, not the version remembered from the conversation. Deleted questions must be restored before revision.
 
-On `question_version_conflict`, do not retry with a guessed version. Call `get_question_revision_context` with the pending Assignment to retrieve authoritative current content; if the Assignment no longer matches, explain that it must be refreshed rather than silently replacing it.
+Call `revise_saved_question` when the user explicitly requests the concrete correction or authorizes the discussed proposal; no repeated confirmation is needed. A complaint alone requires discussing a proposed correction first. Submit only changed fields and record the source Assignment when known. For `修改后再出`, set `applyToPendingAssignment: true` only when that Assignment is pending and matches the current version. After answering, revise the bank without rebinding the historical Assignment or changing its score; do not promise immediate reissue without a supported tool.
+
+Check that the revised stem, options, correct answers, explanation and sources agree. Preserve option IDs, but do not force the original answer combination when revised content changes correctness. Report the saved version only after Core succeeds. Do not reveal maintenance-only answers while presenting an unanswered training question.
+
+On `question_version_conflict`, fetch context without `expectedVersion`, compare the current content with the intended change, and do not blindly retry. A mismatched pending Assignment must be refreshed before rebinding.
+
+## Delete or restore a saved question
+
+For an explicit request to delete an identifiable saved question or never show it again, fetch its current context and call `delete_saved_question` with `questionId`, `expectedVersion`, the user's reason, and optional `sourceAssignmentId`. Do not ask for another confirmation. If the user says “modify or delete”, clarify which action they want; do not choose deletion. If the target question is unclear, clarify its identity.
+
+Use `reject_generated_question` instead for an unanswered generated candidate. Saved-question deletion removes the question from training and cancels pending assignments, while preserving versions, attempts and review history. After success say “题目已移出题库和训练，历史答题记录保留”. Continue with `get_next_assignment` if the user wants to keep training.
+
+For an explicit restore request, fetch context and call `restore_saved_question` with its current version. Report that review progress is preserved and cancelled assignments are not revived. Reuse the same idempotency key for retries of the same write; use a new key for a new action.
 
 ## Generate a missing question
 
@@ -80,6 +92,7 @@ When the user asks for a learning report, call `get_learning_report`. Lead with 
 - On `training_domain_not_found`, refresh the domain list instead of guessing a replacement.
 - On `session_domain_invalid`, explain that the session's domain no longer exists and start a new session only after the user chooses a valid domain.
 - On `answer_unparseable`, ask for option letters again without revealing answer count.
+- On `question_deleted` or `assignment_cancelled`, clear the obsolete pending question, explain that no answer was recorded, and fetch the next assignment when continuing training.
 - On `no_available_items`, explain the scheduler reason and offer to finish or inspect backlog.
 - On Core or MCP unavailability, retain the current visible question in conversation and retry the tool; do not fabricate persistence success.
 - On a local parser warning, report the affected file and continue with usable documents; never claim an unreadable document was indexed.

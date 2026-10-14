@@ -12,7 +12,7 @@ const session = ref<Session | null>(null)
 const assignment = ref<Assignment | null>(null)
 const result = ref<Attempt | null>(null)
 const selected = ref<string[]>([])
-const status = ref<'idle' | 'loading' | 'question' | 'result' | 'complete' | 'generation_required' | 'empty'>('idle')
+const status = ref<'idle' | 'loading' | 'question' | 'result' | 'complete' | 'generation_required' | 'empty' | 'cancelled'>('idle')
 const error = ref('')
 const domains = ref<KnowledgeDomain[]>([])
 const selectedDomainId = ref('')
@@ -123,6 +123,14 @@ async function finish() {
 }
 
 function fail(cause: unknown, fallback: typeof status.value = 'idle') {
+  if (cause instanceof CoreApiError && ['question_deleted', 'assignment_cancelled'].includes(cause.code || '')) {
+    assignment.value = null
+    selected.value = []
+    result.value = null
+    error.value = ''
+    status.value = 'cancelled'
+    return
+  }
   error.value = cause instanceof CoreApiError ? cause.message : cause instanceof Error ? cause.message : '请求失败'
   status.value = fallback
 }
@@ -262,6 +270,12 @@ function fail(cause: unknown, fallback: typeof status.value = 'idle') {
       <h1>需要生成新的 AI 临时题</h1>
       <p>Web MVP 不直接调用 AI。请在 Codex 中使用 MindTrain Skill，为当前会话生成带来源的临时题。</p>
       <button class="button primary" type="button" @click="finish">结束并保存会话</button>
+    </section>
+
+    <section v-else-if="status === 'cancelled'" class="training-card centered-card reveal">
+      <RotateCcw :size="34" /><h1>当前题目已移出训练</h1>
+      <p>待答项已取消，不计作答或错误。可以继续获取下一题。</p>
+      <button class="button primary" type="button" @click="next">继续训练</button>
     </section>
 
     <section v-else-if="status === 'empty'" class="training-card centered-card reveal">

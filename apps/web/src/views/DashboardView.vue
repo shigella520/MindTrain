@@ -159,7 +159,7 @@ onMounted(() => {
           <MetricCard label="待答 AI 题" :value="dashboard.overview.pendingGeneratedQuestions" :note="dashboard.overview.pendingGeneratedQuestions ? '回答后进入普通调度' : '当前没有临时题积压'" tone="mint" />
         </div>
         <RouterLink class="content-card management-link" to="/questions">
-          <div><p class="card-kicker">QUESTION BANK</p><h3>浏览只读题库</h3><p>{{ dashboard.overview.knowledgeDomainCount }} 个领域 · {{ dashboard.overview.knowledgeTopicCount }} 个知识点 · {{ dashboard.overview.activeQuestions }} 道生效题目</p></div>
+          <div><p class="card-kicker">QUESTION BANK</p><h3>浏览与管理题库</h3><p>{{ dashboard.overview.knowledgeDomainCount }} 个领域 · {{ dashboard.overview.knowledgeTopicCount }} 个知识点 · {{ dashboard.overview.activeQuestions }} 道生效题目</p></div>
           <ArrowRight :size="24" />
         </RouterLink>
       </div>

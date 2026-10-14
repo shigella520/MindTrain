@@ -74,10 +74,10 @@ Live demo: [https://mindtrain.jianyutan.com/](https://mindtrain.jianyutan.com/) 
 | AI-generated questions | When coverage is insufficient, Codex generates and validates a question for a selected topic, type, and difficulty |
 | Local reference library | Index MD, TXT, PDF, DOCX, and PPTX while keeping source files and the index on your machine |
 | Training map | See untrained, accumulating, needs-work, strengthening, and strong topics with due and overdue counts |
-| Read-only question bank | Filter active questions by domain, topic, type, learning state, and latest result without revealing unseen answers |
+| Question maintenance | Revise through Codex before or after answering; delete and restore through Web or Codex while preserving versions and attempts, without revealing unseen answers |
 | Mastery highlights | Separate weak, strong, and insufficient-evidence topics using mastery scores and minimum attempt thresholds |
 | Private data | Core is the only source of truth; the Skill is stateless and runtime data is not stored in the repository |
-| Web + Codex | Use Web for dashboards, the training map, read-only question bank, review, and settings; use Codex for AI coaching and revisions |
+| Web + Codex | Use Web for dashboards, the training map, question management, review, and settings; use Codex for AI coaching and revisions |
 
 Available today: Training Core, Trainer MCP, MindTrain Web, Codex Plugin, and weighted scheduling. Anki / FSRS Provider is planned.
 

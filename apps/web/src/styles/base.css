@@ -443,3 +443,10 @@ th { color: var(--mindtrain-muted); font-size: 11px; letter-spacing: .05em; text
   .settings-head { display: block; }
   .settings-lock { margin-top: 18px; }
 }
+/* Question maintenance confirmation stays usable on narrow screens. */
+.question-delete-confirm { display: grid; gap: 12px; margin-block: 12px; }
+.question-delete-confirm label { display: grid; gap: 8px; }
+.question-delete-confirm input { width: 100%; min-width: 0; box-sizing: border-box; }
+.question-delete-confirm > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.attempt-history details { margin-block: 10px; }
+.attempt-history summary { cursor: pointer; }
