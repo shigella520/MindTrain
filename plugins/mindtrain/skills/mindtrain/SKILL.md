@@ -35,7 +35,7 @@ Never call `confirm_training_domain` until the user has seen the complete traini
 2. Call `create_training_session` with the resolved `domainId`; Core always uses the application-configured `questionCount`. Use provider ID `weighted`, displayed to users as `加权调度`. One session trains exactly one domain.
 3. Call `get_next_assignment`.
 4. When it returns `assignment`, show only the stem and A-D options. Use exactly: `请回复选项字母，可用逗号分隔。`
-5. Treat a clear option selection as a formal answer and call `submit_choice_answer` once.
+5. Treat a clear option selection as a formal answer and call `submit_choice_answer` once with the user's unmodified text. Accept digits as option aliases (1=A, 2=B, 3=C, 4=D), including compact or separated selections, even though the display prompt asks for letters. Do not reject a clear numeric selection or translate it yourself; Core normalizes and grades it.
 6. Treat concept questions, uncertainty, challenges, and hint requests as interactions. Call `record_interaction`, answer conversationally, and keep the assignment pending.
 7. After successful grading, render: result, correct answer, conclusion, option analysis, mechanism, pitfalls, version notes, related topics, and sources.
 8. Offer exactly: `下一题`, `深入追问`, `结束总结`.

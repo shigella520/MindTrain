@@ -10,7 +10,7 @@
 
 - `create_training_session`: accepts optional `domainId` and `schedulerProvider`. Core uses the sole domain when exactly one exists, rejects an empty catalog with `no_training_domains`, and requires explicit selection with `training_domain_selection_required` when multiple domains exist. One Session is permanently scoped to one domain.
 - `get_next_assignment`: accepts `sessionId`; returns `assignment`, `generation_required`, `no_available_items`, or `session_complete`. A generation request includes a mandatory `generationProfile` with the target question type, difficulty, and knowledge point.
-- `submit_choice_answer`: accepts `assignmentId` and the user's unmodified `answer` text.
+- `submit_choice_answer`: accepts `assignmentId` and the user's unmodified `answer` text. Core accepts A–D (case-insensitive) or numeric aliases 1=A, 2=B, 3=C, 4=D, and stores the original input alongside normalized option IDs. The displayed answer prompt is unchanged.
 - `reject_generated_question`: accepts the pending generated `assignmentId`; physically deletes the unanswered Assignment, QuestionVersion, and Question, and restores main-question new-item allowance.
 - `record_interaction`: records a question or follow-up without consuming the assignment.
 - `create_candidate_question`: saves a complete temporary candidate for the owning session. A main candidate must match the issued `generationProfile`; Core rejects type or difficulty mismatches. Answered candidates become ordinary reusable questions.
