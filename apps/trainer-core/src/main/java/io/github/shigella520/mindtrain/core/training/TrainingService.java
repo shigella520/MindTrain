@@ -39,6 +39,7 @@ public class TrainingService {
     private static final List<String> OPTION_IDS = List.of("A", "B", "C", "D");
     private static final Pattern COMPACT_OPTIONS = Pattern.compile("^[A-D](?:\\s*[,，/、和及]?\\s*[A-D])*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern MARKED_OPTIONS = Pattern.compile("(?:我?选|选择|答案)\\s*[:：]?\\s*([A-D\\s,，/、和及]+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NUMERIC_OPTIONS = Pattern.compile("^(?:(?:我?选|选择|答案)\\s*[:：]?\\s*)?([1-4](?:\\s*[,，/、和及]?\\s*[1-4])*)$");
     private static final int MASTERY_LIST_LIMIT = 5;
     private static final int WEAK_MASTERY_THRESHOLD = 60;
     private static final int STRONG_MASTERY_THRESHOLD = 75;
@@ -620,6 +621,12 @@ public class TrainingService {
         Matcher marked = MARKED_OPTIONS.matcher(value);
         if (optionExpression == null && marked.find()) optionExpression = marked.group(1);
         LinkedHashSet<String> selected = new LinkedHashSet<>();
+        Matcher numeric = NUMERIC_OPTIONS.matcher(value);
+        if (numeric.matches()) {
+            for (char character : numeric.group(1).toCharArray()) {
+                if (character >= '1' && character <= '4') selected.add(OPTION_IDS.get(character - '1'));
+            }
+        }
         if (optionExpression != null) {
             for (char character : optionExpression.toCharArray()) {
                 String option = String.valueOf(character);
